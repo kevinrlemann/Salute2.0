@@ -10,21 +10,25 @@ Repositório central do Salute IA: código do front, documentação, auditorias 
 | Front publicado | artifact "Salute IA" no claude.ai — https://claude.ai/artifact/WtotK7P4yu9qhf9VWrAqhA |
 | Banco, Auth, Storage, Edge Functions | Supabase **"Salute IA novo visual"** (ref `gbhsslyoybqjvjznlave`) |
 | Banco antigo (legado, só consulta) | Supabase "Salute CRM" (ref `pigfhkmtqyatuaudpgyy`) |
-| Hospedagem | Netlify `saluteia` → https://saluteia.site (ainda sem repositório ligado) |
+| Hospedagem | Netlify `saluteia` → https://saluteia.site, publicado da branch `producao` (pasta `front/`) |
 
 ## Estrutura
 
 ```
 front/
-  index.html        página publicada, idêntica ao artifact (bundle único)
+  index.html        página publicada (bundle único)
   config.js         configuração do front (URL do Supabase + chave pública anon)
-  extraido/         scripts e template decodificados do bundle, para leitura e diff
-tools/unbundle.py   decodifica front/index.html em front/extraido/
+  extraido/         scripts decodificados do bundle: onde se edita antes de reempacotar
+supabase/
+  functions/renata/ edge function da Renata (Groq + ElevenLabs) e testes
+  migrations/       migrations versionadas do banco
+tools/              unbundle.py e rebundle.py
 docs/
-  conexoes.md       inventário de ferramentas e conexões
-  supabase.md       projetos Supabase, edge functions e regras de uso
+  architecture.md, frontend.md, database.md, integrations.md, security.md
+  backlog.md        plano de desenvolvimento priorizado (P0, P1, P2)
+  auditoria/        auditorias 01 a 05 (somente leitura)
   manual/           manual de arquitetura, estudos e execução
-  auditoria/        respostas dos prompts de auditoria (somente leitura)
+  conexoes.md, supabase.md
 setup/
   environment-setup.sh   instala e liga rtk + OmniRoute nas sessões de nuvem
 netlify.toml        publicação do front no Netlify (pasta front/, rotas da SPA)
@@ -39,7 +43,8 @@ netlify.toml        publicação do front no Netlify (pasta front/, rotas da SPA
 ## Decodificar o front
 
 ```bash
-python3 -I tools/unbundle.py front/index.html front/extraido
+python3 -I tools/unbundle.py front/index.html front/extraido   # decodificar
+python3 -I tools/rebundle.py front/index.html front/extraido   # reempacotar depois de editar
 ```
 
 A chave em `front/config.js` é a chave **pública (anon)** do Supabase, feita para ficar no navegador; a proteção dos dados vem do RLS. Nunca coloque chaves `service_role` ou segredos neste repositório — ele é público.
