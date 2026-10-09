@@ -20,18 +20,16 @@ $$;
 revoke execute on function public.link_documentos_caminho_valido(text) from public;
 grant execute on function public.link_documentos_caminho_valido(text) to anon, authenticated;
 
-drop policy if exists salute_prontuario_link_paciente on storage.objects;
-create policy salute_prontuario_link_paciente on storage.objects
-  for insert to anon, authenticated
+alter policy salute_prontuario_link_paciente on storage.objects
+  to anon, authenticated
   with check (bucket_id = 'prontuario' and public.link_documentos_caminho_valido(name));
 
 -- ---------------------------------------------------------------------
 -- S4: gestor podia inserir qualquer usuário direto como membro "aceito" e
 -- promover outros a gestor. O front grava a equipe só por funções do servidor
 -- (convidar_membro, admin_definir_acesso); inserção direta fica restrita a convite pendente.
-drop policy if exists usuarios_clinicas_criar on public.usuarios_clinicas;
-create policy usuarios_clinicas_criar on public.usuarios_clinicas
-  for insert to authenticated
+alter policy usuarios_clinicas_criar on public.usuarios_clinicas
+  to authenticated
   with check (clinica_id in (select public.clinicas_gestao())
               and usuario_id is null and status_convite = 'pendente'
               and not dono and papel <> 'dono');
@@ -101,28 +99,43 @@ do $$
 declare t text;
 begin
   foreach t in array array['usuarios_clinicas','permissoes','clinicas','contas_pagar','produtos','movimentacoes_estoque'] loop
-    execute format('drop trigger if exists tg_%1$s_auditoria on public.%1$I', t);
-    execute format('create trigger tg_%1$s_auditoria after insert or update or delete on public.%1$I for each row execute function public.auditar()', t);
+    if not exists (select 1 from pg_trigger where tgrelid = format('public.%I', t)::regclass and tgname = format('tg_%s_auditoria', t)) then
+      execute format('create trigger tg_%1$s_auditoria after insert or update or delete on public.%1$I for each row execute function public.auditar()', t);
+    end if;
   end loop;
 end $$;
 
 -- ---------------------------------------------------------------------
 -- S6: ia_config (legada, sem uso no front) aceitava leitura, edição e exclusão de
 -- qualquer vínculo, inclusive bloqueado; o gatilho de auditoria dela estava quebrado.
-drop policy if exists ia_config_select on public.ia_config;
-drop policy if exists ia_config_insert on public.ia_config;
-drop policy if exists ia_config_update on public.ia_config;
-drop policy if exists ia_config_delete on public.ia_config;
-create policy ia_config_ler on public.ia_config
-  for select to authenticated using (clinica_id in (select public.clinicas_gestao()));
-create policy ia_config_criar on public.ia_config
-  for insert to authenticated with check (clinica_id in (select public.clinicas_gestao()));
-create policy ia_config_editar on public.ia_config
-  for update to authenticated using (clinica_id in (select public.clinicas_gestao()))
+alter policy ia_config_select on public.ia_config
+  to authenticated using (clinica_id in (select public.clinicas_gestao()));
+alter policy ia_config_insert on public.ia_config
+  to authenticated with check (clinica_id in (select public.clinicas_gestao()));
+alter policy ia_config_update on public.ia_config
+  to authenticated using (clinica_id in (select public.clinicas_gestao()))
   with check (clinica_id in (select public.clinicas_gestao()));
+alter policy ia_config_delete on public.ia_config
+  to authenticated using (clinica_id in (select public.clinicas_gestao()));
 
-drop trigger if exists ia_config_auditoria_trigger on public.ia_config;
-drop function if exists public.ia_config_auditoria();
-drop trigger if exists tg_ia_config_auditoria on public.ia_config;
-create trigger tg_ia_config_auditoria after insert or update or delete on public.ia_config
-  for each row execute function public.auditar();
+-- o gatilho antigo gravava numa coluna que não existe; passa a não fazer nada e a
+-- auditoria padrão assume
+create or replace function public.ia_config_auditoria()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return new;
+end;
+$$;
+revoke execute on function public.ia_config_auditoria() from public, anon, authenticated;
+
+do $$
+begin
+  if not exists (select 1 from pg_trigger where tgrelid = 'public.ia_config'::regclass and tgname = 'tg_ia_config_auditoria') then
+    create trigger tg_ia_config_auditoria after insert or update or delete on public.ia_config
+      for each row execute function public.auditar();
+  end if;
+end $$;
