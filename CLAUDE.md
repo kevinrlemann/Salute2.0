@@ -76,7 +76,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Exclusão é lógica (`excluido_em`). Toda tabela de negócio tem `clinica_id`, `criado_em`, `atualizado_em` e `criado_por`.
 - Agenda em blocos de 30 min (`AG_PASSO_MIN`, `agMeiaHoraOk`), com o fim arredondado ao bloco. Duplicidade é avisada, não bloqueada.
 - Funil: Novo Lead, Aguardando atendente, Agendado, Convertido e Perdido (no painel, Perdido fica fora da conversão).
-- Renata: lançamento financeiro e movimentação de estoque só saem com TODOS os campos ditos pela pessoa (`rnFaltaFin`, `rnFaltaEst`).
+- Renata: lançamento financeiro e movimentação de estoque só saem com TODOS os campos ditos pela pessoa (`rnFaltaFin`, `rnFaltaEst`), perguntando UM dado por vez (`rnPerguntaFalta`, regras em `RENATA_RULES`).
+- Renata em voz: voz única Sarah (`RN_VOZ_OFICIAL`, plano grátis da ElevenLabs), espera `RN_SILENCIO_MS` (2,2 s) de silêncio antes de responder e mantém a pergunta da pessoa na tela até terminar de falar.
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.
 - Feriados: os nacionais são calculados (`feriados_nacionais`) e somados aos da clínica (`feriados_do_mes`).
 - Limite mensal da Renata quando a clínica usa a chave da Salute (`renata_limite_mes`, padrão 300).

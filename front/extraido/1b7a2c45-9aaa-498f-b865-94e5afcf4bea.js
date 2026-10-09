@@ -1045,7 +1045,38 @@ RENATA_TOOLS.push({
   }
 });
 var RENATA_RULES = function RENATA_RULES(voice) {
-  return "Voc\xEA \xE9 a Renata, a assistente de IA da ".concat(RN_CLINICA.fantasia, ", dentro do sistema Salute IA. Est\xE1 conversando com ").concat(rnQuem(), ".\n\nRegras:\n1. Responda SOMENTE com base nos dados desta cl\xEDnica, que est\xE3o no JSON abaixo ou nas ferramentas. Nunca use, cite ou invente dados de outras cl\xEDnicas. Se a informa\xE7\xE3o n\xE3o existir nos dados, diga isso com clareza e sugira onde a pessoa pode ver ou cadastrar no sistema.\n2. Nunca invente n\xFAmeros. Calcule a partir dos dados. Para per\xEDodos, dias ou pacientes que n\xE3o est\xE3o no resumo, use as ferramentas.\n3. Voc\xEA tamb\xE9m pode trazer conhecimento de mercado (benchmarks de cl\xEDnicas de est\xE9tica e odontologia no Brasil, boas pr\xE1ticas de gest\xE3o, marketing e atendimento). Quando fizer isso, deixe claro que \xE9 refer\xEAncia de mercado e use faixas realistas e cr\xEDveis, nunca n\xFAmeros exagerados.\n4. Hoje \xE9 ").concat(rnHojeTxt(), ". Valores em reais no formato brasileiro (R$ 1.234,56). Datas no formato dd/mm/aaaa.\n5. Portugu\xEAs do Brasil, tom acolhedor, direto e profissional, como uma colega de trabalho. Comece pela resposta. N\xE3o use travess\xF5es. N\xE3o narre o uso das ferramentas.\n6. Voc\xEA \xE9 um agente do pr\xF3prio sistema: quando pedirem para abrir uma tela ou aba, use abrir_tela; para a ficha, o prontu\xE1rio ou a conversa de um paciente, use abrir_paciente. Confirme em uma frase.\n7. Se a pessoa s\xF3 cumprimentar, agradecer ou se despedir, responda de forma breve e calorosa. Para perguntas que dependem da conversa anterior (por exemplo \"e em agosto?\"), use o contexto das mensagens anteriores.\n8. A\xE7\xF5es no sistema: para lan\xE7ar, receber, pagar, dar entrada ou baixa no estoque, dar baixa em conta pendente, agendar, remarcar, cancelar ou confirmar agendamento, cadastrar ou atualizar paciente, enviar anamnese ou mensagem de WhatsApp, registrar procedimento no prontu\xE1rio, mover lead no CRM ou ligar e pausar a IA de um lead, use as ferramentas propor_*. Elas s\xF3 preparam: o sistema mostra um cart\xE3o e grava quando a pessoa disser sim ou tocar em Confirmar. Nunca diga que fez antes disso. Depois de propor, fa\xE7a UMA pergunta curta de confirma\xE7\xE3o, por exemplo \"Agendar a Mariana para ter\xE7a, 07/10 \xE0s 10:00 com a Dra. Camila?\". Em lan\xE7amentos financeiros e movimenta\xE7\xF5es de estoque \xE9 obrigat\xF3rio ter TODOS os campos do padr\xE3o ditos pela pessoa: nunca suponha valor, data, forma de pagamento, profissional, categoria, fornecedor ou motivo. Pergunte tudo o que faltar numa s\xF3 pergunta antes de propor. Agendamentos s\xF3 em hor\xE1rios cheios ou meia hora (09:00, 09:30, 10:00...). Quando a pessoa n\xE3o disser a hora ou a ferramenta avisar conflito, consulte horarios_livres e ofere\xE7a at\xE9 3 op\xE7\xF5es. Se uma ferramenta devolver erro, explique em uma frase e pe\xE7a o que falta. Com um mapeamento aberto, use ajustar_ponto_mapa para mudar quantidade, unidade, produto ou coment\xE1rio de um ponto pelo n\xFAmero; isso n\xE3o precisa de confirma\xE7\xE3o.\n").concat(voice ? '9. MODO VOZ: é uma conversa falada, como uma ligação. Responda em até 3 frases curtas, sem listas, sem markdown e sem emojis, com números e datas escritos de forma natural para serem falados. Se houver muitos itens, diga os 3 principais e pergunte se a pessoa quer ouvir o resto.' : '9. Respostas curtas. Use **negrito** para o número principal e listas curtas com "- " quando ajudar. Sem tabelas.', "\n\nDADOS DA CL\xCDNICA (JSON):\n");
+  // instruções da Renata (secretária virtual da equipe). Texto enxuto: o plano grátis do Groq corta o pedido em ~7 mil caracteres.
+  var R = ['Você é a Renata, secretária virtual da ' + RN_CLINICA.fantasia + ' dentro do sistema Salute IA. Está conversando com ' + rnQuem() + '. Hoje é ' + rnHojeTxt() + '.',
+  '',
+  'COMO ENTENDER O QUE A PESSOA DISSE',
+  '1. Leia a frase inteira e o histórico antes de responder. Frases curtas como "e amanhã?", "e no Pix?", "pode ser às 10" continuam o assunto anterior.',
+  '2. Entenda a fala como uma pessoa entenderia: "amanhã", "sexta que vem", "dia 10" (do mês atual, ou do próximo se já passou), "meio-dia" = 12:00, "duas e meia da tarde" = 14:30, "mil e quinhentos" = R$ 1.500,00, "uns trezentos" = pergunte o valor exato.',
+  '3. Nomes: procure o paciente ou profissional mais parecido. Se houver mais de um possível ou nenhum, pergunte qual é, citando no máximo 3 opções.',
+  '4. Se a pessoa corrigir algo ("não, foi no cartão"), troque só aquele dado e continue de onde parou.',
+  '5. Se não entender, diga o que entendeu e pergunte só o que ficou em dúvida. Nunca invente dado, número, nome ou horário.',
+  '',
+  'DADOS E RESPOSTAS',
+  '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas). Se não existir, diga com clareza e sugira onde ver ou cadastrar. Calcule a partir dos dados; para períodos ou pessoas fora do resumo, use as ferramentas.',
+  '7. Conhecimento de mercado (estética e odontologia no Brasil) só quando pedirem, deixando claro que é referência de mercado e com números realistas.',
+  '8. Português do Brasil sempre, mesmo que a pessoa use outra língua. Tom acolhedor e profissional, como uma colega. Comece pela resposta. Sem travessões. Não narre o uso das ferramentas. Valores R$ 1.234,56 e datas dd/mm/aaaa.',
+  '9. Para abrir telas use abrir_tela; ficha, prontuário ou conversa de paciente, abrir_paciente. Confirme em uma frase.',
+  '',
+  'AÇÕES (lançar, receber, pagar, estoque, agendar, remarcar, cancelar, cadastrar paciente, enviar anamnese ou mensagem, prontuário, CRM)',
+  '10. Use as ferramentas propor_*. Elas só preparam: o sistema grava quando a pessoa disser sim. Nunca diga que fez antes disso.',
+  '11. UMA PERGUNTA POR VEZ. Se faltar informação, pergunte só o próximo dado, em uma frase curta, e espere a resposta. Nunca junte duas perguntas na mesma frase. Não repita o que a pessoa já disse.',
+  '12. Ordem das perguntas. Receita: valor, paciente, procedimento, profissional, forma de pagamento, se já recebeu ou vai receber, data. Despesa: valor, descrição, categoria, fornecedor, forma de pagamento, se já pagou ou vai pagar, data. Estoque: entrada ou baixa, produto, quantidade, e na entrada valor total, fornecedor e forma; na baixa o motivo. Agendamento: paciente, procedimento, profissional, dia, horário.',
+  '13. Nunca suponha valor, data, forma, profissional, categoria, fornecedor ou motivo. "Hoje" só se a pessoa disser.',
+  '14. Com tudo em mãos, chame a propor_* e faça UMA pergunta de confirmação resumindo o essencial. Ex.: "Lanço R$ 300,00 recebidos da Mariana no Pix hoje?"',
+  '15. Agendamentos só em hora cheia ou meia hora. Sem horário ou com conflito, consulte horarios_livres e ofereça até 3 opções.',
+  '16. Se uma ferramenta devolver erro ou pedir dado, explique em uma frase e pergunte apenas o primeiro dado que falta.',
+  '17. Mapeamento aberto: ajustar_ponto_mapa muda quantidade, unidade, produto ou comentário de um ponto pelo número, sem confirmação.',
+  '18. Cumprimento, agradecimento ou despedida: responda breve e calorosa.',
+  voice ? '19. MODO VOZ (conversa falada, como uma ligação): no máximo 2 frases curtas por vez, sem listas, sem markdown, sem emojis e sem siglas soletradas. Escreva números, valores, datas e horários como se fala ("trezentos reais", "dia dez de outubro", "às duas e meia da tarde"). Se houver muitos itens, diga os 3 principais e pergunte se quer ouvir o resto. Nas ações, siga a regra 11 com rigor: uma pergunta curta, espere, depois a próxima.'
+        : '19. Respostas curtas. Use **negrito** para o número principal e listas curtas com "- " quando ajudar. Sem tabelas.',
+  '',
+  'DADOS DA CLÍNICA (JSON):',
+  ''];
+  return R.join('\n');
 };
 Object.assign(window, {
   rnResetCtx: rnResetCtx,
@@ -1651,48 +1682,64 @@ var rnIsNo = function rnIsNo(q) {
 function rnProsFin() {
   return typeof PROS !== 'undefined' && PROS.length && SB_ON ? PROS.map(function (p) { return p.n; }) : FIN_PROS;
 }
+// devolve só a PRÓXIMA pergunta (uma por vez), na ordem combinada com a pessoa
+function rnPerguntaFalta(lista, items, rotulo) {
+  var nomes = [],
+    primeira = null;
+  lista.forEach(function (f, k) {
+    if (!f.length) return;
+    var pre = items.length > 1 ? rotulo + ' ' + (k + 1) + ': ' : '';
+    nomes.push(pre + f.map(function (x) {
+      return x.n;
+    }).join(', '));
+    if (!primeira) primeira = (items.length > 1 ? 'Sobre o ' + rotulo.toLowerCase() + ' ' + (k + 1) + ', ' : '') + f[0].q;
+  });
+  return nomes.length ? {
+    erro: 'Ainda falta: ' + nomes.join('; ') + '. Pergunte à pessoa SOMENTE isto agora, numa frase curta: "' + primeira + '". Espere a resposta antes de perguntar o próximo dado. Nunca suponha valores.',
+    faltando: true,
+    proxima_pergunta: primeira
+  } : null;
+}
 function rnFaltaFin(items) {
-  var falta = [];
-  (items || []).forEach(function (x, k) {
+  items = items || [];
+  return rnPerguntaFalta(items.map(function (x) {
     var f = [];
     var rec = x.tipo !== 'despesa';
-    if (!(Number(x.valor) > 0)) f.push('valor');
-    if (x.status !== 'pago' && x.status !== 'pendente') f.push(rec ? 'se já foi recebido ou está a receber' : 'se já foi pago ou está a pagar');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(x.data || ''))) f.push(x.status === 'pendente' ? 'data de vencimento' : rec ? 'data do recebimento' : 'data do pagamento');
-    if (!rnFormaOf(x.forma || '')) f.push('forma de pagamento (Pix, cartão de crédito, cartão de débito, dinheiro, boleto ou convênio)');
+    if (!(Number(x.valor) > 0)) f.push({ n: 'valor', q: rec ? 'Qual foi o valor?' : 'Qual é o valor da despesa?' });
     if (rec) {
-      if (!String(x.paciente || '').trim()) f.push('paciente');
-      if (!String(x.procedimento || '').trim()) f.push('procedimento');
-      if (!String(x.profissional || '').trim() || !rnProsFin().find(function (p) { return rnNorm(p).includes(rnNorm(x.profissional)); })) f.push('profissional (' + rnProsFin().join(', ') + ')');
+      if (!String(x.paciente || '').trim()) f.push({ n: 'paciente', q: 'De qual paciente?' });
+      if (!String(x.procedimento || '').trim()) f.push({ n: 'procedimento', q: 'Qual foi o procedimento?' });
+      if (!String(x.profissional || '').trim() || !rnProsFin().find(function (p) { return rnNorm(p).includes(rnNorm(x.profissional)); })) f.push({ n: 'profissional', q: 'Qual profissional atendeu? (' + rnProsFin().join(', ') + ')' });
     } else {
-      if (!String(x.descricao || '').trim()) f.push('descrição da despesa');
-      if (!DESP_CATS.find(function (c) { return rnNorm(c) === rnNorm(x.categoria || ''); })) f.push('categoria (' + DESP_CATS.join(', ') + ')');
-      if (!String(x.fornecedor || '').trim()) f.push('fornecedor');
+      if (!String(x.descricao || '').trim()) f.push({ n: 'descrição', q: 'Qual é a despesa?' });
+      if (!DESP_CATS.find(function (c) { return rnNorm(c) === rnNorm(x.categoria || ''); })) f.push({ n: 'categoria', q: 'Em qual categoria entra? (' + DESP_CATS.join(', ') + ')' });
+      if (!String(x.fornecedor || '').trim()) f.push({ n: 'fornecedor', q: 'Qual é o fornecedor?' });
     }
-    if (f.length) falta.push(((items.length > 1 ? 'Lançamento ' + (k + 1) + ': ' : '')) + f.join(', '));
-  });
-  return falta.length ? { erro: 'Faltam informações. Pergunte à pessoa, sem supor nenhum valor: ' + falta.join('; ') + '.', faltando: true } : null;
+    if (!rnFormaOf(x.forma || '')) f.push({ n: 'forma de pagamento', q: 'Qual foi a forma de pagamento?' });
+    if (x.status !== 'pago' && x.status !== 'pendente') f.push({ n: rec ? 'recebido ou a receber' : 'pago ou a pagar', q: rec ? 'Já foi recebido ou ainda vai receber?' : 'Já foi pago ou ainda vai pagar?' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(x.data || ''))) f.push({ n: 'data', q: x.status === 'pendente' ? 'Para qual data é o vencimento?' : rec ? 'Em qual data foi recebido?' : 'Em qual data foi pago?' });
+    return f;
+  }), items, 'Lançamento');
 }
 function rnFaltaEst(items) {
-  var falta = [];
-  (items || []).forEach(function (x, k) {
+  items = items || [];
+  return rnPerguntaFalta(items.map(function (x) {
     var f = [];
-    if (x.tipo !== 'entrada' && x.tipo !== 'saida') f.push('se é entrada ou baixa');
-    if (!String(x.produto || '').trim()) f.push('produto');
-    if (!(Number(x.quantidade) > 0)) f.push('quantidade');
+    if (x.tipo !== 'entrada' && x.tipo !== 'saida') f.push({ n: 'entrada ou baixa', q: 'É uma entrada ou uma baixa no estoque?' });
+    if (!String(x.produto || '').trim()) f.push({ n: 'produto', q: 'Qual é o produto?' });
+    if (!(Number(x.quantidade) > 0)) f.push({ n: 'quantidade', q: 'Qual a quantidade?' });
     if (x.tipo === 'entrada') {
-      if (x.valorTotal === undefined || x.valorTotal === null || !(Number(x.valorTotal) >= 0)) f.push('valor total pago na compra (0 se foi doação ou bonificação)');
-      if (Number(x.valorTotal) > 0 && !String(x.fornecedor || '').trim()) f.push('fornecedor');
-      if (Number(x.valorTotal) > 0 && !rnFormaOf(x.forma || '')) f.push('forma de pagamento da compra');
+      if (x.valorTotal === undefined || x.valorTotal === null || !(Number(x.valorTotal) >= 0)) f.push({ n: 'valor total', q: 'Qual foi o valor total pago na compra? (zero se foi doação ou bonificação)' });
+      if (Number(x.valorTotal) > 0 && !String(x.fornecedor || '').trim()) f.push({ n: 'fornecedor', q: 'De qual fornecedor?' });
+      if (Number(x.valorTotal) > 0 && !rnFormaOf(x.forma || '')) f.push({ n: 'forma de pagamento', q: 'Qual foi a forma de pagamento da compra?' });
     }
-    if (x.tipo === 'saida' && !String(x.motivo || '').trim()) f.push('motivo da baixa (uso em procedimento, vencimento, perda ou outro)');
-    if (f.length) falta.push(((items.length > 1 ? 'Item ' + (k + 1) + ': ' : '')) + f.join(', '));
-  });
-  return falta.length ? { erro: 'Faltam informações. Pergunte à pessoa, sem supor nenhum valor: ' + falta.join('; ') + '.', faltando: true } : null;
+    if (x.tipo === 'saida' && !String(x.motivo || '').trim()) f.push({ n: 'motivo', q: 'Qual o motivo da baixa? (uso em procedimento, vencimento, perda ou outro)' });
+    return f;
+  }), items, 'Item');
 }
 RENATA_TOOLS.push({
   name: 'propor_lancamento_financeiro',
-  description: 'Prepara, SEM gravar, um ou mais lançamentos financeiros para a pessoa confirmar: receitas de pacientes (pagamentos recebidos ou a receber) e despesas da clínica (pagas ou a pagar). Ex.: "recebi 3 mil da Joana Xavier e falta mil para o dia 10" vira duas receitas: 3000 pago hoje e 1000 pendente com data do dia 10. Antes de chamar, tenha TODOS os campos ditos pela pessoa (nunca suponha): receita = valor, paciente, procedimento, profissional, forma, recebido ou a receber e data; despesa = valor, descrição, categoria, fornecedor, forma, pago ou a pagar e data. Se faltar algo, pergunte tudo o que falta numa só pergunta. Depois de chamar, faça UMA pergunta curta de confirmação. O sistema só grava quando a pessoa disser sim.',
+  description: 'Prepara, SEM gravar, um ou mais lançamentos financeiros para a pessoa confirmar: receitas de pacientes (pagamentos recebidos ou a receber) e despesas da clínica (pagas ou a pagar). Ex.: "recebi 3 mil da Joana Xavier e falta mil para o dia 10" vira duas receitas: 3000 pago hoje e 1000 pendente com data do dia 10. Antes de chamar, tenha TODOS os campos ditos pela pessoa (nunca suponha): receita = valor, paciente, procedimento, profissional, forma, recebido ou a receber e data; despesa = valor, descrição, categoria, fornecedor, forma, pago ou a pagar e data. Se faltar algo, pergunte UM dado por vez, na ordem das instruções, e espere a resposta. Depois de chamar, faça UMA pergunta curta de confirmação. O sistema só grava quando a pessoa disser sim.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -1768,7 +1815,7 @@ RENATA_TOOLS.push({
   }
 }, {
   name: 'propor_movimentacao_estoque',
-  description: 'Prepara, SEM gravar, entradas ou baixas de produtos no estoque para a pessoa confirmar. Use o nome do produto como está no estoque. Antes de chamar, tenha TODOS os campos ditos pela pessoa (nunca suponha): entrada = produto, quantidade, valor total da compra, fornecedor e forma de pagamento; baixa = produto, quantidade e motivo. Se faltar algo, pergunte tudo o que falta numa só pergunta. Depois de chamar, faça UMA pergunta curta de confirmação.',
+  description: 'Prepara, SEM gravar, entradas ou baixas de produtos no estoque para a pessoa confirmar. Use o nome do produto como está no estoque. Antes de chamar, tenha TODOS os campos ditos pela pessoa (nunca suponha): entrada = produto, quantidade, valor total da compra, fornecedor e forma de pagamento; baixa = produto, quantidade e motivo. Se faltar algo, pergunte UM dado por vez, na ordem das instruções, e espere a resposta. Depois de chamar, faça UMA pergunta curta de confirmação.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -1901,7 +1948,10 @@ var RN_AI = makeStore(SB_ON ? {
 }));
 /* Voz oficial da Renata (ElevenLabs), definida pelo Kevin. A Renata sempre fala com esta voz;
    a voz do aparelho só entra como reserva quando a ElevenLabs não está acessível. */
-var RN_VOZ_OFICIAL = 'RGymW84CSmfVugnA5tvA';
+// voz única da Renata: Sarah, voz padrão da ElevenLabs liberada no plano grátis (fala português com flash v2.5)
+var RN_VOZ_OFICIAL = 'EXAVITQu4vr4xnSDxMaL';
+// silêncio que encerra a fala da pessoa no modo voz (dá tempo de pensar entre uma frase e outra)
+var RN_SILENCIO_MS = 2200;
 var RN_VOICE = makeStore(function () {
   var s = SB_ON ? {} : lsGet('salute-kit:renata-voz', {}) || {};
   return {
@@ -8568,16 +8618,24 @@ function RenataVoiceMode(_ref16) {
     R.rec = r;
     r.lang = 'pt-BR';
     r.interimResults = true;
-    r.continuous = false;
+    // contínuo: o navegador não corta na primeira pausa; quem encerra é o silêncio de RN_SILENCIO_MS
+    r.continuous = true;
     var fin = '',
-      inter = '';
+      inter = '',
+      silT = null;
     r.onresult = function (e) {
       fin = '';
       inter = '';
       for (var i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) fin += e.results[i][0].transcript;else inter += e.results[i][0].transcript;
+        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';else inter += e.results[i][0].transcript;
       }
-      setHeard((fin + ' ' + inter).trim());
+      setHeard((fin + ' ' + inter).replace(/\s+/g, ' ').trim());
+      clearTimeout(silT);
+      if ((fin + inter).trim()) silT = setTimeout(function () {
+        if (R.rec === r) try {
+          r.stop();
+        } catch (x) {}
+      }, RN_SILENCIO_MS);
     };
     r.onerror = function (e) {
       if (R.rec !== r) return;
@@ -8592,9 +8650,10 @@ function RenataVoiceMode(_ref16) {
       } else if (e.error === 'audio-capture') fail('nomic');else if (e.error === 'network') fail('network');
     };
     r.onend = function () {
+      clearTimeout(silT);
       if (R.rec !== r || !R.alive) return;
       R.rec = null;
-      var q = (fin || inter).trim();
+      var q = (fin + ' ' + inter).replace(/\s+/g, ' ').trim();
       if (!q) {
         setTimeout(listen, 150);
         return;
@@ -8652,7 +8711,7 @@ function RenataVoiceMode(_ref16) {
         last = Date.now();
       }
       var now = Date.now();
-      if (spoke && now - last > 1000 || now - t0 > 25000 || !spoke && now - t0 > 12000) {
+      if (spoke && now - last > RN_SILENCIO_MS || now - t0 > 45000 || !spoke && now - t0 > 12000) {
         try {
           rec.stop();
         } catch (e) {}
@@ -8984,7 +9043,16 @@ function RenataVoiceMode(_ref16) {
       minHeight: 20,
       textAlign: 'center'
     }
-  }, LBL[state]), heard && (state === 'listening' || state === 'thinking') ? /*#__PURE__*/React.createElement("p", {
+  }, LBL[state]), heard && state === 'speaking' ? /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      maxWidth: 540,
+      textAlign: 'center',
+      fontSize: mobile ? 14 : 15,
+      color: 'var(--text-muted)',
+      lineHeight: 1.45
+    }
+  }, 'Você: ' + heard) : null, heard && (state === 'listening' || state === 'thinking') ? /*#__PURE__*/React.createElement("p", {
     style: {
       margin: 0,
       maxWidth: 540,
