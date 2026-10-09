@@ -2388,7 +2388,7 @@ function rnBridge() {
     if (!RN_OPENER) return res(false);
     var done = false;
     var _on = function on(ev) {
-      if (ev.source === RN_OPENER && ev.data && ev.data.type === 'rn-hello-ack') {
+      if (ev.source === RN_OPENER && ev.origin === location.origin && ev.data && ev.data.type === 'rn-hello-ack') {
         done = true;
         window.removeEventListener('message', _on);
         res(!!ev.data.ia);
@@ -2398,7 +2398,7 @@ function rnBridge() {
     try {
       RN_OPENER.postMessage({
         type: 'rn-hello'
-      }, '*');
+      }, location.origin);
     } catch (e) {
       res(false);
     }
@@ -2418,7 +2418,7 @@ function rnAskBridge(history, _ref1) {
   return new Promise(function (res, rej) {
     var id = Math.random().toString(36).slice(2);
     var _on2 = function on(ev) {
-      if (ev.source !== RN_OPENER || !ev.data || ev.data.id !== id) return;
+      if (ev.source !== RN_OPENER || ev.origin !== location.origin || !ev.data || ev.data.id !== id) return;
       if (ev.data.type === 'rn-part') onText(ev.data.text);
       if (ev.data.type === 'rn-answer') {
         window.removeEventListener('message', _on2);
@@ -2452,7 +2452,7 @@ function rnAskBridge(history, _ref1) {
             content: m.content
           };
         })
-      }, '*');
+      }, location.origin);
     } catch (e) {
       window.removeEventListener('message', _on2);
       rej({
@@ -2468,7 +2468,7 @@ window.addEventListener('message', /*#__PURE__*/function () {
       while (1) switch (_context.p = _context.n) {
         case 0:
           d = ev.data;
-          if (!(!__rnPop || ev.source !== __rnPop || !d || _typeof(d) !== 'object')) {
+          if (!(!__rnPop || ev.source !== __rnPop || ev.origin !== location.origin || !d || _typeof(d) !== 'object')) {
             _context.n = 1;
             break;
           }
@@ -2476,7 +2476,7 @@ window.addEventListener('message', /*#__PURE__*/function () {
         case 1:
           reply = function reply(o) {
             try {
-              ev.source.postMessage(o, '*');
+              ev.source.postMessage(o, location.origin);
             } catch (e) {}
           };
           if (!(d.type === 'rn-hello')) {
@@ -3147,7 +3147,7 @@ function _rnAnswer() {
             try {
               RN_OPENER.postMessage({
                 type: 'rn-clear'
-              }, '*');
+              }, location.origin);
             } catch (e) {}
           }
           opts.onText(_t19);
