@@ -3413,11 +3413,11 @@ function _rnAnswerCore() {
 }
 var RN_SUGS = [['calendar-days', 'Qual é a minha agenda de hoje?'], ['banknote', 'Quanto faturei nos últimos 30 dias?'], ['package', 'O que está em falta no estoque?'], ['user-round', 'Como foi o atendimento da Mariana Alves?'], ['triangle-alert', 'Qual a taxa de inadimplência?'], ['chart-column', 'Qual canal traz mais leads?']];
 
-/* ---------- conexões da Renata: passo a passo do Google Gemini ---------- */
-function RnPassoGemini(_ref) {
+/* ---------- conexões da Renata: passo a passo do Groq ---------- */
+function RnPassoGroq(_ref) {
   var note = _ref.note,
     btn2 = _ref.btn2;
-  var passos = ['Toque em \u201CAbrir o Google AI Studio\u201D e entre com a sua conta Google (o mesmo login do Gmail).', 'Clique em \u201CCreate API key\u201D (Criar chave de API). Se pedir, escolha um projeto ou crie um novo.', 'Copie a chave (come\xE7a com AIza), cole no campo abaixo e toque em \u201CTestar conex\xE3o\u201D.', 'Apareceu \u201CConectada\u201D? Toque em Salvar. Pronto: a Renata j\xE1 responde com IA.'];
+  var passos = ['Toque em \u201CAbrir o Groq\u201D e entre com a sua conta Google ou GitHub. N\xE3o pede cart\xE3o.', 'Na p\xE1gina \u201CAPI Keys\u201D, clique em \u201CCreate API Key\u201D, d\xEA o nome Salute e clique em \u201CSubmit\u201D.', 'Copie a chave na hora (come\xE7a com gsk_ e s\xF3 aparece uma vez), cole no campo abaixo e toque em \u201CTestar conex\xE3o\u201D.', 'Apareceu \u201CConectada\u201D? Toque em Salvar. Pronto: a Renata j\xE1 responde com IA.'];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -3433,7 +3433,7 @@ function RnPassoGemini(_ref) {
       fontSize: 13.5,
       color: 'var(--text-strong)'
     }
-  }, "Conectar o Google Gemini (gr\xE1tis)"), /*#__PURE__*/React.createElement("ol", {
+  }, "Conectar o Groq (gr\xE1tis)"), /*#__PURE__*/React.createElement("ol", {
     style: {
       margin: 0,
       paddingLeft: 18,
@@ -3449,7 +3449,7 @@ function RnPassoGemini(_ref) {
       key: i
     }, p);
   })), /*#__PURE__*/React.createElement("a", {
-    href: "https://aistudio.google.com/app/apikey",
+    href: "https://console.groq.com/keys",
     target: "_blank",
     rel: "noopener noreferrer",
     style: _objectSpread(_objectSpread({}, btn2), {}, {
@@ -3462,9 +3462,9 @@ function RnPassoGemini(_ref) {
   }, /*#__PURE__*/React.createElement(RIcon, {
     name: "external-link",
     size: 14
-  }), "Abrir o Google AI Studio"), /*#__PURE__*/React.createElement("span", {
+  }), "Abrir o Groq"), /*#__PURE__*/React.createElement("span", {
     style: note
-  }, "J\xE1 tem chave do Claude? Pode colar no mesmo campo: o sistema reconhece sozinho. No plano gratuito do Google as conversas podem ser usadas pelo Google para melhorar os produtos; para atender pacientes reais, ative o faturamento no AI Studio (custa centavos por conversa)."));
+  }, "O plano gratuito do Groq tem limite di\xE1rio de uso; se a Renata avisar que chegou ao limite, \xE9 s\xF3 esperar o dia virar. Para atender pacientes reais, prefira o plano pago do Groq (custa centavos por conversa)."));
 }
 
 /* ---------- conexões da Renata ---------- */
@@ -3653,14 +3653,14 @@ function RenataSettings(_ref13) {
     size: 18
   }))), /*#__PURE__*/React.createElement("div", {
     style: sec
-  }, head('brain', 'Inteligência', mode === 'ia' ? 'Conectada pelo Claude neste link' : k.trim() ? 'IA conectada com a sua chave' : 'Conecte o Google Gemini (grátis) em 1 minuto'), mode === 'ia' ? /*#__PURE__*/React.createElement("span", {
+  }, head('brain', 'Inteligência', mode === 'ia' ? 'Conectada pelo Claude neste link' : k.trim() ? 'IA conectada com a sua chave do Groq' : 'Conecte o Groq (grátis) em 1 minuto'), mode === 'ia' ? /*#__PURE__*/React.createElement("span", {
     style: note
-  }, "Aqui dentro do Claude a Renata j\xE1 usa IA de verdade. A chave abaixo \xE9 para o sistema no seu dom\xEDnio.") : null, /*#__PURE__*/React.createElement(RnPassoGemini, {
+  }, "Aqui dentro do Claude a Renata j\xE1 usa IA de verdade. A chave abaixo \xE9 para o sistema no seu dom\xEDnio.") : null, /*#__PURE__*/React.createElement(RnPassoGroq, {
     note: note,
     btn2: btn2
   }), /*#__PURE__*/React.createElement("label", {
     style: lab
-  }, "Chave da IA (Google Gemini ou Claude)", /*#__PURE__*/React.createElement("input", {
+  }, "Chave da IA (Groq, gr\xE1tis)", /*#__PURE__*/React.createElement("input", {
     type: "password",
     style: inp,
     value: k,
@@ -3668,7 +3668,7 @@ function RenataSettings(_ref13) {
       setK(e.target.value);
       setAiTest(null);
     },
-    placeholder: "Cole aqui a chave do Google AI Studio (come\xE7a com AIza)",
+    placeholder: "Cole aqui a chave do Groq (come\xE7a com gsk_)",
     autoComplete: "off"
   })), /*#__PURE__*/React.createElement("div", {
     style: {

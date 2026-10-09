@@ -1,5 +1,5 @@
-// Rodar: cp supabase/functions/renata/gemini.ts /tmp/gemini.mts && sed "s#../gemini.ts#/tmp/gemini.mts#" supabase/functions/renata/testes/gemini.test.mts > /tmp/t.mts && npx tsx /tmp/t.mts
-import { eventosClaude, paraGemini, limparSchema } from '../gemini.ts';
+// Rodar: cp supabase/functions/renata/groq.ts /tmp/groq.mts && sed "s#../groq.ts#/tmp/groq.mts#" supabase/functions/renata/testes/groq.test.mts > /tmp/t.mts && npx tsx /tmp/t.mts
+import { eventosClaude, paraGroq, chamarGroq, GROQ_MODELOS } from '../groq.ts';
 import assert from 'node:assert/strict';
 
 // leitor igual ao do front (1b7a2c45…js, linhas ~2792-2910)
@@ -57,7 +57,7 @@ assert.equal(t1.texto, 'Olá, Kevin!'); assert.equal(t1.stop, 'end_turn'); asser
 // 2) ferramenta inteira num pedaço (jeito do Gemini), finish 'stop'
 const t2 = await rodar('ferramenta inteira', [
   { choices: [{ index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'fc_1', type: 'function', function: { name: 'agenda_do_dia', arguments: '{"data":"2026-10-09"}' } }] }, finish_reason: 'stop' }] },
-  { choices: [], usage: { prompt_tokens: 300, completion_tokens: 20 } },
+  { id: 'x', choices: [], x_groq: { usage: { prompt_tokens: 300, completion_tokens: 20 } } },
 ]);
 assert.equal(t2.stop, 'tool_use'); assert.deepEqual(t2.content, [{ type: 'tool_use', id: 'fc_1', name: 'agenda_do_dia', input: { data: '2026-10-09' } }]);
 
@@ -78,7 +78,7 @@ const t4 = await rodar('sem [DONE]', [{ choices: [{ index: 0, delta: { content: 
 assert.equal(t4.texto, 'ok'); assert.equal(t4.stop, 'end_turn');
 
 // 5) conversão do pedido: sistema, ferramentas, rodada com tool_result
-const corpo = paraGemini({
+const corpo = paraGroq({
   system: [{ type: 'text', text: 'Você é a Renata.' }],
   max_tokens: 1400,
   tools: [{ name: 'estoque', description: 'Consulta estoque', input_schema: { type: 'object', $schema: 'x', additionalProperties: false, properties: { produto: { type: ['string', 'null'], description: 'nome', default: '' } }, required: ['produto'] } }],
@@ -90,7 +90,22 @@ const corpo = paraGemini({
 }) as any;
 assert.equal(corpo.messages[0].role, 'system');
 assert.equal(corpo.messages[2].tool_calls[0].function.arguments, '{"produto":"botox"}');
-assert.deepEqual(corpo.messages[3], { role: 'tool', tool_call_id: 'a', name: 'estoque', content: '{"saldo":3}' });
+assert.deepEqual(corpo.messages[3], { role: 'tool', tool_call_id: 'a', content: '{"saldo":3}' });
+assert.equal(corpo.model, undefined);
 assert.deepEqual(corpo.tools[0].function.parameters, { type: 'object', properties: { produto: { type: 'string', nullable: true, description: 'nome' } }, required: ['produto'] });
 console.log('✓ conversão do pedido');
+// 6) troca de modelo: 429 no primeiro, 200 no segundo
+const pedidos: string[] = [];
+(globalThis as any).fetch = async (_url: string, init: any) => {
+  const m = JSON.parse(init.body).model; pedidos.push(m);
+  return new Response(m === GROQ_MODELOS[0] ? '{"error":"limite"}' : 'data: [DONE]\n\n', { status: m === GROQ_MODELOS[0] ? 429 : 200 });
+};
+const r6 = await chamarGroq('gsk_teste', { messages: [] });
+assert.equal(r6.status, 200); assert.deepEqual(pedidos, GROQ_MODELOS.slice(0, 2));
+// 7) chave errada (401) não tenta outro modelo
+pedidos.length = 0;
+(globalThis as any).fetch = async (_u: string, init: any) => { pedidos.push(JSON.parse(init.body).model); return new Response('{}', { status: 401 }); };
+const r7 = await chamarGroq('gsk_errada', { messages: [] });
+assert.equal(r7.status, 401); assert.equal(pedidos.length, 1);
+console.log('✓ troca de modelo no limite e parada na chave errada');
 console.log('TODOS OS TESTES PASSARAM');

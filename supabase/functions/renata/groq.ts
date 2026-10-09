@@ -1,17 +1,18 @@
 // =====================================================================
 // Tradução entre o formato da Anthropic, que o front da Renata usa, e o
-// Google Gemini (endpoint compatível com OpenAI). O front não muda: o pedido
-// chega no formato do Claude e a resposta volta nos mesmos eventos do Claude.
+// Groq (endpoint compatível com OpenAI). O front não muda: o pedido chega no
+// formato do Claude e a resposta volta nos mesmos eventos do Claude.
 // =====================================================================
 
-export const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-export const GEMINI_MODELO = 'gemini-2.5-flash';
+export const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// em ordem de preferência; o próximo entra quando o anterior bate no limite do plano grátis
+export const GROQ_MODELOS = ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'];
 
 type Bloco = { type?: string; text?: string; id?: string; name?: string; input?: unknown; tool_use_id?: string; content?: unknown };
 type Mensagem = { role: string; content: unknown };
 type Ferramenta = { name: string; description?: string; input_schema?: unknown };
 
-// o Gemini aceita só parte do JSON Schema nas ferramentas
+// só a parte do JSON Schema que todos os modelos aceitam nas ferramentas
 const CAMPOS_SCHEMA = new Set(['type', 'description', 'properties', 'required', 'items', 'enum', 'format', 'nullable',
   'minimum', 'maximum', 'minItems', 'maxItems', 'anyOf']);
 
@@ -40,25 +41,22 @@ const textoDe = (c: unknown): string =>
     : Array.isArray(c) ? c.map((b) => (b && (b as Bloco).type === 'text' ? (b as Bloco).text || '' : '')).join('\n')
       : '';
 
-// pedido no formato Anthropic → corpo do Gemini
-export function paraGemini(p: { system?: unknown; messages: Mensagem[]; tools?: Ferramenta[]; max_tokens?: number }) {
+// pedido no formato Anthropic → corpo do Groq (sem o modelo, escolhido na chamada)
+export function paraGroq(p: { system?: unknown; messages: Mensagem[]; tools?: Ferramenta[]; max_tokens?: number }) {
   const msgs: Record<string, unknown>[] = [];
   const sistema = textoDe(p.system);
   if (sistema) msgs.push({ role: 'system', content: sistema });
-  const nomes: Record<string, string> = {};
   for (const m of p.messages) {
     if (typeof m.content === 'string') { msgs.push({ role: m.role, content: m.content }); continue; }
     const blocos = (Array.isArray(m.content) ? m.content : []) as Bloco[];
     if (m.role === 'assistant') {
-      const calls = blocos.filter((b) => b.type === 'tool_use').map((b) => {
-        nomes[String(b.id)] = String(b.name);
-        return { id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) } };
-      });
+      const calls = blocos.filter((b) => b.type === 'tool_use').map((b) =>
+        ({ id: b.id, type: 'function', function: { name: b.name, arguments: JSON.stringify(b.input ?? {}) } }));
       const t = textoDe(blocos);
       msgs.push({ role: 'assistant', content: t || null, ...(calls.length ? { tool_calls: calls } : {}) });
     } else {
       for (const b of blocos.filter((x) => x.type === 'tool_result')) {
-        msgs.push({ role: 'tool', tool_call_id: b.tool_use_id, name: nomes[String(b.tool_use_id)] || undefined,
+        msgs.push({ role: 'tool', tool_call_id: b.tool_use_id,
           content: typeof b.content === 'string' ? b.content : JSON.stringify(b.content ?? '') });
       }
       const t = textoDe(blocos);
@@ -66,19 +64,16 @@ export function paraGemini(p: { system?: unknown; messages: Mensagem[]; tools?: 
     }
   }
   return {
-    model: GEMINI_MODELO,
     messages: msgs,
     max_tokens: p.max_tokens,
     stream: true,
-    stream_options: { include_usage: true },
-    reasoning_effort: 'none',
     ...(p.tools && p.tools.length ? {
       tools: p.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: limparSchema(t.input_schema || { type: 'object', properties: {} }) } })),
     } : {}),
   };
 }
 
-// streaming do Gemini → eventos do Claude (message_start, content_block_*, message_delta, message_stop)
+// streaming do Groq → eventos do Claude (message_start, content_block_*, message_delta, message_stop)
 export function eventosClaude(onFim: (tin: number, tout: number) => void | Promise<void>) {
   const enc = new TextEncoder(), dec = new TextDecoder();
   let buf = '', iniciou = false, proximo = 0, textoAberto = -1, teveFerramenta = false, fim = '', tin = 0, tout = 0, terminou = false;
@@ -110,7 +105,9 @@ export function eventosClaude(onFim: (tin: number, tout: number) => void | Promi
         try { c = JSON.parse(dado); } catch (_) { continue; }
         if (c.error) { evento(ctl, { type: 'error', error: { type: 'api_error', message: String(c.error.message || '') } }); continue; }
         if (!iniciou) { iniciou = true; evento(ctl, { type: 'message_start', message: { role: 'assistant', content: [], usage: { input_tokens: 0, output_tokens: 0 } } }); }
-        if (c.usage) { tin = c.usage.prompt_tokens || tin; tout = c.usage.completion_tokens || tout; }
+        // o Groq manda o consumo no último pedaço, em x_groq.usage (ou usage)
+        const uso = c.usage || (c.x_groq && c.x_groq.usage);
+        if (uso) { tin = uso.prompt_tokens || tin; tout = uso.completion_tokens || tout; }
         const ch = c.choices && c.choices[0];
         if (!ch) continue;
         const delta = ch.delta || {};
@@ -143,8 +140,18 @@ export function eventosClaude(onFim: (tin: number, tout: number) => void | Promi
   });
 }
 
-// erros do Gemini com o código que o front já sabe explicar (401 chave, 429 limite...)
-export function statusGemini(status: number, corpo: string) {
-  if (status === 400 && /API key|API_KEY/i.test(corpo)) return 401;
-  return status;
+// chama o Groq tentando os modelos em ordem: limite (429) ou modelo indisponível passa para o próximo
+export async function chamarGroq(key: string, corpo: Record<string, unknown>, modelos = GROQ_MODELOS) {
+  let ultima: Response | null = null;
+  for (const modelo of modelos) {
+    const r = await fetch(GROQ_URL, {
+      method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ ...corpo, model: modelo }),
+    });
+    if (r.ok) return r;
+    ultima = r;
+    if (r.status !== 429 && r.status !== 404 && r.status !== 503) return r;
+    await r.body?.cancel();
+  }
+  return ultima as Response;
 }
