@@ -54,6 +54,10 @@ qualquer outro papel.
 - Mensagem da clínica sem resposta (com a IA ligada) cria a cadeia de follow-up uma vez por silêncio.
 - Mensagem recebida cancela o follow-up e aplica opt-out se for a palavra exata (ou frase curta começando com ela).
 - Criar/remarcar/cancelar agendamento sobe `agendamentos.versao`, cancela lembretes da versão velha e cria os novos.
+- Atendimento finalizado (status `final` e `conta_atendimento`, hoje "Atendido"/"Compareceu") move os leads ligados
+  (`agendamentos.lead_id`, `leads.agendamento_id` ou mesmo `paciente_id`) para a etapa de `crm_mapa.finalizado`
+  (padrão `convertido`), se `crm_mover_automatico` estiver ligado. Não mexe em lead que já está em etapa final.
+  Gatilho `tg_agendamentos_crm_finalizado`, migration `crm_atendimento_finalizado`. A regra entra em `agente_ia_regras`. [confirmado]
 
 ## Atenção: segunda implementação no mesmo banco (confirmado, não resolvido)
 

@@ -4003,7 +4003,8 @@ var AGENTE_PADRAO = {
     em_contato: 'aguardando_atendente',
     agendado: 'agendado',
     humano: 'aguardando_atendente',
-    perdido: 'perdido'
+    perdido: 'perdido',
+    finalizado: 'convertido'
   },
   followup_ativo: true,
   followup_max: 4,
@@ -4031,7 +4032,7 @@ var AGENTE_TONS = [['acolhedor', 'Acolhedor', 'acolhedor, gentil e próximo'], [
 var AG_TAMANHOS = [['curta', 'Curta', 'Até 2 ou 3 frases. Melhor para WhatsApp.'], ['media', 'Média', 'Um parágrafo curto.'], ['longa', 'Longa', 'Explica com mais detalhes quando precisa.']];
 var AG_IDIOMAS = [['pt-BR', 'Português (Brasil)'], ['en', 'Inglês'], ['es', 'Espanhol']];
 var AG_SINAIS = [['nenhum', 'Sem sinal', 'A IA marca a consulta sem pedir pagamento antes.'], ['opcional', 'Sinal opcional', 'A IA pode oferecer o sinal com o valor da clínica, mas nunca transforma em obrigação.'], ['obrigatorio_confirmar', 'Sinal para confirmar', 'O horário fica pendente e só é confirmado depois que o pagamento for aprovado.'], ['obrigatorio_reservar', 'Sinal para segurar o horário', 'O horário fica guardado por um prazo. Se o pagamento não vier, ele é liberado sozinho.'], ['aprovacao_humana', 'Aprovação da equipe', 'A IA anota o pedido e passa para a equipe, sem prometer que o horário está reservado.']];
-var AG_CRM_SITUACOES = [['novo', 'Novo contato', 'Primeira mensagem de alguém que ainda não está no CRM.'], ['em_contato', 'Em conversa', 'O lead respondeu e a conversa está andando.'], ['agendado', 'Agendou', 'A consulta foi confirmada pelo sistema.'], ['humano', 'Pediu atendimento humano', 'A IA passou a conversa para a equipe.'], ['perdido', 'Perdido', 'O lead disse que não tem interesse. Silêncio sozinho não conta.']];
+var AG_CRM_SITUACOES = [['novo', 'Novo contato', 'Primeira mensagem de alguém que ainda não está no CRM.'], ['em_contato', 'Em conversa', 'O lead respondeu e a conversa está andando.'], ['agendado', 'Agendou', 'A consulta foi confirmada pelo sistema.'], ['humano', 'Pediu atendimento humano', 'A IA passou a conversa para a equipe.'], ['perdido', 'Perdido', 'O lead disse que não tem interesse. Silêncio sozinho não conta.'], ['finalizado', 'Atendimento finalizado', 'Quando o atendimento é marcado como Atendido ou Compareceu na agenda, o lead vai sozinho para esta etapa.']];
 var AG_ETAPAS_DEMO = [{
   chave: 'novo_lead',
   nome: 'Novo Lead'
