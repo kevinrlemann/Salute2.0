@@ -376,6 +376,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** P.
 
 ### P1-08 — Se o `config.js` falhar, o sistema abre em demonstração sem login
+> ✅ **Feito em 2026-10-09:** em `saluteia.site` sem Supabase configurado aparece "O sistema não conseguiu carregar" com botão Recarregar
+> (`PortaSupabase`, `c001`); em outros endereços (artifact) a demonstração continua. Testado nos dois casos. Falta: `RN_CLINICA` fictícia no início do modo real.
 - **Problema:** sem configuração válida, `PortaSupabase` libera o `App` com dados fictícios em vez de mostrar erro; no
   início do modo real, `RN_CLINICA` começa com os dados da clínica fictícia "Bella Forma".
 - **Evidência:** `c001` L76-77 (`SB_ON`, `SB_MOTIVO`); `docs/architecture.md` §3; Auditoria 01 R8; Auditoria 03 §7

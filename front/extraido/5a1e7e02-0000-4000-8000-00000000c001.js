@@ -4283,6 +4283,35 @@ function PortaSupabase(_ref31) {
       }, '', (BASE_PATH || '') + '/login' + volta + (/access_token|error_description/.test(location.hash) ? location.hash : ''));
     } catch (e) {}
   }, [s.estado, s.recuperar]);
+  // P1-08: no site oficial nunca abre a demonstração por engano (configuração ausente ou quebrada)
+  if (!SB_ON && /(^|\.)saluteia\.site$/i.test(location.hostname)) {
+    var _window$SaluteProjetoC = window.SaluteProjetoDesigner_8b4683,
+      CEmpty = _window$SaluteProjetoC.EmptyState,
+      CBtn = _window$SaluteProjetoC.Button;
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        fontFamily: 'var(--font-sans)'
+      }
+    }, /*#__PURE__*/React.createElement(CEmpty, {
+      icon: "cloud-off",
+      title: "O sistema n\xE3o conseguiu carregar",
+      description: 'Seus dados est\xE3o seguros. Recarregue a p\xE1gina em instantes. Se continuar, fale com o suporte da Salute. (' + (SB_MOTIVO || 'configura\xE7\xE3o ausente') + ')',
+      action: /*#__PURE__*/React.createElement(CBtn, {
+        iconLeft: "refresh-cw",
+        onClick: function onClick() {
+          return location.reload();
+        }
+      }, "Recarregar"),
+      style: {
+        maxWidth: 460
+      }
+    }));
+  }
   if (!SB_ON || s.estado === 'pronto') return children;
   if (s.recuperar || s.estado === 'login' || s.estado === 'sem-clinica') return /*#__PURE__*/React.createElement(TelaAcesso, null);
   if (s.estado === 'master') return /*#__PURE__*/React.createElement(PainelMaster, null);
