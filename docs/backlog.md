@@ -164,6 +164,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** M (pela calibragem da CSP).
 
 ### P0-06 — Ícones Lucide baixados do unpkg sem verificação de integridade (SRI)
+> ✅ **Feito em 2026-10-09:** `integrity` (sha384 do pacote oficial do npm) + `crossorigin` no script do Lucide (`7bf0`).
+> Testado: arquivo verdadeiro carrega; arquivo alterado é recusado. Pendente opcional: embutir o Lucide para não depender do unpkg.
 - **Problema:** o Design System injeta `https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js` sem `integrity`, em
   todas as telas, inclusive as públicas.
 - **Evidência:** `7bf0:513-528` (`LUCIDE_SRC`); Auditoria 05 M2; Auditoria 04 §4.16 e L2.

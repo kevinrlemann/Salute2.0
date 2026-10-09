@@ -511,6 +511,8 @@ Object.assign(__ds_scope, { Avatar });
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 const LUCIDE_SRC = 'https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js';
+// impressão digital do arquivo oficial do npm (lucide 0.468.0): se o unpkg entregar outra coisa, o navegador recusa
+const LUCIDE_SRI = 'sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu';
 let lucidePromise = null;
 function ensureLucide() {
   if (typeof window === 'undefined' || window.lucide) return Promise.resolve();
@@ -518,6 +520,8 @@ function ensureLucide() {
     lucidePromise = new Promise(resolve => {
       const s = document.createElement('script');
       s.src = LUCIDE_SRC;
+      s.integrity = LUCIDE_SRI;
+      s.crossOrigin = 'anonymous';
       s.async = true;
       s.onload = resolve;
       s.onerror = resolve;
