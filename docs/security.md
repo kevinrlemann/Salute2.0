@@ -238,3 +238,12 @@ limite baixo de envios por hora e é feito para teste. [inferido: SMTP não conf
   estão preenchidas. Se sim, toda clínica sem chave própria usa a conta da Salute (A2). [não confirmado]
 - **Schemas expostos na API** (Settings → API → Exposed schemas): confirmar que `net` **não** está na lista (M4). [não confirmado]
 - **URL de redirecionamento** (Authentication → URL Configuration): só `https://saluteia.site` e as origens realmente usadas. [não confirmado]
+
+## Atualização 2026-10-09 (Agente de IA)
+
+| Id | Nível | Achado | Estado |
+|---|---|---|---|
+| S9 | ALTO | Funções `ia_*` (segunda implementação do agente) executáveis por anon/authenticated sem checar clínica | aberto, correção descrita em backlog P0-10 [confirmado] |
+| S10 | BAIXO | `contato_optout` sem checagem de clínica | **corrigido** (só servidor) [confirmado] |
+| — | — | Funções de fila do agente (`reivindicar_*`, `concluir_*`, `registrar_webhook`) recusam quem não é `service_role`; as tabelas novas só permitem leitura pela própria clínica | [confirmado pelos testes 38/38] |
+

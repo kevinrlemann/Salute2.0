@@ -33,7 +33,7 @@ Documentos irmãos: [`architecture.md`](architecture.md) (visão geral e publica
 | Artifact claude.ai | Cópia do sistema aberta dentro do claude.ai | Ativa [confirmado no código] |
 | CDN `unpkg.com` (Lucide) | Ícones de todo o sistema | Ativa, sem verificação de integridade [confirmado] |
 | WhatsApp | Envio/recebimento de mensagens | **Não implementado** (só grava no banco) [confirmado] |
-| n8n | Automação | **Não existe** [confirmado] |
+| n8n | Automação | **Fluxos não existem**; o lado do banco está pronto em `docs/agente-ia.md` [confirmado] |
 | E-mail transacional próprio | Avisos, lembretes | **Não existe** (só e-mails do Supabase Auth) [confirmado] |
 | Rotinas agendadas | Lembretes, confirmações, limpeza | **Não existem** (`pg_cron` não instalado) [confirmado] |
 

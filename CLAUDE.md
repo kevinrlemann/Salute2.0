@@ -1,7 +1,7 @@
 # Salute 2.0 — instruções para agentes
 
 Leia este arquivo inteiro antes de qualquer alteração. Detalhes em `docs/architecture.md`, `docs/frontend.md`,
-`docs/database.md`, `docs/integrations.md`, `docs/security.md`, `docs/backlog.md` e nas auditorias `docs/auditoria/01..05`.
+`docs/database.md`, `docs/integrations.md`, `docs/agente-ia.md`, `docs/security.md`, `docs/backlog.md` e nas auditorias `docs/auditoria/01..05`.
 Quando algo aqui não estiver confirmado, está escrito "não confirmado". Não invente arquitetura.
 Ao escrever docs, marque afirmações como "confirmado", "inferido" ou "não confirmado".
 
@@ -26,7 +26,8 @@ de IA "Renata" (texto e voz), que consulta dados e propõe ações que a equipe 
   ícones Lucide 0.468.0 via unpkg e gerador de QR local. Sem build tool e sem npm no front.
 - Back: Supabase (Postgres 17, RLS em todas as tabelas, Auth, Storage, Realtime) + edge function `renata` (Deno).
 - IA: Groq (modelos `openai/gpt-oss-120b`, `openai/gpt-oss-20b` e `qwen/qwen3.8-27b`, nessa ordem) via `renata`;
-  voz ElevenLabs via `renata`. WhatsApp e n8n: **não implementados** (ver `docs/integrations.md`).
+  voz ElevenLabs via `renata`. WhatsApp e n8n: **não implementados**; o banco do Agente de IA (fila, envio,
+  transferência, opt-out, agenda) está pronto, contrato em `docs/agente-ia.md`. Há uma segunda implementação `ia_*` no mesmo banco (ver lá).
 
 ## Estrutura de pastas
 

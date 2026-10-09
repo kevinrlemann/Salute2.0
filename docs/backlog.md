@@ -539,6 +539,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** M.
 
 ### P2-02 — WhatsApp: receber mensagens (n8n → banco), contrato A da Auditoria 04
+
+> Atualização 2026-10-09: tabelas, filas e funções do lado do banco prontas (`docs/agente-ia.md`). Falta o fluxo no n8n e o provedor.
 - **Problema:** nada recebe mensagens nem cria lead quando o número é novo.
 - **Evidência:** Auditoria 04 §6.2 (A) e §6.1 item 2; Auditoria 03 (CRM não cria lead).
 - **Impacto:** conversas e leads chegam sozinhos ao sistema e aparecem ao vivo (o Realtime e o gatilho
@@ -687,3 +689,21 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 | Netlify ligado à branch `producao` | Painel Netlify | P1-09 |
 | SMTP e Redirect URLs | Painel Supabase → Authentication | P1-16 |
 | Quais dados do banco são de demonstração (`mock_*`) | Fundador + consulta | P1-15 |
+
+## Novo (2026-10-09)
+
+### P0-09 — Duas implementações do Agente de IA no mesmo banco
+- **Problema:** além das tabelas `agente_ia`/`tarefas_automacao`/`envios_pendentes` (desta sessão, com testes), outra sessão
+  aplicou `ia_agente_01a..04` (`ia_automacao_config`, `ia_jobs`, `ia_outbox`, ...), fora do repositório. [confirmado]
+- **Risco:** lembretes e follow-ups em dobro quando o n8n for ligado; configuração em dois lugares. [inferido]
+- **Ação:** o fundador escolhe uma; a outra é desativada por migration versionada antes de construir o n8n.
+
+### P0-10 — Funções `ia_*` abertas para qualquer pessoa (urgente)
+- **Problema:** as funções `ia_*` da segunda implementação são `SECURITY DEFINER`, executáveis por `anon` e `authenticated`
+  e não checam a clínica de quem chama. Com a chave pública do site dá para, por exemplo: marcar consulta como paga
+  (`ia_confirmar_pagamento`), injetar mensagem falsa em qualquer clínica (`ia_ingerir_evento` com provedor `teste`), mover
+  lead (`ia_mover_etapa_interno`), pegar tarefas da fila com o conteúdo das mensagens (`ia_reivindicar_jobs`). [confirmado por privilégio; exploração não testada]
+- **Correção pronta (não aplicada, precisa da autorização do fundador porque mexe na outra implementação):**
+  para cada função `public.ia_*` com `SECURITY DEFINER`: `revoke execute ... from public, anon, authenticated;`
+  `grant execute ... to service_role;`. Gatilhos e chamadas internas continuam funcionando.
+- **Alternativa:** se a decisão do P0-09 for apagar a implementação `ia_*`, isto some junto.
