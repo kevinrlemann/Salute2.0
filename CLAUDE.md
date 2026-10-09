@@ -83,7 +83,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Limite mensal da Renata quando a clínica usa a chave da Salute (`renata_limite_mes`, padrão 300).
 - Planos (tabela `planos`, 2026-10-09): Inicial R$ 197 (sem IA, `limite_mensagens_ia` 0), Assistente R$ 397 (1.500),
   IA Pro R$ 997 (10.000) e Enterprise sob consulta a partir de R$ 1.997 (null = sob medida em `renata_consumo`).
-  Limites de profissionais e usuários aparecem nos cartões, mas ainda não são aplicados pelo sistema.
+  Limites (`limite_usuarios`, `limite_profissionais`), `preco_anual`, `preco_implantacao` e os valores adicionais
+  (tabela `planos_adicionais`) aparecem na tela Plano e cobrança, mas ainda não são aplicados nem cobrados pelo sistema.
 
 ## Segurança (obrigatório)
 

@@ -43,7 +43,11 @@ function hidratarPlanos() {
       sub: p.descricao || '',
       destaque: !!p.destaque,
       itens: p.itens || [],
-      limite: p.limite_mensagens_ia
+      limite: p.limite_mensagens_ia,
+      anual: p.preco_anual === null || p.preco_anual === undefined ? null : Number(p.preco_anual),
+      implantacao: p.preco_implantacao === null || p.preco_implantacao === undefined ? null : Number(p.preco_implantacao),
+      usuarios: p.limite_usuarios,
+      profissionais: p.limite_profissionais
     };
   }));
   var a = CAT.v.assinatura;
@@ -78,6 +82,17 @@ CARGAS.catalogos = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         });
       case 3:
         hidratarPlanos();
+        // valores adicionais (cobrados à parte acima do limite do plano)
+        if (window.ADICIONAIS_STORE) SB.from('planos_adicionais').select('codigo,nome,descricao,preco,cobranca,quantidade,planos,ordem').eq('ativo', true).is('excluido_em', null).order('ordem').then(function (res) {
+          if (res && !res.error && res.data && res.data.length) {
+            ADICIONAIS_STORE.v = res.data.map(function (a) {
+              return Object.assign({}, a, {
+                preco: a.preco === null ? null : Number(a.preco)
+              });
+            });
+            avisar(ADICIONAIS_STORE);
+          }
+        });
       case 4:
         return _context.a(2);
     }

@@ -56,6 +56,10 @@ function Field(_ref) {
 var PLAN_LIMIT = 10000;
 var PLANS = [{
   id: 'inicial',
+  anual: 1970,
+  implantacao: 0,
+  usuarios: 5,
+  profissionais: 3,
   nome: 'Inicial',
   preco: 197,
   sub: 'Gestão completa da clínica com o WhatsApp no mesmo lugar.',
@@ -63,6 +67,10 @@ var PLANS = [{
   itens: ['Pacientes, prontuário e agenda', 'Anamnese com assinatura digital', 'Financeiro, estoque e CRM de leads', 'WhatsApp da clínica no sistema (1 número)', 'Até 3 profissionais e 5 usuários', 'Saluteflix e Salute Cast']
 }, {
   id: 'assistente',
+  anual: 3970,
+  implantacao: 297,
+  usuarios: 10,
+  profissionais: 6,
   nome: 'Assistente',
   preco: 397,
   sub: 'A Renata IA ajuda a equipe dentro do sistema.',
@@ -70,6 +78,10 @@ var PLANS = [{
   itens: ['Tudo do plano Inicial', 'Renata IA dentro do sistema (1.500 perguntas por mês)', 'Renata por voz (60 minutos por mês)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', 'Até 6 profissionais e 10 usuários']
 }, {
   id: 'iapro',
+  anual: 9970,
+  implantacao: 997,
+  usuarios: 20,
+  profissionais: 10,
   nome: 'IA Pro',
   preco: 997,
   sub: 'A Renata IA atende, agenda e confirma pelo WhatsApp.',
@@ -78,6 +90,10 @@ var PLANS = [{
   itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', 'Até 10 mil mensagens de IA por mês', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', 'Até 10 profissionais e 20 usuários']
 }, {
   id: 'enterprise',
+  anual: null,
+  implantacao: 2997,
+  usuarios: null,
+  profissionais: null,
   nome: 'Enterprise',
   preco: null,
   sub: 'A partir de R$ 1.997 por mês. Para redes, várias unidades e alto volume.',
@@ -85,6 +101,168 @@ var PLANS = [{
   itens: ['Tudo do plano IA Pro', '30 mil mensagens de IA ou mais por mês', 'Várias unidades e várias IAs', 'API oficial do WhatsApp (Meta)', 'Consultor dedicado e suporte com prazo', 'Profissionais e usuários sem limite']
 }];
 var PLAN_STORE = makeStore('iapro');
+// valores adicionais: cobrados à parte quando a clínica passa do limite do plano (vêm da tabela planos_adicionais)
+var ADICIONAIS_STORE = makeStore([{
+  codigo: 'usuario_extra', nome: '+1 usuário', descricao: 'Acima do limite de usuários do plano.', preco: 19, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro']
+}, {
+  codigo: 'profissional_extra', nome: '+1 profissional com agenda', descricao: 'Acima do limite de profissionais do plano.', preco: 29, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro']
+}, {
+  codigo: 'renata_500', nome: '+500 perguntas para a Renata', descricao: 'Quando a Renata chega ao limite do mês.', preco: 49, cobranca: 'pacote', quantidade: 500, planos: ['assistente', 'iapro']
+}, {
+  codigo: 'mensagens_ia_2000', nome: '+2.000 mensagens de IA', descricao: 'Quando a IA do WhatsApp chega ao limite do mês.', preco: 97, cobranca: 'pacote', quantidade: 2000, planos: ['iapro', 'enterprise']
+}, {
+  codigo: 'voz_60', nome: '+60 minutos de voz da Renata', descricao: 'Quando acabam os minutos de voz do mês.', preco: 49, cobranca: 'pacote', quantidade: 60, planos: ['assistente', 'iapro', 'enterprise']
+}, {
+  codigo: 'whatsapp_numero', nome: '+1 número de WhatsApp', descricao: 'Outro número da clínica no mesmo sistema.', preco: 97, cobranca: 'mensal', quantidade: 1, planos: ['iapro', 'enterprise']
+}, {
+  codigo: 'unidade', nome: '+1 unidade (filial)', descricao: 'Outra unidade com agenda, equipe e WhatsApp próprios.', preco: 497, cobranca: 'mensal', quantidade: 1, planos: ['enterprise']
+}, {
+  codigo: 'armazenamento_25', nome: '+25 GB de armazenamento', descricao: 'Para fotos, exames e documentos.', preco: 29, cobranca: 'mensal', quantidade: 25, planos: ['inicial', 'assistente', 'iapro', 'enterprise']
+}, {
+  codigo: 'zapi', nome: 'Z-API no lugar da Evolution', descricao: 'Conexão do WhatsApp gerenciada pela Z-API.', preco: 119, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro', 'enterprise']
+}, {
+  codigo: 'meta_oficial', nome: 'WhatsApp oficial da Meta', descricao: 'Custo das mensagens da Meta + 20%.', preco: null, cobranca: 'sob_consulta', quantidade: null, planos: ['enterprise']
+}]);
+var planoBrl = function planoBrl(n) {
+  return 'R$ ' + Number(n).toLocaleString('pt-BR');
+};
+var adicionalPreco = function adicionalPreco(a) {
+  if (a.preco === null || a.preco === undefined || a.cobranca === 'sob_consulta') return 'Sob consulta';
+  return planoBrl(a.preco) + (a.cobranca === 'pacote' ? ' por pacote' : ' por mês');
+};
+// linhas pequenas do cartão: plano anual, implantação e o que é cobrado acima do limite
+function planoCondicoes(p, dark) {
+  var ad = ADICIONAIS_STORE.v.filter(function (a) {
+    return (a.planos || []).indexOf(p.id) >= 0;
+  });
+  var achar = function achar(c) {
+    return ad.find(function (a) {
+      return a.codigo === c;
+    });
+  };
+  var linhas = [];
+  if (p.preco && p.anual) linhas.push('ou ' + planoBrl(p.anual) + ' por ano (2 meses grátis)');
+  if (p.implantacao !== null && p.implantacao !== undefined) linhas.push(Number(p.implantacao) > 0 ? 'Implantação: ' + planoBrl(p.implantacao) + ' (uma vez)' : 'Implantação grátis');
+  var acima = [];
+  var u = achar('usuario_extra'),
+    pr = achar('profissional_extra'),
+    m = achar('mensagens_ia_2000'),
+    r = achar('renata_500');
+  if (u && p.usuarios) acima.push('mais de ' + p.usuarios + ' usuários: ' + planoBrl(u.preco) + ' por usuário/mês');
+  if (pr && p.profissionais) acima.push('mais de ' + p.profissionais + ' profissionais: ' + planoBrl(pr.preco) + ' por profissional/mês');
+  if (m && p.limite) acima.push('mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' mensagens de IA: ' + planoBrl(m.preco) + ' a cada ' + Number(m.quantidade).toLocaleString('pt-BR'));else if (r && p.limite) acima.push('mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' perguntas: ' + planoBrl(r.preco) + ' a cada ' + r.quantidade);
+  if (!linhas.length && !acima.length) return null;
+  var cor = dark ? 'rgba(255,255,255,.85)' : 'var(--text-muted)';
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 3,
+      fontSize: 12.5,
+      lineHeight: 1.45,
+      color: cor
+    }
+  }, linhas.map(function (t) {
+    return /*#__PURE__*/React.createElement("span", {
+      key: t
+    }, t);
+  }), acima.length ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginTop: 4,
+      padding: '8px 10px',
+      borderRadius: 12,
+      background: dark ? 'rgba(255,255,255,.12)' : 'rgba(31,94,255,.06)'
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: dark ? '#fff' : 'var(--text-strong)'
+    }
+  }, "Acima do limite"), acima.map(function (t) {
+    return /*#__PURE__*/React.createElement("span", {
+      key: t,
+      style: {
+        display: 'block'
+      }
+    }, t);
+  })) : null);
+}
+// tabela "Valores adicionais" embaixo dos planos
+function PlanosAdicionais(_ref) {
+  var mobile = _ref.mobile;
+  var _useStore = useStore(ADICIONAIS_STORE),
+    lista = _useStore[0];
+  if (!lista || !lista.length) return null;
+  var nomePlano = function nomePlano(id) {
+    return (PLANS.find(function (p) {
+      return p.id === id;
+    }) || {
+      nome: id
+    }).nome;
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10,
+      padding: mobile ? 14 : 20,
+      borderRadius: 22,
+      background: 'rgba(255,255,255,.65)',
+      border: '1.5px solid rgba(255,255,255,.95)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
+    style: {
+      margin: 0,
+      fontSize: 17,
+      fontWeight: 600,
+      color: 'var(--text-strong)'
+    }
+  }, "Valores adicionais"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '4px 0 0',
+      fontSize: 13,
+      color: 'var(--text-muted)'
+    }
+  }, "Cobrados à parte, só quando a clínica precisa de mais do que o plano inclui.")), lista.map(function (a) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: a.codigo,
+      style: {
+        display: 'grid',
+        gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1.6fr) minmax(0,.9fr) minmax(0,1.1fr)',
+        gap: mobile ? 2 : 14,
+        alignItems: 'center',
+        padding: '10px 0',
+        borderTop: '1px solid rgba(214,226,242,.8)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2
+      }
+    }, /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 14.5,
+        color: 'var(--text-strong)'
+      }
+    }, a.nome), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12.5,
+        color: 'var(--text-muted)'
+      }
+    }, a.descricao)), /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 14,
+        color: '#1F5EFF'
+      }
+    }, adicionalPreco(a)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12.5,
+        color: 'var(--text-muted)'
+      }
+    }, (a.planos || []).map(nomePlano).join(', ')));
+  }));
+}
 function PlanosSection(_ref2) {
   var mobile = _ref2.mobile;
   var _useStore = useStore(PLAN_STORE),
@@ -92,6 +270,7 @@ function PlanosSection(_ref2) {
     cur = _useStore2[0],
     setCur = _useStore2[1];
   useStore(CAT);
+  useStore(ADICIONAIS_STORE);
   var _React$useState = React.useState(null),
     _React$useState2 = _slicedToArray(_React$useState, 2),
     msg = _React$useState2[0],
@@ -253,7 +432,7 @@ function PlanosSection(_ref2) {
         opacity: dark ? .88 : 1,
         color: dark ? '#fff' : 'var(--text-muted)'
       }
-    }, p.sub)), /*#__PURE__*/React.createElement("ul", {
+    }, p.sub), planoCondicoes(p, dark)), /*#__PURE__*/React.createElement("ul", {
       style: {
         listStyle: 'none',
         margin: 0,
@@ -333,7 +512,9 @@ function PlanosSection(_ref2) {
         boxShadow: dark ? 'none' : '0 10px 22px -10px rgba(11,63,217,.7)'
       }
     }, p.preco ? 'Mudar para este plano' : 'Falar com consultor'));
-  })), msg ? /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(PlanosAdicionais, {
+    mobile: mobile
+  }), msg ? /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -352,7 +533,7 @@ function PlanosSection(_ref2) {
       fontSize: 12,
       color: 'var(--text-muted)'
     }
-  }, "Ao chegar perto do limite de mensagens, avisamos por aqui e pelo WhatsApp. Ningu\xE9m fica sem atendimento: acima do limite, sugerimos o plano Enterprise."));
+  }, "Ao chegar perto do limite (80%), avisamos por aqui e pelo WhatsApp. Ningu\xE9m fica sem atendimento: acima do limite, voc\xEA contrata um adicional ou muda de plano."));
 }
 function SegurancaSection(_ref3) {
   var mobile = _ref3.mobile;
