@@ -748,6 +748,48 @@ function WaTicks(_ref4) {
   var s = _ref4.s;
   if (!s) return null;
   var c = s === 'read' ? WA.blue : WA.sub;
+  if (s === 'pending') return /*#__PURE__*/React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 12 12",
+    "aria-label": "Aguardando envio",
+    style: {
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("title", null, "Aguardando envio: o WhatsApp ainda não está conectado"), /*#__PURE__*/React.createElement("circle", {
+    cx: "6",
+    cy: "6",
+    r: "4.6",
+    fill: "none",
+    stroke: WA.sub,
+    strokeWidth: "1.3"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M6 3.6V6l1.6 1",
+    fill: "none",
+    stroke: WA.sub,
+    strokeWidth: "1.3",
+    strokeLinecap: "round"
+  }));
+  if (s === 'failed') return /*#__PURE__*/React.createElement("svg", {
+    width: "12",
+    height: "12",
+    viewBox: "0 0 12 12",
+    "aria-label": "Não enviada",
+    style: {
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("title", null, "Não enviada: houve falha no envio"), /*#__PURE__*/React.createElement("circle", {
+    cx: "6",
+    cy: "6",
+    r: "5.4",
+    fill: "#D93838"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M6 3.2v3.4M6 8.4v.2",
+    fill: "none",
+    stroke: "#fff",
+    strokeWidth: "1.5",
+    strokeLinecap: "round"
+  }));
   if (s === 'sent') return /*#__PURE__*/React.createElement("svg", {
     width: "12",
     height: "11",

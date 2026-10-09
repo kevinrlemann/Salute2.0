@@ -603,7 +603,8 @@ var WaSvc = {
             dados = {
               nome: 'WhatsApp da clínica',
               tipo_api: m === 'oficial' ? 'oficial' : 'nao_oficial',
-              status: 'conectado',
+              // a conexão real (provedor + n8n) ainda não existe: guarda os dados sem dizer que está conectado
+              status: 'conectando',
               conectado_em: agoraIso(),
               desconectado_em: null,
               numero: tel,
@@ -649,7 +650,7 @@ var WaSvc = {
             });
             WA_STORE.v = waTela();
             avisar(WA_STORE);
-            avisoOk('WhatsApp conectado');
+            avisoOk('Dados do WhatsApp salvos', 'O envio automático ainda não está ligado. As mensagens ficam aguardando envio até a integração ser concluída.');
           case 7:
             return _context7.a(2);
         }

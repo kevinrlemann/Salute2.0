@@ -203,6 +203,9 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** M.
 
 ### P0-08 — `pg_net` (HTTP saindo do banco) ainda executável por anon/authenticated
+> **Conferido em 2026-10-09:** o schema `net` e as funções são do `supabase_admin`; o usuário das migrations não consegue revogar.
+> Única função `public` que usa `net.http_*`: `ia_despertar` (outra implementação, só service_role). Caminho de ataque hoje: nenhum
+> confirmado. Correção: desligar a extensão no painel (Database › Extensions) **depois** de decidir o P0-12, ou pedir ao suporte.
 - **Problema:** a migration diz que fechou, mas o `revoke` feito pelo `postgres` não teve efeito (objetos do
   `supabase_admin`); `net.http_post`/`http_get` seguem executáveis por `anon` e `authenticated`. Respostas de
   diagnóstico ficam guardadas em `net._http_response`.
@@ -230,6 +233,9 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** P.
 
 ### P0-10 — WhatsApp mostra "enviado" sem enviar (e a Renata diz "Enviei")
+> ✅ **Feito em 2026-10-09 (parte honesta):** pendente aparece com relógio "Aguardando envio" e falha com "Não enviada" (`TICK`/`WaTicks`);
+> a Renata diz que a mensagem ficou aguardando envio e mostra o link da anamnese para copiar; "Conectar WhatsApp" grava
+> `conectando` e avisa que o envio automático ainda não está ligado. Falta: esconder o QR de desenho (`FakeQR`, arquivo minificado `d476`).
 - **Classificação:** P0 para a **parte honesta da tela** (pequena e urgente: a clínica toma decisões achando que o
   paciente recebeu). A integração real é P2-01 a P2-04.
 - **Problema:** mensagens só são gravadas como `pendente`; o mapa `TICK` exibe `pendente` **e `falhou`** como "enviado";

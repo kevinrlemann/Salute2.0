@@ -61,12 +61,13 @@ var KIND_UI = {
   figurinha: 'sticker',
   sistema: 'text'
 };
+// "pendente" ainda não saiu (o WhatsApp não está conectado) e "falhou" não chegou: nunca mostrar como enviada
 var TICK = {
-  pendente: 'sent',
+  pendente: 'pending',
   enviada: 'sent',
   entregue: 'delivered',
   lida: 'read',
-  falhou: 'sent'
+  falhou: 'failed'
 };
 var ehUuid = function ehUuid(x) {
   return typeof x === 'string' && /^[0-9a-f-]{36}$/.test(x);

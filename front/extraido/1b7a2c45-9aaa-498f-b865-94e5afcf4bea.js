@@ -11760,7 +11760,7 @@ RENATA_TOOLS.push({
               break;
             }
             return _context17.a(2, {
-              texto: 'Pronto! Enviei a ' + m.nome + ' para ' + rnPrimeiro(p.nome) + ' no WhatsApp.'
+              texto: 'Preparei a ' + m.nome + ' para ' + rnPrimeiro(p.nome) + '. Na demonstração nada é enviado de verdade.'
             });
           case 1:
             _context17.n = 2;
@@ -11785,7 +11785,7 @@ RENATA_TOOLS.push({
               registro: r.id
             });
             return _context17.a(2, {
-              texto: 'Pronto! Enviei a ' + m.nome + ' para ' + rnPrimeiro(p.nome) + ' no WhatsApp.',
+              texto: 'Preparei a ' + m.nome + ' para ' + rnPrimeiro(p.nome) + '. A mensagem ficou **aguardando envio**, porque o WhatsApp ainda não está conectado ao sistema. Copie o link e envie pelo seu WhatsApp: https://' + r.link,
               gerados: [{
                 tabela: 'anamnese_envios',
                 id: r.id
@@ -11840,21 +11840,21 @@ RENATA_TOOLS.push({
               break;
             }
             return _context18.a(2, {
-              texto: 'Pronto! Mensagem enviada para ' + rnPrimeiro(p.nome) + '.'
+              texto: 'Mensagem preparada para ' + rnPrimeiro(p.nome) + '. Na demonstração nada é enviado de verdade.'
             });
           case 1:
             _context18.n = 2;
             return MsgSvc.enviarTextoPaciente(p, texto);
           case 2:
             PacSvc.hist(p, {
-              t: 'Mensagem enviada pela Renata IA',
+              t: 'Mensagem registrada pela Renata IA (aguardando envio)',
               s: texto.slice(0, 120),
               c: '#2DBF6A',
               tipo: 'mensagem',
               origem: 'renata_ia'
             });
             return _context18.a(2, {
-              texto: 'Pronto! Mensagem enviada para ' + rnPrimeiro(p.nome) + '.'
+              texto: 'Mensagem registrada na conversa de ' + rnPrimeiro(p.nome) + ', **aguardando envio**: o WhatsApp ainda não está conectado ao sistema. Se for urgente, envie pelo seu WhatsApp.'
             });
         }
       }, _callee18);
