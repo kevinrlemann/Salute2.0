@@ -450,6 +450,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** M.
 
 ### P1-13 — Pequenos endurecimentos no front e na função `renata`
+> ✅ **Parte do front feita em 2026-10-09:** B3 (`noopener` e link do mapa só com `https://`) e B4 (CSV do extrato com proteção
+> contra fórmula, valores negativos preservados). **Falta:** B1, B9 e B10 na função `renata` (exige publicar a função).
 - **Problema:** **B1** CORS `*` na `renata`; **B3** `window.open` sem `noopener` e link do Google Maps sem validar
   `https://` (pode ser `javascript:`); **B4** CSV do extrato sem proteção contra fórmula; **B9** logs com trecho de
   resposta dos provedores; **B10** erro do Groq repassado cru ao navegador.
