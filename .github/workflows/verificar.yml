@@ -1,0 +1,28 @@
+# Conferência automática a cada envio (P1-05): sintaxe dos scripts do front, pacote em dia com os
+# arquivos extraídos, testes da função renata e busca de segredos. Não publica nada.
+name: Verificar
+
+on:
+  push:
+    branches: [main, producao]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Sintaxe dos scripts do front
+        run: for f in front/extraido/*.js; do node --check "$f" || exit 1; done
+      - name: Pacote front/index.html em dia com front/extraido
+        run: |
+          cp front/index.html /tmp/index.html
+          python3 -I tools/rebundle.py /tmp/index.html front/extraido
+          cmp /tmp/index.html front/index.html || { echo "Rode tools/rebundle.py e envie o index.html atualizado"; exit 1; }
+      - name: Testes da função renata
+        run: node --experimental-strip-types --test supabase/functions/renata/testes/groq.test.mts
+      - name: Busca de segredos
+        run: python3 -I tools/verificar_segredos.py
