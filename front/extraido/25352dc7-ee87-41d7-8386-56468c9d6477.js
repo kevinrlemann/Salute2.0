@@ -1458,7 +1458,38 @@ function PainelScreen(_ref14) {
       fontSize: 15,
       color: 'var(--text-muted)'
     }
-  }, "vs m\xEAs anterior")), /*#__PURE__*/React.createElement(BarChart, {
+  }, "vs m\xEAs anterior")), D ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 18,
+      flexWrap: 'wrap',
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      marginTop: -8
+    }
+  }, [['var(--gradient-blue)', 'Realizados', D.atend], ['var(--pattern-hatch)', 'Agendados n\xE3o realizados', D.weekAgendados || 0]].map(function (l) {
+    return /*#__PURE__*/React.createElement("span", {
+      key: l[1],
+      style: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 12,
+        height: 12,
+        borderRadius: 4,
+        background: l[0],
+        border: '1px solid rgba(31,94,255,.25)'
+      }
+    }), l[1], /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: 'var(--text-strong)',
+        fontWeight: 600
+      }
+    }, l[2]));
+  })) : null, /*#__PURE__*/React.createElement(BarChart, {
     data: D ? D.week : WEEK,
     max: D ? D.weekMax : 65,
     ticks: 5,

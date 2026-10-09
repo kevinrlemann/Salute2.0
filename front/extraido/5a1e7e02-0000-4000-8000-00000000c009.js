@@ -207,24 +207,23 @@ function painelTela(r) {
     };
   });
   var DIAS_C = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  // Corrige lógica: value=0 → sem barra (base=0); escala calculada sobre valores reais de atendimentos
+  // cada barra: realizados (azul sólido) + agendados ainda não realizados (hachurado)
   var week = DIAS_C.map(function (label, d) {
     var x = (at.por_dia_semana || []).find(function (y) {
       return y.dia === d;
     }) || {};
     var v = Number(x.atendimentos || 0),
       t = Number(x.agendados || 0);
-    // base só é positivo quando há atendimento de fato; se v=0, base=0 garante sem coluna
     return {
       label: label,
       value: v,
       target: Math.max(t, v),
-      base: v > 0 ? Math.min(v, 2) : 0
+      base: 0
     };
   });
-  // topo baseado nos valores reais de atendimentos, não agendados, para escala fiel
+  // topo pela barra mais alta (agendados incluídos), para nenhuma barra passar do gráfico
   var topoReal = Math.max.apply(Math, [1].concat(_toConsumableArray(week.map(function (w) {
-    return w.value;
+    return w.target;
   }))));
   var hoje = BR.dia(),
     mIso = r.mes || PAINEL_MES.v.iso,
@@ -304,6 +303,9 @@ function painelTela(r) {
     atendTrend: (ta.direction === 'down' ? '-' : '') + ta.value,
     week: week,
     weekMax: Math.ceil(topoReal * 1.25 / 5) * 5 || 5,
+    weekAgendados: week.reduce(function (a, w) {
+      return a + w.target - w.value;
+    }, 0),
     total: total,
     homens: total ? Math.round(gen.masculino / total * 100) + '%' : '0%',
     mulheres: total ? Math.round(gen.feminino / total * 100) + '%' : '0%',
