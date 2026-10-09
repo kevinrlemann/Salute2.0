@@ -1,0 +1,1500 @@
+SALUTE IA
+
+Manual de Arquitetura + Trilha de Estudos + Plano de Execução
+
+Do Vibe Coding ao desenvolvimento profissional por agentes
+
++-----------------------------------------------------------------------+
+| Como usar este manual                                                 |
+|                                                                       |
+| Execute uma etapa por vez. Não pule etapas de segurança ou            |
+| versionamento. Sempre que um resultado for diferente do esperado,     |
+| pare e traga o resultado para revisão antes de alterar produção.      |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+Objetivo
+
+Este manual foi desenhado para o desenvolvimento do Salute IA como um
+SaaS real: frontend, backend, banco, autenticação, segurança,
+automações, IA, RAG, integrações, versionamento e deploy. O foco é
+transformar você de “usuário de ferramentas de IA” em fundador que
+entende a arquitetura e consegue coordenar agentes de desenvolvimento.
+
+Resultado esperado
+
+-   Você saberá explicar o papel de cada peça do sistema em linguagem
+    simples.
+
+-   Você conseguirá rodar o Salute localmente e entender o fluxo GitHub
+    → deploy.
+
+-   Você saberá onde ficam dados, regras de negócio, interface,
+    automações e segredos.
+
+-   Você saberá pedir mudanças ao Claude Code/Codex com contexto
+    suficiente e menor desperdício de tokens.
+
+-   Você terá um processo de desenvolvimento com auditoria, branches,
+    testes, migrations e deploy controlado.
+
+Mapa do manual
+
+  -----------------------------------------------------------------------
+  Parte                               Conteúdo
+  ----------------------------------- -----------------------------------
+  1                                   Como pensar em um sistema
+
+  2                                   Mapa de ferramentas do Salute
+
+  3                                   Frontend, backend, API e
+                                      programação
+
+  4                                   Banco de dados, Supabase, Auth e
+                                      RLS
+
+  5                                   IA, LLM, tokens, RAG, embeddings e
+                                      agentes
+
+  6                                   Segurança cibernética e LGPD por
+                                      perspectiva técnica
+
+  7                                   Git, GitHub, branches, migrations e
+                                      CI/CD
+
+  8                                   n8n, webhooks, filas e integrações
+
+  9                                   Arquitetura atual vs.
+                                      arquitetura-alvo do Salute
+
+  10                                  Trilha de estudos: o que estudar e
+                                      o que executar
+
+  11                                  Plano de execução por fases
+
+  12                                  O que fazer HOJE no sistema atual
+
+  13                                  Prompts exatos para o Claude atual
+
+  14                                  Processo profissional para cada
+                                      nova feature
+
+  15                                  Glossário de referência
+
+  16                                  Fontes oficiais para continuar
+                                      estudando
+  -----------------------------------------------------------------------
+
+1. Como pensar em um sistema
+
+Antes das ferramentas, entenda o objeto que você está construindo. Um
+sistema SaaS é um conjunto de componentes que recebe entradas, aplica
+regras, guarda dados, conversa com outros serviços e devolve resultados
+a usuários ou processos automáticos.
+
+  -----------------------------------------------------------------------
+  Camada                  Pergunta simples        Exemplo no Salute
+  ----------------------- ----------------------- -----------------------
+  Interface               O que o usuário vê e    CRM, agenda,
+                          usa?                    prontuário, financeiro
+
+  Lógica                  O que deve acontecer    Ao responder humano, a
+                          quando algo ocorre?     IA para
+
+  Backend                 Onde ficam regras que   Funções server-side,
+                          não devem depender do   APIs, webhooks
+                          navegador?              
+
+  Dados                   Onde o sistema guarda   PostgreSQL/Supabase
+                          informações?            
+
+  Automação               O que acontece          n8n, follow-up,
+                          automaticamente?        agendamento
+
+  IA                      Onde o modelo gera ou   Atendimento,
+                          interpreta conteúdo?    qualificação, resumo
+
+  Integrações             Com quem o Salute       WhatsApp, OpenAI, APIs
+                          conversa?               
+
+  Segurança               Quem pode ver/fazer o   Auth, RLS, segredos,
+                          quê?                    logs
+
+  Operação                Como uma alteração      Git → testes → deploy
+                          chega à produção?       
+  -----------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| Regra mental                                                          |
+|                                                                       |
+| Se uma mudança parece pequena visualmente, mas muda um dado, uma      |
+| regra ou uma automação, trate como uma mudança de sistema completo. A |
+| tela pode ser apenas a ponta do iceberg.                              |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+Fluxo de uma ação real
+
+  Usuário clica em “Agendar”
+  ↓
+  Frontend coleta dados
+  ↓
+  Autenticação identifica a clínica/usuário
+  ↓
+  API / Supabase recebe operação
+  ↓
+  Banco valida permissões (RLS)
+  ↓
+  Registro de appointment é salvo
+  ↓
+  Evento pode acionar n8n
+  ↓
+  WhatsApp / lembrete / agenda são atualizados
+  ↓
+  Frontend lê o novo estado e atualiza a tela
+
+2. Mapa das ferramentas do Salute
+
+  -------------------------------------------------------------------------------
+  Ferramenta         O que representa         Quando usar       Não confundir com
+  ------------------ ------------------------ ----------------- -----------------
+  Git                Sistema de controle de   Registrar         GitHub
+                     versões                  alterações e      
+                                              voltar no tempo   
+
+  GitHub             Repositório remoto +     Guardar código,   Banco de dados
+                     colaboração              branches, PRs,    
+                                              histórico         
+
+  VS Code            Editor/ambiente local    Abrir projeto,    Hospedagem
+                                              terminal, editar  
+                                              e depurar         
+
+  Claude Code        Agente de programação    Ler, planejar,    Claude chat
+                                              editar, testar e  
+                                              operar Git        
+
+  Codex              Agente/modelo de         Implementação,    Git/GitHub
+                     programação              revisão e tarefas 
+                                              de engenharia     
+
+  Antigravity        Ambiente/abordagem de    Experimentar      Backend do Salute
+                     desenvolvimento          agentes e fluxos  
+                     assistido por agentes    de                
+                                              desenvolvimento   
+
+  Lovable            Construtor assistido por Prototipagem e    Fonte única da
+                     IA de apps/UI            geração rápida    arquitetura
+
+  Supabase           Plataforma de backend    DB, Auth,         Apenas “um banco”
+                     baseada em Postgres      Storage,          
+                                              Realtime, funções 
+
+  PostgreSQL         Banco relacional         Persistir dados   Supabase inteiro
+                                              estruturados e    
+                                              relações          
+
+  n8n                Orquestração/automação   Webhooks,         Frontend
+                     de workflows             integrações,      
+                                              rotinas           
+                                              automáticas       
+
+  Netlify            Hospedagem/CD para o     Build e           GitHub
+                     frontend                 publicação        
+
+  WhatsApp Cloud API Canal de comunicação     Mensagens do      n8n
+                                              atendimento       
+
+  OpenAI/Anthropic   Provedores de modelos de Geração,          Banco de dados
+                     IA                       classificação,    
+                                              agentes etc.      
+  -------------------------------------------------------------------------------
+
+O princípio que queremos alcançar
+
+  Fonte da verdade do código = GitHub
+  Fonte da verdade dos dados = Supabase/Postgres
+  Fonte da verdade das automações = n8n + arquivos/versionamento quando
+  aplicável
+  Publicação do frontend = Netlify
+  Desenvolvedor/agente = Claude Code, Codex ou outro
+  Canal = WhatsApp Cloud API
+  Modelo = provedor de LLM
+
+3. Frontend, backend, API e programação
+
+Frontend é tudo que roda para entregar a experiência ao usuário. Backend
+é a camada que processa regras, acessos e operações que não devem
+depender de uma interface específica. API é o contrato de comunicação
+entre componentes.
+
+3.1 O que estudar
+
+-   HTML/CSS: estrutura e aparência básica da web.
+
+-   JavaScript: linguagem central do navegador e de muitos runtimes.
+
+-   TypeScript: JavaScript com tipagem que ajuda a reduzir erros em
+    projetos maiores.
+
+-   React: modelo de construção de interfaces por componentes.
+
+-   Componentes, props, state e hooks: como uma interface é montada e
+    reage a dados.
+
+-   Routing: como URLs viram telas.
+
+-   HTTP: request, response, status codes, headers, cookies e JSON.
+
+-   REST/JSON: uma forma comum de expor operações e dados.
+
+3.2 O que você precisa conseguir enxergar no código
+
+  -----------------------------------------------------------------------
+  Conceito                            Pergunta que você deve fazer
+  ----------------------------------- -----------------------------------
+  Component                           Qual pedaço da interface isso
+                                      representa?
+
+  Hook                                Que estado/dado/comportamento essa
+                                      tela está usando?
+
+  Service                             Este arquivo fala com banco/API?
+
+  Type/interface                      Que formato de dado o código
+                                      espera?
+
+  Route                               Qual URL abre este módulo?
+
+  Error handling                      O que acontece quando algo falha?
+
+  Loading state                       O que o usuário vê enquanto espera?
+
+  Permission check                    Existe validação de autorização ou
+                                      só de interface?
+  -----------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| Armadilha                                                             |
+|                                                                       |
+| Esconder um botão no frontend não é segurança. O backend/banco        |
+| precisa impedir a operação quando o usuário não tem autorização.      |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+3.3 Programação: o mínimo necessário para você
+
+Aprenda variáveis, tipos, condições, loops, funções, objetos, arrays,
+async/await, módulos, tratamento de erros e leitura de logs. Você não
+precisa decorar sintaxe; precisa conseguir ler e raciocinar sobre o
+fluxo.
+
+4. Banco de dados + Supabase
+
+Supabase fornece um banco PostgreSQL completo, além de Auth, Storage,
+Realtime e outras capacidades. O banco não é apenas um local para
+“guardar coisas”; ele é uma parte crítica das regras, relações,
+integridade e segurança do SaaS.
+
+4.1 Conceitos que você precisa dominar
+
+  ----------------------------------------------------------------------------
+  Conceito                Explicação simples      Exemplo Salute
+  ----------------------- ----------------------- ----------------------------
+  Tabela                  Conjunto estruturado de patients
+                          registros               
+
+  Linha/row               Um registro             Um paciente
+
+  Coluna                  Uma propriedade         birth_date
+
+  Primary key             Identificador único     id
+
+  Foreign key             Ligação entre tabelas   clinic_id
+
+  Relacionamento          Como entidades se       clinic → patients
+                          conectam                
+
+  Index                   Estrutura para acelerar clinic_id, phone
+                          buscas                  
+
+  Constraint              Regra de integridade    unique, not null
+
+  Transaction             Grupo de operações      Agendamento + pagamento
+                          tratado como unidade    
+
+  Migration               Arquivo versionado que  add_appointment_status.sql
+                          muda o schema           
+
+  RLS                     Regra de acesso por     Clínica A não lê Clínica B
+                          linha                   
+  ----------------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| Regra de ouro do SaaS                                                 |
+|                                                                       |
+| O Salute precisa ter isolamento de dados por clínica/tenant. Essa     |
+| regra deve existir na segurança do banco, não apenas na interface. O  |
+| Supabase documenta RLS como mecanismo granular de autorização no      |
+| próprio Postgres. (fonte: documentação oficial do Supabase sobre RLS) |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+4.2 O que estudar no Supabase
+
+-   Postgres e SQL básico.
+
+-   Supabase Auth e diferença entre autenticação e autorização.
+
+-   RLS e políticas SELECT/INSERT/UPDATE/DELETE.
+
+-   Storage e políticas de acesso a arquivos.
+
+-   Realtime quando módulos precisam refletir mudanças ao vivo.
+
+-   Migrations e CLI.
+
+-   Backups, ambientes e produção.
+
++-----------------------------------------------------------------------+
+| Segurança de chaves                                                   |
+|                                                                       |
+| A publishable key pode aparecer no frontend quando usada corretamente |
+| com RLS; chaves secret/service role não devem ser expostas no         |
+| frontend porque podem contornar RLS. (fonte: documentação oficial do  |
+| Supabase sobre segurança de dados)                                    |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+5. Autenticação, autorização e segurança
+
+Autenticação responde “quem é você?”. Autorização responde “o que você
+pode fazer?”. No Salute, as duas precisam funcionar juntas com as regras
+de cada clínica, profissional, atendente e administrador.
+
+5.1 Modelo prático
+
+  Login
+  ↓
+  Supabase Auth
+  ↓
+  JWT / sessão
+  ↓
+  Frontend envia credencial/sessão
+  ↓
+  Supabase aplica identidade + RLS
+  ↓
+  Banco decide se a linha pode ser lida/alterada
+
+5.2 Cibersegurança que você precisa entender
+
+  -----------------------------------------------------------------------
+  Tema                    O que aprender          Aplicação no Salute
+  ----------------------- ----------------------- -----------------------
+  Segredos                API keys, secrets, env  OpenAI, WhatsApp,
+                          vars                    service role
+
+  Controle de acesso      Least privilege,        roles e isolamento por
+                          RBAC/RLS                clínica
+
+  Injeção                 SQL injection, prompt   entradas de usuários e
+                          injection               ferramentas
+
+  XSS                     Código malicioso no     mensagens/HTML vindos
+                          navegador               de usuários
+
+  Autenticação            Sessão, JWT, MFA,       acesso ao SaaS
+                          recuperação             
+
+  CSRF/CORS               Regras de requests      APIs/webhooks
+                          entre origens           
+
+  Rate limiting           Limitar abuso           login, webhook, IA
+
+  Logging                 Registrar eventos e     auditoria e incidentes
+                          falhas                  
+
+  Backups                 Recuperar dados         produção
+
+  Supply chain            Dependências            npm/packages
+                          comprometidas           
+
+  Criptografia            Em trânsito e em        dados e APIs
+                          repouso                 
+  -----------------------------------------------------------------------
+
+5.3 OWASP Top 10: o que você deve estudar primeiro
+
+A versão 2025 destaca, entre outros, controle de acesso quebrado,
+configuração insegura, falhas na cadeia de suprimentos, falhas
+criptográficas, injeção, design inseguro, falhas de autenticação,
+integridade de software/dados, falhas de logging/alerta e tratamento
+incorreto de exceções. (fonte: OWASP Top 10:2025)
+
++-----------------------------------------------------------------------+
+| Para o Salute                                                         |
+|                                                                       |
+| Como o produto trabalha com informações de clínicas e pacientes,      |
+| segurança não deve ser um “projeto futuro”. Ela entra desde modelagem |
+| do banco, Auth, RLS, Storage, logs e gestão de segredos.              |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+6. IA: LLM, tokens, contexto, RAG, embeddings e agentes
+
+Você já está construindo sistemas com IA. Agora precisa separar
+conceitos que costumam ser misturados.
+
+  -----------------------------------------------------------------------
+  Conceito                O que é                 Exemplo no Salute
+  ----------------------- ----------------------- -----------------------
+  LLM                     Modelo que prevê/genera modelo de atendimento
+                          linguagem               
+
+  Prompt                  Instruções e contexto   regras da clínica
+                          enviados ao modelo      
+
+  Token                   Unidade de texto        mensagem/contexto
+                          processada pelo modelo  
+
+  Context window          Quantidade de contexto  histórico + regras +
+                          que pode ser            documentos
+                          considerada na          
+                          interação               
+
+  Embedding               Representação vetorial  FAQ convertido em
+                          de conteúdo             vetores
+
+  Vector DB               Armazenamento/busca de  pgvector no Postgres
+                          vetores                 
+
+  RAG                     Recuperar conhecimento  políticas e informações
+                          e passar ao modelo      da clínica
+
+  Tool/function calling   Modelo solicita uma     criar agendamento
+                          ação estruturada        
+
+  Agent                   Modelo + ferramentas +  atender, consultar e
+                          loop de decisão         agir
+
+  Guardrail               Regra/controle sobre    não inventar preço
+                          entradas e saídas       
+
+  Evaluation              Teste sistemático da    cenários de atendimento
+                          qualidade               
+  -----------------------------------------------------------------------
+
+6.1 RAG em linguagem simples
+
+RAG (Retrieval-Augmented Generation) é uma técnica em que o sistema
+recupera informações relevantes de uma base de conhecimento e as entrega
+ao modelo para fundamentar a resposta. Isso permite usar conhecimento
+específico e atualizado sem depender apenas do que estava no treinamento
+do modelo. (fonte: Google Machine Learning Glossary)
+
+  Pergunta do paciente
+  ↓
+  transformar pergunta em embedding
+  ↓
+  buscar documentos/chunks parecidos
+  ↓
+  recuperar conteúdo relevante
+  ↓
+  montar contexto
+  ↓
+  LLM responde com base nesse contexto
+
+6.2 Quando RAG faz sentido no Salute
+
+-   Informações específicas de cada clínica.
+
+-   Protocolos e perguntas frequentes autorizadas pela clínica.
+
+-   Políticas de atendimento, horários, endereço, preços e instruções
+    que precisam ser consultados.
+
+-   Documentos que mudam com frequência, sem retreinar o modelo.
+
++-----------------------------------------------------------------------+
+| RAG não é memória                                                     |
+|                                                                       |
+| RAG é uma estratégia de recuperação de conhecimento. Histórico de     |
+| conversa, banco relacional, cache e memória do agente são problemas   |
+| diferentes. Uma arquitetura madura decide qual fonte é usada para     |
+| cada tipo de informação.                                              |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+7. IA aplicada ao Salute: arquitetura segura
+
+Um atendimento com IA não deve depender apenas de um prompt enorme. O
+desenho mais robusto combina regras determinísticas, dados estruturados,
+ferramentas e modelo de linguagem.
+
+  WhatsApp
+  ↓
+  Webhook / n8n
+  ↓
+  Identificação do tenant + contato
+  ↓
+  Regras determinísticas
+  ↓
+  Contexto do paciente/conversa
+  ↓
+  RAG (quando necessário)
+  ↓
+  LLM
+  ↓
+  Se precisar agir → tool/function
+  ↓
+  Supabase / agenda / CRM
+  ↓
+  Validação
+  ↓
+  Resposta ao paciente
+
+O que deve ficar fora do modelo quando possível
+
+-   Permissões.
+
+-   Identidade da clínica.
+
+-   Regras financeiras críticas.
+
+-   Validações de dados.
+
+-   Execução de ações destrutivas sem confirmação.
+
+-   Decisões que podem ser implementadas como lógica determinística
+    simples.
+
+Prompt ruim x arquitetura boa
+
+  -----------------------------------------------------------------------
+  Abordagem                           Problema
+  ----------------------------------- -----------------------------------
+  Prompt gigante com tudo             Mais contexto, mais custo, mais
+                                      chance de contradição
+
+  Modelo decide tudo                  Risco de alucinação e ações
+                                      incorretas
+
+  Banco consultado pelo navegador sem Falha de isolamento de dados
+  RLS                                 
+
+  n8n contendo regra crítica sem      Difícil de testar/versionar
+  documentação                        
+
+  Ferramentas sem validação           IA pode chamar ação com dados
+                                      inválidos
+  -----------------------------------------------------------------------
+
+8. n8n, Webhooks, APIs, filas e integrações
+
+n8n é a camada de orquestração de automações. Pense nele como um “fluxo
+operacional” que recebe um evento, transforma dados, chama serviços,
+toma decisões e produz efeitos.
+
+8.1 Conceitos
+
+  -----------------------------------------------------------------------
+  Conceito                            Exemplo
+  ----------------------------------- -----------------------------------
+  Webhook                             WhatsApp envia mensagem para o
+                                      Salute
+
+  HTTP request                        n8n chama API externa
+
+  Credential                          Credencial armazenada para acessar
+                                      serviço
+
+  Trigger                             Evento que inicia workflow
+
+  Node                                Etapa do workflow
+
+  Expression                          Valor calculado a partir dos dados
+
+  Branch/IF                           Decisão no fluxo
+
+  Retry                               Tentar novamente depois de falha
+
+  Idempotência                        Reprocessar sem duplicar efeito
+
+  Queue                               Fila para desacoplar tarefas
+
+  Cron                                Execução agendada
+  -----------------------------------------------------------------------
+
+8.2 Fluxo típico do Salute
+
+  WhatsApp → Webhook n8n → validação → identifica clínica → consulta
+  Supabase → decide fluxo → IA/tool → salva resultado → responde
+  WhatsApp
+
+8.3 O que estudar
+
+-   HTTP/JSON/webhooks.
+
+-   Autenticação de APIs e secrets.
+
+-   Tratamento de erro/retry.
+
+-   Idempotência e duplicidade de eventos.
+
+-   Observabilidade: logs, execução e alertas.
+
+-   Versionamento e separação entre teste e produção.
+
++-----------------------------------------------------------------------+
+| Erro comum                                                            |
+|                                                                       |
+| Automação que funciona no teste, mas duplica mensagens em produção    |
+| normalmente precisa de idempotência, controle de estado e tratamento  |
+| explícito de retries.                                                 |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+9. Git, GitHub, Branches, Migrations e CI/CD
+
+Git é o histórico. GitHub é o repositório remoto e a colaboração. Branch
+é uma linha de desenvolvimento isolada. Pull Request é uma proposta de
+mudança que pode ser revisada antes do merge.
+
+Fluxo que quero para o Salute
+
+  main = produção
+  feature/minha-funcionalidade
+  ↓
+  Claude Code / Codex implementa
+  ↓
+  testes
+  ↓
+  git diff
+  ↓
+  commit
+  ↓
+  push
+  ↓
+  Pull Request
+  ↓
+  revisão
+  ↓
+  merge
+  ↓
+  deploy
+
+Migrations
+
+Uma migration é um arquivo que registra uma alteração de schema. Em vez
+de você lembrar manualmente como um banco chegou a determinado estado, o
+repositório contém o histórico das mudanças. O Supabase documenta a
+criação e aplicação de migrations e também o uso de db pull para
+reconciliar um banco alterado diretamente. (fonte: documentação oficial
+do Supabase sobre migrations)
+
+CI/CD
+
+CI (integração contínua) automatiza validações a cada mudança. CD
+(entrega/publicação contínua) automatiza a chegada de versões a
+ambientes. Para você, o princípio é: código muda → testes/checagens →
+deploy controlado.
+
++-----------------------------------------------------------------------+
+| Objetivo de segurança                                                 |
+|                                                                       |
+| Nunca trate “funcionou no meu computador” como prova suficiente. O    |
+| processo precisa verificar build, testes, migrations, variáveis e     |
+| comportamento antes de produção.                                      |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+10. Local, ambiente, Netlify e deploy
+
+  -----------------------------------------------------------------------
+  Ambiente                Função                  Regra
+  ----------------------- ----------------------- -----------------------
+  Local                   Seu computador          Desenvolver e testar
+
+  Preview/Staging         Ambiente de validação   Testar antes da
+                                                  produção
+
+  Produção                Usuários reais          Alterações com controle
+  -----------------------------------------------------------------------
+
+O que o Netlify faz
+
+No cenário comum, Netlify recebe o código de um repositório, executa o
+build e publica os artefatos. A configuração exata depende do
+framework/build do projeto. O objetivo para o Salute é manter o deploy
+reproduzível e conectado ao Git.
+
+DNS e domínio
+
+DNS é o sistema que aponta nomes, como saluteai.com.br, para serviços. O
+domínio é o endereço que o usuário digita; hospedagem é onde a aplicação
+é entregue. São coisas diferentes.
+
+  saluteai.com.br
+  ↓
+  DNS
+  ↓
+  Netlify / outro host
+  ↓
+  Frontend
+  ↓
+  Supabase / APIs / n8n
+
++-----------------------------------------------------------------------+
+| No seu caso                                                           |
+|                                                                       |
+| A ideia de usar caminhos como /novoapp, /painel e /crm depende de     |
+| roteamento do frontend e da configuração do host. Não crie uma        |
+| segunda infraestrutura só para mudar a URL sem antes entender como o  |
+| app atual trata rotas.                                                |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+11. Arquitetura atual vs. arquitetura-alvo do Salute
+
+Como ainda não auditamos o repositório atual nesta etapa, não vou
+inventar quais serviços já estão conectados. O que segue é a
+arquitetura-alvo que usaremos como referência.
+
+Arquitetura-alvo
+
+  ┌──────────────┐
+  │ USUÁRIO │
+  └──────┬───────┘
+  │
+  ▼
+  ┌──────────────┐
+  │ FRONTEND │
+  │ React/TS etc │
+  └──────┬───────┘
+  │
+  ┌────────────────┼────────────────┐
+  ▼ ▼ ▼
+  ┌────────┐ ┌────────────┐ ┌─────────┐
+  │ Supabase│ │ APIs/Edge │ │ n8n │
+  │ Postgres│ │ Functions │ │automação│
+  └────┬────┘ └─────┬──────┘ └────┬────┘
+  │ │ │
+  └──────────┬───────┴───────┬────────┘
+  ▼ ▼
+  WhatsApp IA
+  Código e histórico: GitHub
+  Publicação do frontend: Netlify
+  Desenvolvimento: VS Code + agente de código
+
+O que será auditado antes de qualquer reconstrução
+
+-   Framework e estrutura real do frontend.
+
+-   Todas as tabelas, relações, políticas RLS e storage buckets atuais.
+
+-   Como o Auth está configurado.
+
+-   Workflows n8n e seus pontos de entrada/saída.
+
+-   Variáveis de ambiente e segredos (sem revelar valores).
+
+-   Configuração de domínio e deploy.
+
+-   Dependências npm e scripts de build/test.
+
+12. Trilha de estudos: o que estudar e o que executar
+
+A sequência abaixo usa seu curso atual como base, mas reorganiza as
+aulas pelo que será mais útil para o Salute.
+
+  -----------------------------------------------------------------------
+  Fase              Estude            Depois execute no Prova de
+                                      Salute            entendimento
+  ----------------- ----------------- ----------------- -----------------
+  1. Fundamentos    Sistema,          Mapear            Explicar o
+                    frontend,         arquitetura atual caminho de um
+                    backend, API,                       clique até o
+                    HTTP                                banco
+
+  2. Git            Git, GitHub,      Clonar, criar     Voltar uma
+                    branch, commit,   branch, diff,     alteração com
+                    PR                commit            segurança
+
+  3. Ambiente       Terminal, Node,   Rodar app local   Abrir sistema
+                    npm, VS Code                        localmente
+
+  4. Frontend       React, TS,        Localizar uma     Traçar tela →
+                    componentes,      tela e seu        dados
+                    hooks, routes     serviço           
+
+  5. Banco          SQL, Postgres,    Mapear schema     Explicar 5
+                    relações, indexes                   relações do
+                                                        Salute
+
+  6. Supabase       Auth, RLS,        Auditar segurança Explicar por que
+                    Storage,          e criar migration uma policy
+                    Realtime,         em teste          permite/nega
+                    migrations                          
+
+  7. n8n            Webhook, HTTP,    Mapear workflows  Explicar mensagem
+                    nodes, retry,                       → workflow →
+                    idempotência                        banco → resposta
+
+  8. IA             LLM, tokens,      Mapear IA atual   Explicar onde
+                    context, tools                      entra o contexto
+
+  9. RAG            Embeddings,       Desenhar RAG da   Explicar por que
+                    chunks, vector    clínica           RAG ≠ banco
+                    search                              relacional
+
+  10. Segurança     OWASP, secrets,   Rodar auditoria   Identificar 10
+                    authz, logs       de segurança      riscos concretos
+
+  11. Agents        Claude Code,      Fazer agente      Delegar feature
+                    Codex, MCP,       analisar repo     com plano +
+                    Skills                              testes
+
+  12. DevOps        Build, CI/CD,     Automatizar       Saber o que
+                    preview, produção deploy controlado acontece após git
+                                                        push
+  -----------------------------------------------------------------------
+
+13. Como estudar o seu curso sem se perder
+
+Seu curso tem conteúdo suficiente para montar a base. Não assista tudo
+linearmente agora. Use o Salute como projeto-laboratório.
+
+Primeiro ciclo: assista estas aulas
+
+-   Introdução ao VibeCoding: A Revolução na Criação de Sistemas com IA
+
+-   Configurando o Coração do Sistema: Banco de Dados e Segurança no
+    Supabase
+
+-   Construindo o Frontend na Prática: Integração Lovable, Prompts e
+    Gestão de Usuários
+
+-   Arquitetura de Integração: Conectando o n8n ao CRM
+
+-   Versionamento e Segurança (GitHub + Integração)
+
+-   Edição Low-Code com VS Code e Gemini
+
+Segundo ciclo
+
+-   Claude Code para Construir Fluxos no n8N
+
+-   Skills no Antigravity
+
+-   Antigravity + Claude Code - Sistema Financeiro
+
+-   Publicação Profissional - Colocando seu Sistema no Ar com Vercel
+    (entender conceito; adaptar para Netlify se este for seu host real)
+
+Terceiro ciclo, depois que a base estiver sólida
+
+-   Agentes no WhatsApp / APIs oficiais e não oficiais — estudar
+    arquitetura, mas não misturar protótipos instáveis com produção.
+
+-   Chatwoot e outros CRMs — usar para entender alternativas, não para
+    trocar a arquitetura atual sem motivo.
+
+-   OpenClaw/Hermes/Odysseus e outras ferramentas — deixar para depois;
+    não são pré-requisito para o Salute core.
+
++-----------------------------------------------------------------------+
+| Critério de avanço                                                    |
+|                                                                       |
+| Não avance porque “terminei a aula”. Avance quando você conseguir     |
+| reproduzir a ideia no Salute e explicar por que ela existe.           |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+14. Plano de execução por fases
+
+  -----------------------------------------------------------------------
+  Período                 Meta                    Entregáveis
+  ----------------------- ----------------------- -----------------------
+  Hoje                    Diagnóstico sem alterar Mapa da arquitetura +
+                          produção                inventário + riscos
+
+  Dia 2                   Git e ambiente          Repo local + branch +
+                                                  comandos básicos
+
+  Dia 3                   Documentação            CLAUDE.md +
+                                                  docs/architecture +
+                                                  docs/database
+
+  Dias 4–5                Supabase                Schema documentado +
+                                                  RLS auditada +
+                                                  migrations alinhadas
+
+  Dias 6–7                Frontend                Mapa de módulos +
+                                                  rotas + serviços +
+                                                  dependências
+
+  Dias 8–9                n8n                     Mapa de workflows +
+                                                  entradas/saídas +
+                                                  falhas
+
+  Dias 10–11              IA/RAG                  Mapa da IA atual +
+                                                  proposta de RAG/tooling
+
+  Dias 12–13              Segurança               Checklist OWASP +
+                                                  secrets + permissions +
+                                                  logs
+
+  Dia 14                  Processo de             Primeira feature feita
+                          desenvolvimento         com branch → testes →
+                                                  PR → deploy
+  -----------------------------------------------------------------------
+
+Regra de ouro para os próximos dias
+
+  NÃO fazer “refatoração geral” antes da auditoria.
+  NÃO apagar código para “simplificar”.
+  NÃO mexer em produção direto.
+  NÃO enviar segredos ao chat.
+  NÃO deixar o agente criar tabelas duplicadas.
+  NÃO aceitar alteração grande sem entender o impacto.
+
+15. O que fazer HOJE no sistema atual
+
+Hoje o objetivo não é melhorar a interface. É transformar o sistema
+atual em um objeto conhecido e documentado.
+
+Passo 1 — Faça um backup lógico/seguro
+
+-   Confirme que o repositório atual está no GitHub.
+
+-   Não copie segredos para arquivos públicos.
+
+-   Não compartilhe .env completo.
+
+-   Garanta acesso administrativo ao projeto Supabase e ao host, mas não
+    coloque credenciais no chat.
+
+Passo 2 — Na ferramenta atual do sistema, envie o Prompt 1
+
+  ATENÇÃO: MODO SOMENTE LEITURA.
+  Não altere arquivos, não crie arquivos, não delete nada, não rode
+  migrations, não altere Supabase, não faça deploy e não modifique
+  configurações.
+  Quero que você faça uma auditoria completa do projeto atual. Primeiro
+  descubra: framework, linguagem, estrutura de pastas, entry points,
+  rotas, componentes principais, camada de acesso a dados, integração
+  com Supabase, autenticação, variáveis de ambiente (liste apenas os
+  nomes, nunca os valores), integrações externas, scripts do
+  package.json, build e deploy.
+  Entregue: 1) mapa da arquitetura; 2) árvore resumida do projeto; 3)
+  tabela “componente → responsabilidade → arquivos”; 4) dependências
+  críticas; 5) pontos de risco; 6) dúvidas/áreas que precisam ser
+  investigadas.
+  Não proponha refatoração ainda. Não altere nada.
+
+16. Prompts exatos para mandar HOJE ao sistema atual
+
+Envie em sequência. Só avance ao próximo depois de salvar a resposta do
+anterior. O primeiro ciclo é deliberadamente somente leitura.
+
+Prompt 2 — Mapear banco
+
+  MODO SOMENTE LEITURA. Não altere nada.
+  Analise a integração do projeto com o Supabase. Quero um inventário do
+  banco usado pelo sistema: tabelas conhecidas, colunas relevantes,
+  primary keys, foreign keys, relacionamentos, índices quando
+  identificáveis, funções/triggers, Storage buckets e políticas/RLS
+  quando acessíveis por configuração ou arquivos do projeto.
+  Para cada tabela, explique: finalidade, principais relações e quais
+  módulos do frontend parecem utilizá-la. Identifique possíveis
+  duplicidades, campos sem uso evidente e riscos de isolamento entre
+  clínicas/usuários.
+  Não execute migrations. Não altere o banco. Se algo não puder ser
+  verificado, marque como “não confirmado”.
+
+Prompt 3 — Mapear frontend
+
+  MODO SOMENTE LEITURA.
+  Mapeie o frontend atual do Salute. Liste rotas, páginas, módulos,
+  componentes compartilhados, hooks, services, chamadas ao Supabase/API
+  e estados importantes.
+  Para cada módulo principal, descreva o fluxo: tela → componente →
+  hook/service → fonte de dados → retorno.
+  Também identifique o que parece legado, duplicado ou acoplado demais.
+  Não altere nada.
+
+Prompt 4 — Mapear n8n e integrações
+
+  MODO SOMENTE LEITURA.
+  Analise todo o código/configuração disponível sobre integrações e
+  automações externas. Identifique referências a n8n, webhooks,
+  WhatsApp, OpenAI/Anthropic ou outras APIs.
+  Para cada integração, responda: quem inicia o fluxo, qual payload
+  entra, qual serviço é chamado, qual dado é salvo, qual resposta é
+  enviada e o que acontece em caso de erro.
+  Não faça chamadas reais, não envie mensagens e não altere integrações.
+
+Prompt 5 — Auditoria de segurança
+
+  MODO SOMENTE LEITURA E AUDITORIA.
+  Faça uma revisão de segurança do projeto sem alterar nada. Procure:
+  segredos no código, uso incorreto de variáveis de ambiente, chaves
+  service role no frontend, ausência de validação, problemas de
+  autorização, risco de acesso cruzado entre clínicas, injeção, XSS,
+  configurações inseguras, dependências vulneráveis quando verificável,
+  logs contendo dados sensíveis e operações perigosas feitas pelo
+  cliente.
+  Classifique cada achado em crítico, alto, médio ou baixo. Mostre
+  evidência por arquivo/linha quando possível e explique como corrigir
+  posteriormente. Não corrija agora.
+
+17. Prompts exatos para documentar o sistema
+
+Depois de obter as auditorias, mande os prompts abaixo. Nesta fase, a
+única alteração aceitável é criar documentação; ainda não vamos mudar
+comportamento.
+
+Prompt 6 — Criar mapa de arquitetura
+
+  Com base exclusivamente no que você verificou no projeto,
+  crie/atualize a documentação da arquitetura.
+  Crie: docs/architecture.md
+  docs/frontend.md
+  docs/database.md
+  docs/integrations.md
+  docs/security.md
+  IMPORTANTE: documentação deve refletir o estado REAL, não o que seria
+  ideal. Marque claramente como “confirmado”, “inferido” ou “não
+  confirmado”.
+  Não altere lógica do sistema. Não altere Supabase. Não altere n8n. Não
+  faça deploy.
+
+Prompt 7 — Criar CLAUDE.md
+
+  Crie um CLAUDE.md para este projeto, usando a arquitetura REAL
+  descoberta nas auditorias.
+  Inclua: objetivo do sistema, stack, estrutura de pastas, comandos,
+  arquitetura, regras de negócio já observadas, padrão de acesso a
+  dados, regras de segurança, integrações, convenções de código e
+  checklist obrigatório antes de alterações.
+  Regra: não invente arquitetura. Se algo não estiver confirmado,
+  escreva “não confirmado”.
+  Não altere comportamento da aplicação.
+
+Prompt 8 — Gerar plano de desenvolvimento seguro
+
+  Agora que o sistema está documentado, NÃO implemente nada.
+  Crie um backlog técnico priorizado em três níveis:
+  P0 = riscos que podem causar perda de dados, vazamento ou quebra de
+  produção
+  P1 = problemas de arquitetura/manutenibilidade que dificultam evolução
+  P2 = melhorias e novas funcionalidades
+  Para cada item: problema, evidência, impacto, arquivos afetados,
+  dependências, risco e forma de teste.
+  Não faça mudanças ainda.
+
++-----------------------------------------------------------------------+
+| Por que esses prompts são bons                                        |
+|                                                                       |
+| Eles obrigam o agente a separar descoberta de execução. Primeiro      |
+| conhecemos o sistema; depois documentamos; só então mudamos. Isso     |
+| reduz o risco de um agente “melhorar” algo que não deveria ser        |
+| mexido.                                                               |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+18. Prompt-padrão para qualquer nova feature
+
+Depois que a base estiver organizada, use uma estrutura consistente. Não
+peça “faça tudo” sem escopo, critérios e testes.
+
+  Quero implementar a funcionalidade: [NOME].
+  Objetivo de negócio:
+  [O que deve resolver]
+  Comportamento esperado:
+  [Passo a passo]
+  Regras de negócio:
+  [Regras]
+  Antes de editar:
+  1. Analise o fluxo atual relacionado.
+  2. Localize frontend, banco, integrações e automações afetadas.
+  3. Identifique componentes/serviços existentes que podem ser
+  reutilizados.
+  4. Liste arquivos que precisam mudar.
+  5. Identifique migrations necessárias.
+  6. Identifique riscos de segurança e regressão.
+  Depois, apresente um plano de implementação. NÃO implemente ainda.
+  Após minha aprovação:
+  - implemente a menor mudança necessária;
+  - reutilize o padrão existente;
+  - não duplique funcionalidades;
+  - crie/atualize testes;
+  - valide tipos/build;
+  - mostre git diff;
+  - descreva exatamente o que mudou;
+  - não faça deploy sem aprovação explícita.
+
+Prompt de revisão antes do commit
+
+  Revise a alteração como engenheiro sênior. Não faça mudanças.
+  Verifique: regressões, segurança, autorização, RLS, tratamento de
+  erro, performance, duplicação, tipagem, estados de
+  loading/empty/error, acessibilidade básica, logs, migrations e
+  compatibilidade com dados existentes.
+  Classifique cada problema e diga se a alteração está pronta para
+  commit.
+
+19. Como economizar tokens sem sacrificar qualidade
+
+Economizar tokens não significa mandar prompts minúsculos. Significa
+entregar contexto estruturado e fazer cada sessão resolver um objetivo
+definido.
+
+  -----------------------------------------------------------------------
+  Estratégia              Faça                    Evite
+  ----------------------- ----------------------- -----------------------
+  Contexto persistente    CLAUDE.md + docs        Reexplicar arquitetura
+                                                  em toda mensagem
+
+  Tarefas focadas         Uma feature/mudança por “Refaça o sistema
+                          vez                     inteiro”
+
+  Plano antes de execução Peça análise + plano    Alterar imediatamente
+
+  Reutilização            Localizar               Criar duplicatas
+                          componentes/services    
+                          existentes              
+
+  Leitura seletiva        Agente localizar        Enviar projeto inteiro
+                          arquivos relevantes     manualmente
+
+  Branches                Isolar mudanças         Trabalhar tudo direto
+                                                  na main
+
+  Testes                  Testar antes de         Ciclo de tentativa/erro
+                          corrigir novamente      sem teste
+
+  Docs atualizados        Registrar decisões      Deixar contexto apenas
+                                                  no chat
+  -----------------------------------------------------------------------
+
+Uma boa sessão com agente
+
+  Contexto mínimo suficiente
+  ↓
+  Objetivo único
+  ↓
+  Critérios de aceitação
+  ↓
+  Plano
+  ↓
+  Implementação
+  ↓
+  Teste
+  ↓
+  Resumo da alteração
+
++-----------------------------------------------------------------------+
+| Ponto importante                                                      |
+|                                                                       |
+| O objetivo não é minimizar cada token individual. É minimizar         |
+| trabalho inútil: re-leitura de contexto, mudanças conflitantes,       |
+| refatorações desnecessárias e ciclos de “quebrou → corrigiu →         |
+| quebrou”.                                                             |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+20. Claude Code, Codex, MCP e agentes: como organizar
+
+Claude Code opera diretamente no terminal e pode explorar a base de
+código conforme necessário, editar arquivos, executar testes e
+automatizar operações Git. A documentação também descreve modo não
+interativo e MCP para conectar ferramentas externas. (fonte:
+documentação oficial do Claude Code)
+
+Codex também está posicionado como ferramenta de engenharia de software
+e agentes, inclusive para tarefas de implementação e revisão. (fonte:
+documentação oficial do OpenAI Codex/Agents)
+
+MCP
+
+Model Context Protocol é um padrão para conectar o agente a ferramentas
+e recursos externos. Pense: “o agente sabe ler arquivos; MCP pode dar a
+ele uma ferramenta especializada para conversar com um serviço”.
+
+A ordem que recomendo
+
+  -------------------------------------------------------------------------
+  Momento                 Ferramenta principal    Função
+  ----------------------- ----------------------- -------------------------
+  Agora                   Claude atual/Lovable    Auditoria e documentação
+
+  Depois                  Claude Code             Desenvolvimento principal
+
+  Depois                  Codex                   Segunda
+                                                  opinião/revisão/tarefas
+                                                  específicas
+
+  Depois                  Antigravity             Experimentação com
+                                                  agentes e skills
+
+  Quando houver           MCP                     Conectar ferramentas
+  necessidade                                     específicas
+  -------------------------------------------------------------------------
+
++-----------------------------------------------------------------------+
+| Não transforme o projeto em competição de IAs                         |
+|                                                                       |
+| Dois agentes editando o mesmo código ao mesmo tempo podem gerar       |
+| conflitos. Use branches e responsabilidades claras. O objetivo é      |
+| aumentar produtividade, não aumentar o número de ferramentas.         |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+21. Checklist de segurança do Salute
+
+☐ Cada clínica só consegue acessar seus próprios registros.
+
+☐ RLS está habilitado e testado nas tabelas expostas.
+
+☐ Policies cobrem select/insert/update/delete conforme a regra de
+negócio.
+
+☐ Chaves secret/service role nunca aparecem no frontend.
+
+☐ Variáveis sensíveis estão fora do código e do Git.
+
+☐ Uploads do Storage possuem políticas adequadas.
+
+☐ Endpoints/webhooks validam autenticação/assinatura quando aplicável.
+
+☐ Existe proteção contra duplicidade de eventos críticos.
+
+☐ Entradas do usuário são validadas.
+
+☐ Operações sensíveis possuem autorização server-side/banco.
+
+☐ Logs não expõem segredos ou dados desnecessários.
+
+☐ Dependências têm processo de atualização e revisão.
+
+☐ Existe backup e procedimento conhecido de restauração.
+
+☐ Erros não vazam detalhes internos para o usuário.
+
+☐ Produção e desenvolvimento são separados quando possível.
+
+☐ Existe checklist antes de alterações de banco em produção.
+
+Referência
+
+Use o OWASP Top 10:2025 como currículo inicial de segurança web. Ele
+organiza riscos de forma prática e atualizada para aplicações. (fonte:
+OWASP Top 10:2025)
+
+22. Checklist antes de qualquer alteração em produção
+
+-   Entendi o comportamento atual e o objetivo da mudança.
+
+-   Identifiquei arquivos e serviços afetados.
+
+-   Verifiquei se já existe algo reutilizável.
+
+-   Analisei impacto no banco e necessidade de migration.
+
+-   Analisei RLS/autorização.
+
+-   Analisei n8n/webhooks/API se a feature tocar integrações.
+
+-   Criei branch separada.
+
+-   Pedi um plano ao agente antes da execução.
+
+-   Implementei a menor mudança necessária.
+
+-   Rodei build/testes.
+
+-   Revisei git diff.
+
+-   Testei cenário normal e cenário de erro.
+
+-   Revisei dados e permissões entre clínicas.
+
+-   Atualizei documentação se a arquitetura mudou.
+
+-   Fiz commit com mensagem clara.
+
+-   Criei PR/revisão quando apropriado.
+
+-   Só depois fiz deploy.
+
++-----------------------------------------------------------------------+
+| Regra para você como fundador                                         |
+|                                                                       |
+| Você não precisa saber escrever todo o código. Mas precisa conseguir  |
+| responder: qual é a mudança, por que ela existe, onde ela mexe, como  |
+| será testada, quais riscos cria e como voltar atrás.                  |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+23. Glossário rápido
+
+  --------------------------------------------------------------------------------------
+  Termo             Significado               Termo             Significado
+  ----------------- ------------------------- ----------------- ------------------------
+  Aplicação         Programa que executa uma  Arquitetura       Forma como os
+                    função para o usuário ou                    componentes do sistema
+                    para outro sistema.                         são organizados e se
+                                                                comunicam.
+
+  Backend           Camada que processa       Build             Processo de transformar
+                    dados, regras e operações                   o projeto em artefatos
+                    fora da interface.                          prontos para
+                                                                executar/publicar.
+
+  Cache             Cópia temporária de dados CI/CD             Automação de integração,
+                    para reduzir tempo/custo                    testes e
+                    de acesso.                                  entrega/publicação.
+
+  Commit            Registro de um conjunto   Container         Unidade empacotada de
+                    de alterações no Git.                       software e dependências,
+                                                                comum em Docker.
+
+  Cron              Agendamento baseado em    Endpoint          Ponto de uma API que
+                    horário/período.                            recebe ou devolve dados.
+
+  Environment       Configuração que varia    Feature           Funcionalidade do
+  variable          por ambiente,                               produto.
+                    frequentemente usada para                   
+                    secrets/config.                             
+
+  Framework         Estrutura que fornece     Git               Controle de versões
+                    padrões e ferramentas                       distribuído.
+                    para desenvolver                            
+                    software.                                   
+
+  GitHub            Plataforma de hospedagem  Hook              Mecanismo do React para
+                    e colaboração sobre                         estado e comportamento
+                    repositórios Git.                           em componentes.
+
+  JWT               Token estruturado usado   LLM               Large Language Model;
+                    para transportar claims                     modelo generativo de
+                    de                                          linguagem.
+                    identidade/autorização.                     
+
+  Migration         Alteração de banco        MCP               Protocolo para conectar
+                    registrada em arquivo                       modelos/agentes a
+                    versionado.                                 ferramentas e recursos.
+
+  Multi-tenant      Arquitetura onde um       n8n               Ferramenta de
+                    sistema atende várias                       automação/orquestração
+                    organizações isoladas.                      baseada em workflows.
+
+  ORM               Camada que representa     Postgres          Banco de dados
+                    dados do banco usando                       relacional open source;
+                    código/objetos; reduz SQL                   usado pelo Supabase.
+                    manual em alguns                            
+                    cenários.                                   
+
+  Pull Request      Proposta de alteração de  RAG               Geração aumentada por
+                    uma branch para outra,                      recuperação de
+                    com revisão.                                conhecimento externo.
+
+  RBAC              Controle de acesso        RLS               Row Level Security;
+                    baseado em papéis.                          políticas de autorização
+                                                                por linha no Postgres.
+
+  Rollback          Reverter uma              Secret            Dado sensível usado para
+                    versão/alteração.                           autenticação ou
+                                                                configuração privada.
+
+  Serverless        Execução de código sem    SPA               Single Page Application;
+                    gestão direta de servidor                   app web que atualiza a
+                    tradicional;                                interface sem recarregar
+                    cobrança/escala podem ser                   páginas inteiras em
+                    por execução.                               muitos fluxos.
+
+  Tenant            Organização isolada       Tool calling      Modelo solicita
+                    dentro de um sistema                        formalmente uma
+                    multi-tenant.                               ação/função que o
+                                                                sistema executa.
+
+  Webhook           URL que recebe uma        Vector DB         Banco/índice otimizado
+                    notificação/evento via                      para busca por
+                    HTTP.                                       vetores/embeddings.
+  --------------------------------------------------------------------------------------
+
+24. Fontes oficiais e próximo passo
+
+Estas referências foram usadas para alinhar o manual com a documentação
+atual. Para detalhes de implementação, sempre confira a documentação do
+serviço na data em que for executar.
+
+Anthropic — configuração do Claude Code:
+https://docs.anthropic.com/en/docs/claude-code/getting-started
+
+Anthropic — tarefas e fluxos do Claude Code:
+https://docs.anthropic.com/pt/docs/claude-code/common-tasks
+
+Anthropic — CLI do Claude Code:
+https://docs.anthropic.com/en/docs/claude-code/cli-usage
+
+OpenAI Developers — Codex: https://developers.openai.com/learn/codex
+
+Supabase — Database: https://supabase.com/docs/guides/database/overview
+
+Supabase — RLS:
+https://supabase.com/docs/guides/database/postgres/row-level-security
+
+Supabase — Auth: https://supabase.com/docs/guides/auth
+
+Supabase — migrations:
+https://supabase.com/docs/guides/database/deployment/database-migrations
+
+Supabase — Storage security:
+https://supabase.com/docs/guides/storage/security/access-control
+
+OWASP — Top 10:2025: https://top10.owasp.org/2025/pt-BR/
+
+Google for Developers — Machine Learning Glossary:
+https://developers.google.com/machine-learning/glossary
+
+Netlify — documentação: https://docs.netlify.com/
+
+n8n — documentação: https://docs.n8n.io/
+
+O que você deve fazer agora
+
+1.  Não fazer nenhuma reconstrução hoje.
+
+2.  Executar no sistema atual o Prompt 1 de auditoria somente leitura.
+
+3.  Salvar a resposta.
+
+4.  Executar Prompt 2 para mapear banco.
+
+5.  Salvar a resposta.
+
+6.  Executar Prompt 3 para mapear frontend.
+
+7.  Salvar a resposta.
+
+8.  Executar Prompt 4 para mapear integrações.
+
+9.  Salvar a resposta.
+
+10. Executar Prompt 5 de segurança.
+
+11. Trazer os resultados para a próxima sessão e só então iniciar a
+    organização do repositório/CLAUDE.md.
+
++-----------------------------------------------------------------------+
+| Ponto de partida                                                      |
+|                                                                       |
+| A primeira vitória não é “ter uma tela nova”. É conseguirmos dizer,   |
+| com evidência, como o Salute funciona hoje e quais peças podem ser    |
+| alteradas sem risco.                                                  |
++=======================================================================+
++-----------------------------------------------------------------------+
+
+Fim do manual • Próximo marco: auditoria do sistema atual
