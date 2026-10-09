@@ -1,0 +1,10 @@
+# Publicação do front no Netlify (saluteia.site), ligada à branch "producao".
+# Arquivos estáticos: sem build. As rotas (/painel, /agenda, ...) abrem o index.html.
+[build]
+  publish = "front"
+  command = ""
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

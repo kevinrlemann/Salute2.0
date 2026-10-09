@@ -27,7 +27,14 @@ docs/
   auditoria/        respostas dos prompts de auditoria (somente leitura)
 setup/
   environment-setup.sh   instala e liga rtk + OmniRoute nas sessões de nuvem
+netlify.toml        publicação do front no Netlify (pasta front/, rotas da SPA)
 ```
+
+## Publicação
+
+- `main`: desenvolvimento. Nada vai para o ar sozinho.
+- `producao`: o que está no ar em https://saluteia.site. O Netlify publica automaticamente a cada push nesta branch.
+- Para publicar: levar a `main` para a `producao` (`git push origin main:producao`), só com aprovação do fundador.
 
 ## Decodificar o front
 
