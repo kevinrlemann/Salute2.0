@@ -42,6 +42,11 @@ function rnPrimeiroNome() {
   return String((SESSAO.v.perfil || {}).nome || '').split(' ')[0] || 'tudo bem';
 }
 
+/* ---------- chave de IA: Google Gemini (começa com AIza) ou Claude ---------- */
+function rnProvedorChave(k) {
+  return /^AIza/.test(String(k || '').trim()) ? 'google' : 'anthropic';
+}
+
 /* ---------- chamada à função do servidor ---------- */
 function rnFn(_x, _x2) {
   return _rnFn.apply(this, arguments);
@@ -148,9 +153,9 @@ function _rnTestarServidor() {
           _context8.n = 1;
           return DB.rpc('salvar_segredo', {
             p_clinica: CLI(),
-            p_provedor: 'anthropic',
+            p_provedor: rnProvedorChave(key),
             p_segredo: key.trim()
-          }, 'Não foi possível guardar a chave do Claude');
+          }, 'Não foi possível guardar a chave da IA');
         case 1:
           _context8.n = 2;
           return rnFn({
@@ -234,7 +239,7 @@ function _rnSalvarConexoes() {
             };
           }();
           _context0.n = 1;
-          return segredo('anthropic', String(k || '').trim(), RN_AI.v.key);
+          return String(k || '').trim() ? segredo(rnProvedorChave(k), String(k || '').trim(), RN_AI.v.key) : Promise.all([segredo('google', '', RN_AI.v.key), segredo('anthropic', '', RN_AI.v.key)]);
         case 1:
           _context0.n = 2;
           return segredo('elevenlabs', String(f.key || '').trim(), RN_VOICE.v.key);
@@ -607,7 +612,7 @@ function _rnSemIA() {
             mode: 'demo'
           });
         case 6:
-          t = why ? "N\xE3o consegui falar com a IA agora (".concat(why, "). Tente de novo em instantes.") : 'A Renata ainda não está ligada à IA nesta clínica. Em **Conexões da Renata**, aqui no chat, o dono ou gestor salva a chave do Claude. Enquanto isso, já consigo preparar lançamentos no financeiro e no estoque para você confirmar.';
+          t = why ? "N\xE3o consegui falar com a IA agora (".concat(why, "). Tente de novo em instantes.") : 'A Renata ainda não está ligada à IA nesta clínica. Em **Conexões da Renata**, aqui no chat, o dono ou gestor conecta a IA (o Google Gemini é gratuito e leva 1 minuto, com o passo a passo na tela). Enquanto isso, já consigo preparar lançamentos no financeiro e no estoque para você confirmar.';
           if (!voice) {
             _context10.n = 7;
             break;

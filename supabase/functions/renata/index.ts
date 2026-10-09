@@ -1,22 +1,24 @@
 // =====================================================================
 // SALUTE 02 · Edge Function "renata"
-// Ponte entre o sistema e as IAs (Claude e ElevenLabs). As chaves ficam no
+// Ponte entre o sistema e as IAs (Google Gemini, Claude e ElevenLabs). As chaves ficam no
 // cofre do Supabase (Vault) ou nos segredos da função e nunca vão para o navegador.
 //
 // Ações (POST, com o login do usuário no cabeçalho Authorization):
-//   status       diz se há chave do Claude e da ElevenLabs para a clínica
-//   chat         repassa a conversa para o Claude, em streaming, e soma o consumo
-//   testar       testa a chave do Claude da clínica
+//   status       diz se há chave de IA (Gemini ou Claude) e da ElevenLabs para a clínica
+//   chat         repassa a conversa para a IA, em streaming, e soma o consumo
+//   testar       testa a chave de IA da clínica
 //   voz          transforma texto em fala pela ElevenLabs (devolve audio/mpeg)
 //   transcrever  transforma fala em texto pela ElevenLabs (multipart com o arquivo)
 //
-// Chave usada, nesta ordem: a da clínica no cofre, a padrão da Salute no cofre,
-// e por fim os segredos ANTHROPIC_API_KEY e ELEVENLABS_API_KEY da função.
+// IA usada, nesta ordem: Gemini da clínica, Claude da clínica, Gemini padrão da
+// Salute (cofre ou segredo GEMINI_API_KEY) e Claude padrão (cofre ou ANTHROPIC_API_KEY).
+// O front sempre conversa no formato do Claude; o Gemini é traduzido em gemini.ts.
 //
 // Proteções do chat (S2): só modelos conhecidos, tamanho máximo de pedido e
 // limite mensal de mensagens quando a clínica usa a chave da Salute.
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { eventosClaude, GEMINI_MODELO, GEMINI_URL, paraGemini, statusGemini } from './gemini.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -88,27 +90,47 @@ Deno.serve(async (req) => {
       p_caracteres_voz: p.chars || 0, p_segundos: p.segs || 0,
     });
 
+  // qual IA atende esta clínica (o Gemini tem preferência)
+  const escolherIA = async () => {
+    const { data: proprias } = await adm.from('segredos_integracao').select('provedor')
+      .eq('clinica_id', clinica).in('provedor', ['google', 'anthropic']).is('excluido_em', null);
+    const tem = (p: string) => (proprias || []).some((x: { provedor: string }) => x.provedor === p);
+    if (tem('google')) return { ia: 'gemini', key: await chave('google', 'GEMINI_API_KEY'), propria: true };
+    if (tem('anthropic')) return { ia: 'claude', key: await chave('anthropic', 'ANTHROPIC_API_KEY'), propria: true };
+    const g = await chave('google', 'GEMINI_API_KEY');
+    if (g) return { ia: 'gemini', key: g, propria: false };
+    const a = await chave('anthropic', 'ANTHROPIC_API_KEY');
+    if (a) return { ia: 'claude', key: a, propria: false };
+    return null;
+  };
+
   if (acao === 'status') {
-    const [c, v] = await Promise.all([chave('anthropic', 'ANTHROPIC_API_KEY'), chave('elevenlabs', 'ELEVENLABS_API_KEY')]);
-    return json({ claude: !!c, voz: !!v });
+    const [ia, v] = await Promise.all([escolherIA(), chave('elevenlabs', 'ELEVENLABS_API_KEY')]);
+    return json({ claude: !!ia, ia: ia ? ia.ia : null, voz: !!v });
   }
 
   if (acao === 'testar') {
-    const key = await chave('anthropic', 'ANTHROPIC_API_KEY');
-    if (!key) return json({ ok: false, motivo: 'sem chave' });
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, messages: [{ role: 'user', content: 'Responda apenas: ok' }] }),
-    });
+    const ia = await escolherIA();
+    if (!ia) return json({ ok: false, motivo: 'sem chave' });
+    const r = ia.ia === 'gemini'
+      ? await fetch(GEMINI_URL, {
+        method: 'POST', headers: { authorization: `Bearer ${ia.key}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ model: GEMINI_MODELO, max_tokens: 8, reasoning_effort: 'none', messages: [{ role: 'user', content: 'Responda apenas: ok' }] }),
+      })
+      : await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers: { 'x-api-key': ia.key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 8, messages: [{ role: 'user', content: 'Responda apenas: ok' }] }),
+      });
     const ok = r.ok;
+    const status = ia.ia === 'gemini' && !ok ? statusGemini(r.status, await r.text()) : r.status;
     await adm.from('renata_configuracoes').update({ claude_status_teste: ok ? 'ok' : 'erro ' + r.status, claude_testado_em: new Date().toISOString() })
       .eq('clinica_id', clinica).is('excluido_em', null);
-    return json({ ok, status: r.status });
+    return json({ ok, status, ia: ia.ia });
   }
 
   if (acao === 'chat') {
-    const key = await chave('anthropic', 'ANTHROPIC_API_KEY');
-    if (!key) return json({ erro: 'sem_chave' }, 412);
+    const ia = await escolherIA();
+    if (!ia || !ia.key) return json({ erro: 'sem_chave' }, 412);
     const p = (corpo.payload || {}) as Record<string, unknown>;
     if (!MODELOS.test(String(p.model || ''))) return json({ erro: 'Modelo inválido' }, 400);
     const msgs = Array.isArray(p.messages) ? p.messages : [];
@@ -120,9 +142,7 @@ Deno.serve(async (req) => {
 
     // limite mensal: vale quando a clínica usa a chave da Salute (sem chave própria no cofre)
     const nova = ehPerguntaNova(msgs);
-    const { data: propria } = await adm.from('segredos_integracao').select('id')
-      .eq('clinica_id', clinica).eq('provedor', 'anthropic').is('excluido_em', null).limit(1);
-    if (!(propria && propria.length) && nova) {
+    if (!ia.propria && nova) {
       const { data: lim } = await adm.rpc('renata_limite_mes', { p_clinica: clinica });
       const usadas = Number(lim?.usadas || 0);
       const limite = lim?.limite == null ? LIMITE_PADRAO : Number(lim.limite);
@@ -131,9 +151,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    const maxTokens = Math.min(Number(p.max_tokens) || 1000, 2000);
+
+    if (ia.ia === 'gemini') {
+      const corpoG = paraGemini({ system: p.system, messages: msgs as { role: string; content: unknown }[], tools: tools as { name: string }[] | undefined, max_tokens: maxTokens });
+      const rg = await fetch(GEMINI_URL, {
+        method: 'POST', headers: { authorization: `Bearer ${ia.key}`, 'content-type': 'application/json' }, body: JSON.stringify(corpoG),
+      });
+      if (!rg.ok || !rg.body) {
+        const txt = await rg.text();
+        return new Response(txt, { status: statusGemini(rg.status, txt), headers: { ...CORS, 'content-type': 'application/json' } });
+      }
+      const traduz = eventosClaude((tin, tout) => { consumo({ mensagens: nova ? 1 : 0, tin, tout }); });
+      return new Response(rg.body.pipeThrough(traduz), { headers: { ...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } });
+    }
+
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: p.model, max_tokens: Math.min(Number(p.max_tokens) || 1000, 2000), system: p.system, tools, messages: msgs, stream: true }),
+      method: 'POST', headers: { 'x-api-key': ia.key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: p.model, max_tokens: maxTokens, system: p.system, tools, messages: msgs, stream: true }),
     });
     if (!r.ok || !r.body) return new Response(await r.text(), { status: r.status, headers: { ...CORS, 'content-type': 'application/json' } });
     // repassa o streaming e conta os tokens no caminho
