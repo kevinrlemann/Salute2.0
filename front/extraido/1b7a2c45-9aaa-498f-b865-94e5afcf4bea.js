@@ -244,6 +244,16 @@ function rnPaciente(nome) {
   var fin = REC_STORE.v.filter(function (r) {
     return t && norm(r.pac).includes(t.split(' ')[0]);
   });
+  if (!p && typeof rnPacientesParecidos === 'function') {
+    var par = rnPacientesParecidos(nome);
+    if (par.length) return {
+      encontrado: false,
+      nomesParecidos: par.slice(0, 4).map(function (x) {
+        return x.nome;
+      }),
+      aviso: 'O nome pode ter sido entendido errado pela voz. Pergunte à pessoa qual destes é antes de responder.'
+    };
+  }
   if (!p) return fin.length ? {
     encontrado: 'só no financeiro',
     nome: fin[0].pac,
@@ -1054,9 +1064,12 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   '3. Nomes: procure o paciente ou profissional mais parecido. Se houver mais de um possível ou nenhum, pergunte qual é, citando no máximo 3 opções.',
   '4. Se a pessoa corrigir algo ("não, foi no cartão"), troque só aquele dado e continue de onde parou.',
   '5. Se não entender, diga o que entendeu e pergunte só o que ficou em dúvida. Nunca invente dado, número, nome ou horário.',
+  '5b. Cumprimentos ("bom dia", "boa tarde", "boa noite", "oi", "olá") são só cumprimentos: nunca viram data, dia da semana, nome ou resposta a uma pergunta. Responda o cumprimento e retome o assunto se houver um.',
+  '5c. Por voz, nomes e palavras podem chegar escritos errado (Giulya pode vir como Júlia ou Julio; "bom dia" parecido com "domingo"). Se algo não fizer sentido no contexto, diga o que entendeu e confirme. Quando a ferramenta avisar dúvida ou nomes parecidos, pergunte qual é; nunca escolha sozinha.',
+  '5d. NA DÚVIDA, NÃO EXECUTE. Só chame propor_* quando cada dado foi dito pela pessoa e você tem certeza do que entendeu. Se deduziu algo (nome, data, horário, valor), confirme esse dado antes.',
   '',
   'DADOS E RESPOSTAS',
-  '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas). Se não existir, diga com clareza e sugira onde ver ou cadastrar. Calcule a partir dos dados; para períodos ou pessoas fora do resumo, use as ferramentas.',
+  '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas). Você pode consultar tudo que a pessoa tem acesso: agenda de qualquer período (agenda_periodo), pacientes e prontuário, financeiro, estoque, CRM (crm_leads) e preços (procedimentos_precos). Antes de dizer que não sabe, consulte a ferramenta certa. Calcule a partir dos dados.',
   '7. Conhecimento de mercado (estética e odontologia no Brasil) só quando pedirem, deixando claro que é referência de mercado e com números realistas.',
   '8. Português do Brasil sempre, mesmo que a pessoa use outra língua. Tom acolhedor e profissional, como uma colega. Comece pela resposta. Sem travessões. Não narre o uso das ferramentas. Valores R$ 1.234,56 e datas dd/mm/aaaa.',
   '9. Para abrir telas use abrir_tela; ficha, prontuário ou conversa de paciente, abrir_paciente. Confirme em uma frase.',
@@ -10330,6 +10343,47 @@ var rnSemAcesso = function rnSemAcesso(id) {
     erro: 'Seu usuário não tem acesso a ' + (RN_SEM_ACESSO[id] || 'essa área') + '. Peça ao gestor da clínica para liberar em Equipe e acessos.'
   };
 };
+/* ---------- nomes parecidos pelo som ----------
+   O reconhecimento de voz escreve nomes do jeito que ouve (Giulya vira Júlia ou Julio). Para não gravar
+   na pessoa errada, a Renata compara pelo som e, se houver dúvida, pergunta em vez de escolher. */
+function rnFonetico(s) {
+  var t = rnNorm(s).replace(/[^a-z]/g, '');
+  t = t.replace(/ph/g, 'f').replace(/th/g, 't').replace(/y/g, 'i').replace(/w/g, 'v').replace(/k/g, 'c').replace(/qu/g, 'c').replace(/gu(?=[ei])/g, 'g').replace(/ch|sh/g, 'x').replace(/lh/g, 'li').replace(/nh/g, 'ni').replace(/c(?=[ei])/g, 's').replace(/g(?=[ei])/g, 'j').replace(/h/g, '').replace(/z/g, 's').replace(/(.)\1+/g, '$1');
+  return t.replace(/ji(?=[aeou])/g, 'j');
+}
+function rnDistancia(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return 2;
+  var d = [];
+  for (var i = 0; i <= a.length; i++) d[i] = [i];
+  for (var j = 0; j <= b.length; j++) d[0][j] = j;
+  for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function rnSoaParecido(a, b) {
+  var x = rnFonetico(a),
+    y = rnFonetico(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  var sx = x.replace(/[aeiou]$/, ''),
+    sy = y.replace(/[aeiou]$/, '');
+  if (sx.length >= 3 && sx === sy) return true;
+  // uma letra trocada só conta em nomes longos e quando o começo é igual (evita Maria x Marta)
+  return x.length >= 6 && y.length >= 6 && x.slice(0, 3) === y.slice(0, 3) && x.slice(-2) === y.slice(-2) && rnDistancia(x, y) <= 1;
+}
+// pacientes cujo nome tem alguma palavra que soa como alguma palavra do nome pedido
+function rnPacientesParecidos(nome, exceto) {
+  var ws = rnNorm(nome).replace(/[^a-z ]/g, ' ').split(/\s+/).filter(function (w) {
+    return w.length > 2 && !/^(paciente|cliente|dona|senhora|senhor|das|dos)$/.test(w);
+  });
+  if (!ws.length) return [];
+  return PAC.filter(function (p) {
+    return p.nome && p !== exceto && ws.every(function (w) {
+      return rnNorm(p.nome).replace(/[^a-z ]/g, ' ').split(/\s+/).some(function (x) {
+        return x.length > 2 && rnSoaParecido(w, x);
+      });
+    });
+  });
+}
 function rnAcharPaciente(nome) {
   var t = rnNorm(nome).replace(/[^a-z0-9 ]/g, ' ').replace(/\b(paciente|cliente|dona|senhora|senhor|sr|sra|da|do|de|dos|das|a|o)\b/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t) return {
@@ -10353,13 +10407,32 @@ function rnAcharPaciente(nome) {
       });
     });
   }
-  if (c.length === 1) return {
-    p: c[0]
-  };
+  var exato = c.length === 1 && n(c[0]).replace(/\s+/g, ' ').trim() === t;
+  if (c.length === 1) {
+    // só o primeiro nome (ou parte) e existe outro paciente que soa parecido: pergunta antes de seguir
+    var outros = exato ? [] : rnPacientesParecidos(t, c[0]);
+    if (!outros.length) return {
+      p: c[0]
+    };
+    return {
+      erro: 'Dúvida no nome. Não execute nada. Pergunte à pessoa qual destes é o paciente: ' + [c[0]].concat(outros).slice(0, 4).map(function (p) {
+        return p.nome;
+      }).join(', ') + '.',
+      duvida: true
+    };
+  }
   if (c.length > 1) return {
     erro: 'Encontrei mais de um paciente com esse nome: ' + c.slice(0, 5).map(function (p) {
       return p.nome;
-    }).join(', ') + '. Qual deles?'
+    }).join(', ') + '. Não execute nada. Pergunte qual deles.',
+    duvida: true
+  };
+  var par = rnPacientesParecidos(t);
+  if (par.length) return {
+    erro: 'Não há paciente chamado exatamente ' + String(nome || '').trim() + ', mas há nomes que soam parecido: ' + par.slice(0, 4).map(function (p) {
+      return p.nome;
+    }).join(', ') + '. Não execute nada. Pergunte à pessoa se é um destes (o nome pode ter sido entendido errado pela voz).',
+    duvida: true
   };
   return {
     erro: 'Não encontrei paciente com o nome ' + String(nome || '').trim() + ' no cadastro.',
@@ -12723,6 +12796,222 @@ function rnAcharLead(q) {
     erro: 'Não encontrei esse lead no CRM.'
   };
 }
+/* ---------- consultas amplas da Renata: agenda de um período, CRM e tabela de procedimentos ---------- */
+function rnIsoMais(iso, dias) {
+  var d = new Date(iso + 'T12:00:00');
+  d.setDate(d.getDate() + dias);
+  return isoOf(d);
+}
+function rnAgendaPeriodo(i) {
+  var ini = /^\d{4}-\d{2}-\d{2}$/.test(String(i.inicio || '')) ? String(i.inicio) : TODAY_ISO;
+  var fim = /^\d{4}-\d{2}-\d{2}$/.test(String(i.fim || '')) ? String(i.fim) : rnIsoMais(ini, 6);
+  if (fim < ini) {
+    var tmp = ini;
+    ini = fim;
+    fim = tmp;
+  }
+  if (fim > rnIsoMais(ini, 92)) fim = rnIsoMais(ini, 92);
+  // meses fora da janela já carregada são buscados antes de responder
+  var meses = [],
+    d = new Date(ini + 'T12:00:00');
+  d.setDate(1);
+  while (isoOf(d) <= fim) {
+    meses.push(new Date(d));
+    d.setMonth(d.getMonth() + 1);
+  }
+  var garantir = SB_ON && typeof agendaGarantirMes === 'function' ? Promise.all(meses.map(function (m) {
+    return agendaGarantirMes(m)["catch"](function () {});
+  })) : Promise.resolve();
+  return garantir.then(function () {
+    var prof = i.profissional ? rnAcharProf(String(i.profissional)) : null;
+    if (i.profissional && !prof) return {
+      erro: 'Não encontrei o profissional ' + i.profissional + '. Profissionais: ' + PROS.map(function (p) {
+        return p.n;
+      }).join(', ') + '.'
+    };
+    var pacQ = String(i.paciente || '').trim();
+    var st = String(i.status || '').trim().toLowerCase();
+    var itens = APPT_STORE.v.filter(function (a) {
+      if (a.date < ini || a.date > fim) return false;
+      if (prof && a.profId !== prof.id) return false;
+      if (st && st !== 'todos' && rnNorm(a.status || '') !== rnNorm(st)) return false;
+      if (!st && a.status === 'cancelado') return false;
+      if (pacQ) {
+        var nomeA = rnNorm(a.pac || '');
+        var ok = rnNorm(pacQ).split(/\s+/).filter(function (w) {
+          return w.length > 2;
+        }).every(function (w) {
+          return nomeA.includes(w) || nomeA.split(/\s+/).some(function (x) {
+            return rnSoaParecido(w, x);
+          });
+        });
+        if (!ok) return false;
+      }
+      return true;
+    }).sort(function (a, b) {
+      return String(a.ini).localeCompare(String(b.ini));
+    });
+    var porStatus = {},
+      porProf = {},
+      porDia = {};
+    itens.forEach(function (a) {
+      var pr = (PROS.find(function (p) {
+        return p.id === a.profId;
+      }) || {}).n || 'Sem profissional';
+      porStatus[a.status || 'agendado'] = (porStatus[a.status || 'agendado'] || 0) + 1;
+      porProf[pr] = (porProf[pr] || 0) + 1;
+      porDia[dBR(a.date)] = (porDia[dBR(a.date)] || 0) + 1;
+    });
+    var nomes = {};
+    itens.forEach(function (a) {
+      nomes[a.pac] = 1;
+    });
+    return {
+      periodo: dBR(ini) + ' a ' + dBR(fim),
+      total: itens.length,
+      porStatus: porStatus,
+      porProfissional: porProf,
+      porDia: porDia,
+      pacientesDiferentes: pacQ ? Object.keys(nomes) : undefined,
+      aviso: pacQ && Object.keys(nomes).length > 1 ? 'Há mais de um paciente com nome parecido: confirme com a pessoa qual é antes de responder.' : undefined,
+      agendamentos: itens.slice(0, 60).map(function (a) {
+        var pr = PROS.find(function (p) {
+          return p.id === a.profId;
+        }) || {};
+        var dd = new Date(a.date + 'T12:00:00');
+        return {
+          data: dBR(a.date),
+          diaSemana: RN_DIAS_SEMANA_R[dd.getDay()],
+          horario: BR.hm(a.ini) + ' às ' + BR.hm(a.fim),
+          paciente: a.pac,
+          procedimento: a.proc || undefined,
+          profissional: pr.n || '',
+          status: a.status || undefined
+        };
+      }),
+      mostrando: itens.length > 60 ? 'Mostrando os 60 primeiros de ' + itens.length + '. Use filtros para ver o resto.' : undefined
+    };
+  });
+}
+var RN_DIAS_SEMANA_R = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+RENATA_TOOLS.push({
+  name: 'agenda_periodo',
+  description: 'Agenda de um período de até 3 meses: totais e lista. Filtros: profissional, paciente (aceita nome parecido), status (cancelado, faltou, todos). Próximo horário de alguém: inicio hoje, fim hoje+90 dias.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      inicio: {
+        type: 'string',
+        description: 'AAAA-MM-DD'
+      },
+      fim: {
+        type: 'string',
+        description: 'AAAA-MM-DD'
+      },
+      profissional: {
+        type: 'string'
+      },
+      paciente: {
+        type: 'string'
+      },
+      status: {
+        type: 'string'
+      }
+    },
+    required: ['inicio', 'fim']
+  },
+  execute: function execute(i) {
+    if (!rnPode('agenda')) return rnSemAcesso('agenda');
+    return rnAgendaPeriodo(i);
+  }
+}, {
+  name: 'crm_leads',
+  description: 'Leads do CRM: total por etapa e lista com nome, telefone, interesse, etapa e IA ligada. Filtros: etapa e busca (nome ou telefone).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      etapa: {
+        type: 'string'
+      },
+      busca: {
+        type: 'string'
+      }
+    }
+  },
+  execute: function execute(i) {
+    if (!rnPode('mensagens')) return {
+      erro: 'Seu usuário não tem acesso ao CRM. Peça ao gestor da clínica para liberar em Equipe e acessos.'
+    };
+    var et = rnNorm(String(i.etapa || '')),
+      bq = rnNorm(String(i.busca || '')),
+      dig = onlyDigits(String(i.busca || ''));
+    var todos = LEADS_STORE.v || [];
+    var porEtapa = {};
+    todos.forEach(function (l) {
+      porEtapa[l.stage || 'sem etapa'] = (porEtapa[l.stage || 'sem etapa'] || 0) + 1;
+    });
+    var lista = todos.filter(function (l) {
+      if (et && !rnNorm(String(l.stage || '')).includes(et.replace(/\s+/g, '_')) && !rnNorm(String(l.stage || '')).includes(et)) return false;
+      if (dig.length >= 4) return onlyDigits(l.tel || '').includes(dig);
+      if (bq) return rnNorm(l.nome || '').includes(bq) || bq.split(/\s+/).every(function (w) {
+        return w.length < 3 || rnNorm(l.nome || '').split(/\s+/).some(function (x) {
+          return rnSoaParecido(w, x);
+        });
+      });
+      return true;
+    });
+    return {
+      total: todos.length,
+      porEtapa: porEtapa,
+      encontrados: lista.length,
+      leads: lista.slice(0, 40).map(function (l) {
+        return {
+          nome: crmName(l),
+          telefone: l.tel || undefined,
+          interesse: l.proc || undefined,
+          etapa: l.stage,
+          iaLigada: !!l.ia
+        };
+      })
+    };
+  }
+}, {
+  name: 'procedimentos_precos',
+  description: 'Tabela de procedimentos da clínica com valor e categoria. Use para preço, quanto custa ou quais procedimentos a clínica faz.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      busca: {
+        type: 'string'
+      }
+    }
+  },
+  execute: function execute(i) {
+    var bq = rnNorm(String(i.busca || ''));
+    var lista = (typeof FIN_PROCS !== 'undefined' ? FIN_PROCS : []).filter(function (p) {
+      return !bq || rnNorm(p.n).includes(bq) || bq.split(/\s+/).some(function (w) {
+        return w.length > 3 && rnNorm(p.n).includes(w);
+      });
+    });
+    return {
+      total: lista.length,
+      procedimentos: lista.slice(0, 60).map(function (p) {
+        return {
+          nome: p.n,
+          valor: 'R$ ' + Number(p.v || 0).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2
+          }),
+          categoria: p.cat || undefined
+        };
+      })
+    };
+  }
+});
+Object.assign(RN_TOOL_LABEL, {
+  agenda_periodo: 'Consultando a agenda',
+  crm_leads: 'Consultando o CRM',
+  procedimentos_precos: 'Vendo a tabela de procedimentos'
+});
 Object.assign(RN_TOOL_LABEL, {
   horarios_livres: 'Vendo os horários livres',
   propor_agendamento: 'Preparando o agendamento',
