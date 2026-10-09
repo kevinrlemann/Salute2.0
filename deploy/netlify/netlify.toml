@@ -1,0 +1,3 @@
+# Publicação do front no Netlify (saluteia.site): arquivos estáticos, sem build.
+[build]
+  publish = "."
