@@ -2821,11 +2821,13 @@ function Dialog({
   }, footer) : null);
   if (inline) return panel;
   return /*#__PURE__*/React.createElement("div", {
+    // marca de sobreposição: a gaveta de baixo não fecha com Esc enquanto o diálogo estiver aberto
+    "data-overlay": "1",
     onClick: onClose,
     style: {
       position: 'fixed',
       inset: 0,
-      zIndex: 100,
+      zIndex: 600, // Z.dialogo: acima das gavetas e telas cheias
       background: 'var(--surface-overlay)',
       backdropFilter: 'blur(var(--blur-overlay))',
       WebkitBackdropFilter: 'blur(var(--blur-overlay))',
@@ -3297,7 +3299,7 @@ function App() {
   })))), toast ? /*#__PURE__*/React.createElement("div", {
     style: {
       position: mobile ? 'absolute' : 'fixed',
-      zIndex: 120,
+      zIndex: 700, // Z.aviso
       right: mobile ? 12 : 24,
       left: mobile ? 12 : 'auto',
       top: mobile ? 70 : 'auto',

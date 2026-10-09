@@ -60,6 +60,19 @@ var SB = function () {
     return null;
   }
 }();
+/* ---------- Camadas da tela (z-index): fonte única para telas novas ----------
+   conteúdo e menus até 100 · gavetas laterais (ficha, Renata) 200 a 250 ·
+   visualizadores de tela cheia 300 a 400 · diálogos 600 · avisos 700.
+   Um diálogo abre sempre acima de quem o chamou e os avisos nunca ficam
+   escondidos atrás de um diálogo. */
+var Z = {
+  menu: 60,
+  gaveta: 200,
+  telaCheia: 300,
+  dialogo: 600,
+  aviso: 700
+};
+window.Z = Z;
 var SB_ON = !!SB;
 var SB_MOTIVO = SB_ON ? null : SB_KEY_ERRADA ? 'A chave configurada é a service role. Use a chave pública (anon).' : !SB_CFG.url || !SB_CFG.key ? 'As variáveis SUPABASE_URL e SUPABASE_ANON_KEY não foram preenchidas.' : 'A biblioteca do Supabase não carregou.';
 
@@ -2411,7 +2424,7 @@ function AvisoDemo(_ref17) {
     role: "status",
     style: {
       position: 'fixed',
-      zIndex: 145,
+      zIndex: Z.aviso,
       left: '50%',
       transform: 'translateX(-50%)',
       top: mobile ? 'auto' : 14,
@@ -2515,7 +2528,7 @@ function AvisoGravacao(_ref18) {
     "aria-live": "polite",
     style: {
       position: 'fixed',
-      zIndex: 139,
+      zIndex: Z.aviso,
       right: mobile ? 12 : 24,
       bottom: mobile ? 'calc(100px + env(safe-area-inset-bottom))' : 24,
       display: 'flex',
@@ -2540,7 +2553,7 @@ function AvisoGravacao(_ref18) {
   }), "Salvando...", /*#__PURE__*/React.createElement("style", null, '@keyframes sbgira{to{transform:rotate(360deg)}}')) : null, vis ? /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
-      zIndex: 141,
+      zIndex: Z.aviso + 1,
       right: mobile ? 12 : 24,
       left: mobile ? 12 : 'auto',
       top: mobile ? 70 : 'auto',

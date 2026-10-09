@@ -29,6 +29,16 @@ Leia `README.md`, `docs/supabase.md` e `docs/auditoria/` antes de qualquer alter
 - Executar o manual prompt a prompt; só avançar para o próximo bloco depois do "ok" dele.
 - Ao finalizar cada bloco, enviar um diagnóstico curto: ✅ para o que foi feito e ❌ para o que não foi feito (com o motivo e o que falta).
 
+## Padrões de interface (valem para toda tela nova)
+
+- Camadas (z-index) seguem a escala única `Z` definida em `front/extraido/5a1e7e02-…c001.js`:
+  conteúdo e menus até 100 · gavetas laterais (ficha, Renata) 200–250 · telas cheias 300–400 ·
+  diálogos `Z.dialogo` (600) · avisos `Z.aviso` (700). Nunca usar número solto.
+- Janela aberta a partir de outra (ex.: agendar pela ficha) abre como diálogo centralizado acima de tudo,
+  com o fundo escurecido; ao fechar, volta para a tela de origem sem perder o contexto.
+- Toda sobreposição leva `data-overlay="1"`: o Esc fecha só a janela de cima.
+- Avisos de erro nunca podem ficar atrás de um diálogo.
+
 ## Ferramentas
 
 `setup/environment-setup.sh` instala rtk e OmniRoute (`http://localhost:20128`). Detalhes e domínios bloqueados em `docs/conexoes.md`.

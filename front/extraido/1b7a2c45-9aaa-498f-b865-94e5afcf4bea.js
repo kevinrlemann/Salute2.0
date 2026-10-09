@@ -3609,11 +3609,12 @@ function AgEditar(_ref) {
     return s.chave !== 'cancelado';
   });
   return /*#__PURE__*/React.createElement("div", {
+    "data-overlay": "1",
     onClick: onClose,
     style: {
       position: 'fixed',
       inset: 0,
-      zIndex: 1000,
+      zIndex: Z.dialogo,
       background: 'rgba(14,35,80,.35)',
       backdropFilter: 'blur(3px)',
       display: 'flex',
@@ -10374,7 +10375,7 @@ function App() {
     },
     style: {
       position: 'fixed',
-      zIndex: 140,
+      zIndex: Z.aviso,
       right: mobile ? 12 : 24,
       left: mobile ? 12 : 'auto',
       top: mobile ? 70 : 24,
@@ -10393,7 +10394,7 @@ function App() {
   })) : null, toast ? /*#__PURE__*/React.createElement("div", {
     style: {
       position: mobile ? 'absolute' : 'fixed',
-      zIndex: 120,
+      zIndex: Z.aviso,
       right: mobile ? 12 : 24,
       left: mobile ? 12 : 'auto',
       top: mobile ? 70 : 'auto',
