@@ -129,6 +129,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Ao finalizar cada bloco, envie um diagnóstico curto: ✅ para o que foi feito e ❌ para o que não foi feito
   (com o motivo e o que falta).
 - Publicação em produção só quando ele mandar ("publicar").
+- Ao sugerir serviços, ferramentas ou fornecedores, priorize SEMPRE o menor custo (grátis primeiro) em relação ao
+  resultado. Mostre a opção grátis que resolve antes da paga e diga o limite de cada uma (decisão do fundador, 2026-10-09).
+- Responda sempre em português do Brasil.
 
 ## Ferramentas
 

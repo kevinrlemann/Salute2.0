@@ -30,6 +30,9 @@ Itens que só você consegue fazer (painéis, contas, pagamentos ou decisões). 
 ## 5. Publicação
 - [ ] Se o site não atualizar sozinho depois de um "publicar", abrir app.netlify.com › saluteia › Deploys › "Trigger deploy".
       (Em 2026-10-09 a Netlify não recebeu o aviso do GitHub de um envio para `producao`.)
+- [ ] Usar os créditos pagos da Netlify até acabarem e depois migrar o site para o **Cloudflare Pages** (grátis,
+      500 publicações por mês, uso comercial permitido). Antes: criar `front/_headers` e `front/_redirects` com as
+      mesmas regras do `netlify.toml`, testar no endereço `.pages.dev` e só então apontar `saluteia.site`.
 
 ## 6. Decisões
 - [ ] LGPD: aceitar formalmente os fornecedores (Groq, ElevenLabs, provedor de WhatsApp) e o texto de privacidade.
