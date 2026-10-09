@@ -58,21 +58,31 @@ var PLANS = [{
   id: 'inicial',
   nome: 'Inicial',
   preco: 197,
-  sub: 'Para organizar a clínica inteira em um só lugar.',
-  itens: ['Todos os módulos do sistema', 'Pacientes, prontuário e agenda', 'Mensagens com a equipe e WhatsApp', 'Estoque e financeiro', 'Saluteflix e Salute Cast']
+  sub: 'Gestão completa da clínica com o WhatsApp no mesmo lugar.',
+  limite: 0,
+  itens: ['Pacientes, prontuário e agenda', 'Anamnese com assinatura digital', 'Financeiro, estoque e CRM de leads', 'WhatsApp da clínica no sistema (1 número)', 'Até 3 profissionais e 5 usuários', 'Saluteflix e Salute Cast']
+}, {
+  id: 'assistente',
+  nome: 'Assistente',
+  preco: 397,
+  sub: 'A Renata IA ajuda a equipe dentro do sistema.',
+  limite: 1500,
+  itens: ['Tudo do plano Inicial', 'Renata IA dentro do sistema (1.500 perguntas por mês)', 'Renata por voz (60 minutos por mês)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', 'Até 6 profissionais e 10 usuários']
 }, {
   id: 'iapro',
   nome: 'IA Pro',
   preco: 997,
-  sub: 'A Renata IA atende, agenda e confirma por você.',
+  sub: 'A Renata IA atende, agenda e confirma pelo WhatsApp.',
   destaque: true,
-  itens: ['Tudo do plano Inicial', 'Renata IA no WhatsApp 24 horas', "At\xE9 ".concat((PLAN_LIMIT / 1000).toLocaleString('pt-BR'), " mil mensagens de IA por m\xEAs"), 'Agendamento e confirmação automáticos', 'Envio automático de anamnese']
+  limite: 10000,
+  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', 'Até 10 mil mensagens de IA por mês', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', 'Até 10 profissionais e 20 usuários']
 }, {
   id: 'enterprise',
   nome: 'Enterprise',
   preco: null,
-  sub: 'Para quem passa do limite ou precisa de mais de uma IA.',
-  itens: ['Tudo do plano IA Pro', "Mais de ".concat((PLAN_LIMIT / 1000).toLocaleString('pt-BR'), " mil mensagens por m\xEAs"), 'Várias IAs, por unidade ou especialidade', 'Plano montado conforme o volume', 'Acompanhamento de um consultor']
+  sub: 'A partir de R$ 1.997 por mês. Para redes, várias unidades e alto volume.',
+  limite: null,
+  itens: ['Tudo do plano IA Pro', '30 mil mensagens de IA ou mais por mês', 'Várias unidades e várias IAs', 'API oficial do WhatsApp (Meta)', 'Consultor dedicado e suporte com prazo', 'Profissionais e usuários sem limite']
 }];
 var PLAN_STORE = makeStore('iapro');
 function PlanosSection(_ref2) {
@@ -123,7 +133,9 @@ function PlanosSection(_ref2) {
     return p.id === cur;
   }) || {
     nome: ''
-  }).nome), " \xB7 pr\xF3xima cobran\xE7a em ", SB_ON ? proxCobranca() : '10/10/2026')), cur === 'iapro' ? /*#__PURE__*/React.createElement("div", {
+  }).nome), " \xB7 pr\xF3xima cobran\xE7a em ", SB_ON ? proxCobranca() : '10/10/2026')), (PLANS.find(function (p) {
+    return p.id === cur;
+  }) || {}).limite > 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       minWidth: 260,
       flex: mobile ? 1 : 'none',
@@ -162,7 +174,7 @@ function PlanosSection(_ref2) {
   }, used.toLocaleString('pt-BR'), " de ", PLAN_LIMIT.toLocaleString('pt-BR'), " usadas \xB7 renova dia ", SB_ON ? diaRenova() : 10)) : null), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: mobile ? '1fr' : 'repeat(3, minmax(0,1fr))',
+      gridTemplateColumns: mobile ? '1fr' : 'repeat(2, minmax(0,1fr))',
       gap: 16,
       alignItems: 'stretch'
     }

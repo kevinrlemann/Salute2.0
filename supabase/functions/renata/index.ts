@@ -147,6 +147,9 @@ Deno.serve(async (req) => {
       const { data: lim } = await adm.rpc('renata_limite_mes', { p_clinica: clinica });
       const usadas = Number(lim?.usadas || 0);
       const limite = lim?.limite == null ? LIMITE_PADRAO : Number(lim.limite);
+      if (!lim?.ilimitado && limite === 0) {
+        return json({ erro: 'A Renata não faz parte do plano atual da clínica. Para usar, mude para o plano Assistente em Minha conta › Plano e cobrança.' }, 429);
+      }
       if (!lim?.ilimitado && usadas >= limite) {
         return json({ erro: `A Renata chegou ao limite de ${limite} mensagens deste mês. Fale com a Salute para ampliar.` }, 429);
       }

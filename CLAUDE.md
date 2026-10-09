@@ -81,6 +81,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.
 - Feriados: os nacionais são calculados (`feriados_nacionais`) e somados aos da clínica (`feriados_do_mes`).
 - Limite mensal da Renata quando a clínica usa a chave da Salute (`renata_limite_mes`, padrão 300).
+- Planos (tabela `planos`, 2026-10-09): Inicial R$ 197 (sem IA, `limite_mensagens_ia` 0), Assistente R$ 397 (1.500),
+  IA Pro R$ 997 (10.000) e Enterprise sob consulta a partir de R$ 1.997 (null = sob medida em `renata_consumo`).
+  Limites de profissionais e usuários aparecem nos cartões, mas ainda não são aplicados pelo sistema.
 
 ## Segurança (obrigatório)
 

@@ -626,7 +626,7 @@ function rnSnapshot() {
         idioma: LANG.v,
         somNovaMensagem: SOUND.v.on ? 'ligado (' + SOUND.v.tone + ')' : 'desligado'
       },
-      planosDisponiveis: 'Inicial R$ 197/mês (todos os módulos), IA Pro R$ 997/mês (Renata IA com limite mensal de mensagens), Enterprise sob consulta'
+      planosDisponiveis: 'Inicial R$ 197/mês (gestão completa e WhatsApp, sem IA), Assistente R$ 397/mês (Renata dentro do sistema, 1.500 perguntas e 60 min de voz), IA Pro R$ 997/mês (IA atendendo no WhatsApp, 10 mil mensagens), Enterprise a partir de R$ 1.997/mês (sob consulta, várias unidades)'
     }
   };
   return JSON.stringify(data);
