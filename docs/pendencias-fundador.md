@@ -27,7 +27,11 @@ Itens que só você consegue fazer (painéis, contas, pagamentos ou decisões). 
 - [ ] Authentication › URL Configuration › Site URL `https://saluteia.site`.
 - [ ] Database › Backups: confirmar backup diário (plano Pro para PITR).
 
-## 5. Decisões
+## 5. Publicação
+- [ ] Se o site não atualizar sozinho depois de um "publicar", abrir app.netlify.com › saluteia › Deploys › "Trigger deploy".
+      (Em 2026-10-09 a Netlify não recebeu o aviso do GitHub de um envio para `producao`.)
+
+## 6. Decisões
 - [ ] LGPD: aceitar formalmente os fornecedores (Groq, ElevenLabs, provedor de WhatsApp) e o texto de privacidade.
 - [ ] Quer uma coluna "Finalizado" separada de "Convertido" no CRM? (Hoje "atendimento finalizado" vai para Convertido.)
 - [ ] Aceite de convite de equipe (fluxo de convite por e-mail).
