@@ -81,6 +81,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** P.
 
 ### P0-02 — Código malicioso na impressão da anamnese (assinatura e títulos sem escape)
+> ✅ **Feito em 2026-10-09:** impressão em `iframe` com `sandbox` (sem scripts), título escapado, assinatura só com números
+> no front (`assinaturaSvgTexto`) e no banco (gatilho `tg_anamnese_envios_assinatura_valida`). Testado: nenhum script roda.
 - **Problema:** a assinatura enviada pelo link público é montada como texto HTML sem escape e escrita num `iframe`
   sem `sandbox`, na mesma origem do sistema. O título da impressão também não é escapado.
 - **Evidência:** `c00b.js:951-958` (`assinaturaSvgTexto`, `p.join(',')` sem conversão para número) [confirmado nesta

@@ -922,11 +922,13 @@ function alertasDeRecs(recs) {
 function imprimirHtml(titulo, corpo) {
   var f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
+  // sem allow-scripts: nada que venha nos dados consegue rodar código na impressão
+  f.setAttribute('sandbox', 'allow-same-origin allow-modals');
   f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
   document.body.appendChild(f);
   var d = f.contentWindow.document;
   d.open();
-  d.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + titulo + '</title><style>body{font-family:Inter,system-ui,sans-serif;color:#0E2350;margin:32px;font-size:13px;line-height:1.5}h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;margin:22px 0 8px;color:#1F5EFF;text-transform:uppercase;letter-spacing:.04em}.m{color:#5B6B86}.q{margin:0 0 10px}.q b{display:block}.al{color:#C2272D;font-weight:600}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #DCE4F2;padding:6px 8px;text-align:left;font-size:12px}img{max-width:100%}.ass{border:1px solid #DCE4F2;border-radius:10px;padding:12px;margin-top:8px}</style></head><body>' + corpo + '</body></html>');
+  d.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + escHtml(titulo) + '</title><style>body{font-family:Inter,system-ui,sans-serif;color:#0E2350;margin:32px;font-size:13px;line-height:1.5}h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;margin:22px 0 8px;color:#1F5EFF;text-transform:uppercase;letter-spacing:.04em}.m{color:#5B6B86}.q{margin:0 0 10px}.q b{display:block}.al{color:#C2272D;font-weight:600}table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #DCE4F2;padding:6px 8px;text-align:left;font-size:12px}img{max-width:100%}.ass{border:1px solid #DCE4F2;border-radius:10px;padding:12px;margin-top:8px}</style></head><body>' + corpo + '</body></html>');
   d.close();
   setTimeout(function () {
     try {
@@ -951,9 +953,19 @@ var escHtml = function escHtml(s) {
 var assinaturaSvgTexto = function assinaturaSvgTexto(a) {
   var w = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 320;
   var h = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 120;
-  return a && a.tracos ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + (a.w || 320) + ' ' + (a.h || 120) + '" width="' + w + '" height="' + h + '">' + a.tracos.map(function (t) {
-    return '<polyline fill="none" stroke="#0E2350" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" points="' + t.map(function (p) {
-      return p.join(',');
+  // só números entram no desenho: a assinatura vem de um link público
+  var num = function num(v, pad) {
+    var n = Number(v);
+    return isFinite(n) ? Math.round(n * 10) / 10 : pad;
+  };
+  var lista = function lista(x) {
+    return Array.isArray(x) ? x : [];
+  };
+  return a && Array.isArray(a.tracos) ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + num(a.w, 320) + ' ' + num(a.h, 120) + '" width="' + num(w, 320) + '" height="' + num(h, 120) + '">' + a.tracos.map(function (t) {
+    return '<polyline fill="none" stroke="#0E2350" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" points="' + lista(t).map(function (p) {
+      return lista(p).slice(0, 2).map(function (v) {
+        return num(v, 0);
+      }).join(',');
     }).join(' ') + '"/>';
   }).join('') + '</svg>' : '';
 };
