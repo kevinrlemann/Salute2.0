@@ -692,13 +692,13 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 
 ## Novo (2026-10-09)
 
-### P0-09 — Duas implementações do Agente de IA no mesmo banco
+### P0-12 — Duas implementações do Agente de IA no mesmo banco
 - **Problema:** além das tabelas `agente_ia`/`tarefas_automacao`/`envios_pendentes` (desta sessão, com testes), outra sessão
   aplicou `ia_agente_01a..04` (`ia_automacao_config`, `ia_jobs`, `ia_outbox`, ...), fora do repositório. [confirmado]
 - **Risco:** lembretes e follow-ups em dobro quando o n8n for ligado; configuração em dois lugares. [inferido]
 - **Ação:** o fundador escolhe uma; a outra é desativada por migration versionada antes de construir o n8n.
 
-### P0-10 — Funções `ia_*` abertas para qualquer pessoa (urgente)
+### P0-13 — Funções `ia_*` abertas para qualquer pessoa (urgente)
 - **Problema:** as funções `ia_*` da segunda implementação são `SECURITY DEFINER`, executáveis por `anon` e `authenticated`
   e não checam a clínica de quem chama. Com a chave pública do site dá para, por exemplo: marcar consulta como paga
   (`ia_confirmar_pagamento`), injetar mensagem falsa em qualquer clínica (`ia_ingerir_evento` com provedor `teste`), mover
@@ -706,4 +706,4 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Correção pronta (não aplicada, precisa da autorização do fundador porque mexe na outra implementação):**
   para cada função `public.ia_*` com `SECURITY DEFINER`: `revoke execute ... from public, anon, authenticated;`
   `grant execute ... to service_role;`. Gatilhos e chamadas internas continuam funcionando.
-- **Alternativa:** se a decisão do P0-09 for apagar a implementação `ia_*`, isto some junto.
+- **Alternativa:** se a decisão do P0-12 for apagar a implementação `ia_*`, isto some junto.

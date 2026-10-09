@@ -66,6 +66,6 @@ gatilhos em `conversas` e `mensagens`). Ela resolve o mesmo documento com outros
 - Essas migrations **não estão no repositório** (não confirmado de onde vieram).
 - Antes de construir o n8n é preciso **escolher uma** e desativar a outra; com as duas ligadas, lembretes e
   follow-ups poderiam sair em dobro (inferido). Decisão do fundador.
-- **Risco de segurança aberto:** as funções `ia_*` podem ser chamadas sem login e sem checar a clínica. Ver `docs/backlog.md` P0-10. [confirmado]
+- **Risco de segurança aberto:** as funções `ia_*` podem ser chamadas sem login e sem checar a clínica. Ver `docs/backlog.md` P0-13. [confirmado]
 - Corrigido nesta sessão: `contato_optout` deixou de ser chamável direto por usuário (migration `contato_optout_interno`).
 

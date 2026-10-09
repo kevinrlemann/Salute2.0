@@ -243,7 +243,7 @@ limite baixo de envios por hora e é feito para teste. [inferido: SMTP não conf
 
 | Id | Nível | Achado | Estado |
 |---|---|---|---|
-| S9 | ALTO | Funções `ia_*` (segunda implementação do agente) executáveis por anon/authenticated sem checar clínica | aberto, correção descrita em backlog P0-10 [confirmado] |
+| S9 | ALTO | Funções `ia_*` (segunda implementação do agente) executáveis por anon/authenticated sem checar clínica | aberto, correção descrita em backlog P0-13 [confirmado] |
 | S10 | BAIXO | `contato_optout` sem checagem de clínica | **corrigido** (só servidor) [confirmado] |
 | — | — | Funções de fila do agente (`reivindicar_*`, `concluir_*`, `registrar_webhook`) recusam quem não é `service_role`; as tabelas novas só permitem leitura pela própria clínica | [confirmado pelos testes 38/38] |
 
