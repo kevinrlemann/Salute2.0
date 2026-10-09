@@ -87,3 +87,15 @@ Só o **administrador master** (`perfis_usuario.admin_plataforma`, função `eh_
 (gatilho `tg_procedimentos_campos_ia`) e `agente_ia_config` para usuário logado. `agente_ia_regras` só para o servidor.
 A aba some para os demais e saiu das permissões da equipe (`SUBMODS.perfil`). Migration `agente_ia_so_admin_master`. Testes 39/39.
 
+
+## WhatsApp não oficial e escala (2026-10-09, tarde) [confirmado]
+
+- Função `whatsapp` (Supabase, `supabase/functions/whatsapp`): recebe o webhook da Evolution API ou da Z-API
+  (`?i=<instância>&t=<webhook_token>`), grava por `n8n_ingerir_evento`, baixa fotos, áudios, vídeos e documentos para o
+  bucket `mensagens` (`anexos_mensagem`) e atualiza o status da conexão. A tela de Integrações chama a mesma função
+  (`conectar`, `estado`, `desconectar`) para criar a instância, ligar o webhook e mostrar o QR Code. Testes: `testes/provedores.test.mts`.
+- Envio continua pelo n8n: `n8n_envio_preflight` monta o pedido da Meta, Z-API ou Evolution conforme a instância.
+- Fila justa (`fila_justa_por_clinica`): rodízio por clínica, `tarefas_simultaneas_clinica` e `envios_minuto_clinica`.
+- Transferência para a equipe aparece em tempo real com o selo "Aguardando equipe" na lista de Conversas e avisa a equipe
+  mesmo sem responsáveis escolhidos. Falhas graves (`erros_automacao`) viram aviso para o dono/gestor.
+- Arquitetura para 100 clínicas: `docs/n8n-escala.md`. **Os fluxos do n8n estão desligados (404)**: ver `docs/pendencias-fundador.md`.

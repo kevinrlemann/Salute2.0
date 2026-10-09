@@ -1,6 +1,7 @@
--- Testes de aceite do backend do Agente de IA (39 casos). Rodar inteiro no SQL do Supabase.
+-- Testes de aceite do backend do Agente de IA (46 casos). Rodar inteiro no SQL do Supabase.
 -- Usa a clínica, o dono, um procedimento e o funil da base de demonstração (ajuste os ids se forem outros).
--- Resultado de 2026-10-09: 39 de 39 aprovados (depois de contato_optout_interno; também com as tabelas ia_* da outra implementação ativas).
+-- Resultado de 2026-10-09 (tarde): 46 de 46 aprovados, com fila justa, atendimento finalizado no CRM e isolamento entre clínicas.
+-- Antes: 39 de 39 aprovados (depois de contato_optout_interno; também com as tabelas ia_* da outra implementação ativas).
 -- Ao final o bloco levanta um erro proposital com os resultados: isso desfaz tudo o que o teste gravou.
 do $$
 declare
@@ -9,7 +10,7 @@ declare
   v_proc uuid := 'b2000001-0000-0000-0000-000000000001';
   v_funil uuid := 'a0090001-0000-0000-0000-000000000001';
   v_tel text := '+5511999990000';
-  r jsonb; r2 jsonb; t record; n int; v_ag uuid; v_conv uuid; v_lead uuid; v_prof uuid; v_ini timestamptz; v_id uuid; v_txt text;
+  r jsonb; r2 jsonb; t record; n int; i int; v_ag uuid; v_conv uuid; v_lead uuid; v_prof uuid; v_ini timestamptz; v_id uuid; v_txt text;
 begin
   create temp table resultado (n serial, teste text, ok boolean, detalhe text);
   grant all on resultado to public; grant usage on sequence resultado_n_seq to public;
@@ -67,6 +68,7 @@ begin
   values (v_cli, v_conv, 'enviada', 'texto', 'Mensagem da equipe com a IA desligada', false, 'pendente');
   insert into resultado (teste, ok, detalhe) values ('com a IA desligada não nasce follow-up',
     not exists (select 1 from public.tarefas_automacao where conversa_id = v_conv and tipo = 'followup'), '');
+  insert into resultado (teste, ok, detalhe) values ('mensagem da equipe pelo front entra na fila de envio', exists (select 1 from public.envios_pendentes where conversa_id = v_conv and status_envio = 'pendente' and tipo = 'equipe'), '');
   update public.agente_ia set ia_ativa = true where clinica_id = v_cli; -- follow-up só nasce com a IA ligada
   insert into public.mensagens (clinica_id, conversa_id, direcao, tipo, texto, enviada_por_ia, status_entrega)
   values (v_cli, v_conv, 'enviada', 'texto', 'Olá! Posso ajudar?', true, 'pendente');
@@ -123,6 +125,25 @@ begin
   insert into resultado (teste, ok, detalhe) values ('cancelar consulta cancela os lembretes',
     not exists (select 1 from public.tarefas_automacao where agendamento_id = v_ag and tipo = 'lembrete' and status = 'pendente'), '');
 
+  -- 7) escala: rodízio entre clínicas e limite de tarefas simultâneas por clínica (tarefas_simultaneas_clinica, padrão 4)
+  insert into public.tarefas_automacao (clinica_id, tipo, chave_idempotencia, payload)
+  select v_cli, 'alerta', 'teste:carga:' || g, '{}' from generate_series(1, 6) g;
+  insert into public.tarefas_automacao (clinica_id, tipo, chave_idempotencia, payload)
+  select c.id, 'alerta', 'teste:carga:outra', '{}' from public.clinicas c where c.id <> v_cli and c.excluido_em is null limit 1;
+  select count(*) filter (where x.clinica_id = v_cli), count(*) filter (where x.clinica_id <> v_cli) into n, i
+    from public.reivindicar_tarefas(array['alerta'], 20, 'teste', 60) x;
+  insert into resultado (teste, ok, detalhe) values ('fila justa: clínica com muitas tarefas não trava as outras',
+    n <= public.ia_param('tarefas_simultaneas_clinica', 4) and i = 1, n || ' da clínica cheia, ' || i || ' da outra');
+
+  -- 8) atendimento finalizado move o lead para a etapa de "finalizado" (padrão Convertido)
+  r := public.horarios_disponiveis(v_cli, v_proc, null, 7, null, 5);
+  r := public.reservar_agendamento(v_cli, v_proc, (r -> 'horarios' -> 0 ->> 'profissional_id')::uuid, (r -> 'horarios' -> 0 ->> 'inicio')::timestamptz, null, v_lead, v_conv, 'ia');
+  update public.agendamentos set lead_id = v_lead where id = (r ->> 'agendamento_id')::uuid;
+  update public.agendamentos set status_agendamento_id = (select id from public.status_agendamento where clinica_id = v_cli and chave = 'atendido' limit 1)
+   where id = (r ->> 'agendamento_id')::uuid;
+  insert into resultado (teste, ok, detalhe) values ('atendimento finalizado move o lead para Convertido',
+    (select e.chave from public.leads l join public.etapas_funil e on e.id = l.etapa_id where l.id = v_lead) = 'convertido', r ->> 'status');
+
   -- ===== como usuários (RLS) =====
   perform set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'sub', gen_random_uuid())::text, true);
   execute 'set local role authenticated';
@@ -152,11 +173,19 @@ begin
   exception when insufficient_privilege then
     insert into resultado (teste, ok, detalhe) values ('usuário não consulta opt-out direto', true, 'recusado');
   end;
+  select count(*) into n from public.mensagens;
+  insert into resultado (teste, ok, detalhe) values ('estranho não vê mensagens de nenhuma clínica', n = 0, n::text);
+  select count(*) into n from public.instancias_whatsapp;
+  insert into resultado (teste, ok, detalhe) values ('estranho não vê o WhatsApp de nenhuma clínica', n = 0, n::text);
   execute 'reset role';
   perform set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'sub', v_dono)::text, true);
   execute 'set local role authenticated';
   select count(*) into n from public.tarefas_automacao;
   insert into resultado (teste, ok, detalhe) values ('dono vê a fila da própria clínica', n > 0, n::text);
+  select count(*) into n from public.mensagens where clinica_id <> v_cli;
+  insert into resultado (teste, ok, detalhe) values ('dono não vê mensagens de outra clínica', n = 0, n::text);
+  select count(*) into n from public.leads where clinica_id <> v_cli;
+  insert into resultado (teste, ok, detalhe) values ('dono não vê leads de outra clínica', n = 0, n::text);
   begin
     r := public.agente_ia_config(v_cli);
     insert into resultado (teste, ok, detalhe) values ('dono não lê a configuração do agente (só o administrador master)', false, 'leu');

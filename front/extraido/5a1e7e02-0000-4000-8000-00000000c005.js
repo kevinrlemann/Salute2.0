@@ -89,6 +89,10 @@ var convTela = function convTela(c) {
     tel: c.telefone,
     leadId: c.lead_id,
     ia: c.ia_ativa,
+    // a IA passou a conversa para a equipe e ninguém resolveu ainda
+    equipe: (c.transf || (MSG_CONV[c.id] || {}).transf || []).some(function (x) {
+      return x.status === 'aberta' || x.status === 'em_atendimento';
+    }),
     ord: c.ultima_mensagem_em || c.criado_em
   };
 };
@@ -108,7 +112,7 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         return carregar('catalogos');
       case 1:
         _context.n = 2;
-        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome)').order('ultima_mensagem_em', {
+        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
           ascending: false,
           nullsFirst: false
         }).limit(1000)), DB.ler(DB.sel('canais_equipe', 'id,nome,tipo,funcao,criado_em,participantes:participantes_canal(usuario_id,ultima_leitura_em,excluido_em)').order('criado_em'))["catch"](function () {
@@ -130,7 +134,7 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         _context.n = 3;
         return carregarCanais(canais);
       case 3:
-        tempoReal('mensagens', ['mensagens', 'conversas', 'mensagens_equipe', 'reacoes_mensagem', 'canais_equipe'], aoMudarMensagens);
+        tempoReal('mensagens', ['mensagens', 'conversas', 'mensagens_equipe', 'reacoes_mensagem', 'canais_equipe', 'transferencias_humanas'], aoMudarMensagens);
       case 4:
         return _context.a(2);
     }
@@ -386,6 +390,24 @@ function _aoMudarMensagens() {
       while (1) switch (_context13.n) {
         case 0:
           n = ev["new"] || {}, o = ev.old || {};
+          if (t === 'transferencias_humanas') {
+            // transferência aberta ou resolvida: atualiza o selo "Aguardando equipe" da conversa
+            c = MSG_CONV[n.conversa_id || o.conversa_id];
+            if (c) {
+              c.transf = (c.transf || []).filter(function (x) {
+                return x.id !== (n.id || o.id);
+              }).concat(n.id ? [{
+                id: n.id,
+                status: n.status
+              }] : []);
+              publicarInbox(INBOX.map(function (x) {
+                return x.id === c.id ? _objectSpread(_objectSpread({}, x), {}, {
+                  equipe: convTela(c).equipe
+                }) : x;
+              }));
+            }
+            return _context13.a(2);
+          }
           if (!(t === 'conversas')) {
             _context13.n = 1;
             break;

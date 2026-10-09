@@ -4073,7 +4073,19 @@ function MensagensWA(_ref10) {
       style: {
         color: WA.green
       }
-    }, "digitando...") : last && CHAT_TOUCHED[keyOf(c)] ? waPreview(last) : c.m)), u ? /*#__PURE__*/React.createElement("span", {
+    }, "digitando...") : last && CHAT_TOUCHED[keyOf(c)] ? waPreview(last) : c.m)), c.equipe ? /*#__PURE__*/React.createElement("span", {
+      title: "A IA passou esta conversa para a equipe",
+      style: {
+        flexShrink: 0,
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: 'rgba(245,180,0,.16)',
+        color: '#F5B400',
+        fontSize: 11.5,
+        fontWeight: 600,
+        whiteSpace: 'nowrap'
+      }
+    }, "Aguardando equipe") : null, u ? /*#__PURE__*/React.createElement("span", {
       style: {
         minWidth: 20,
         height: 20,

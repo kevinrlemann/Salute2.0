@@ -1182,8 +1182,168 @@ var ContSvc = {
     }))();
   }
 };
+/* ---------- WhatsApp não oficial (Evolution API ou Z-API): QR Code de verdade ----------
+   A chave do provedor vai para o cofre (salvar_segredo) e nunca volta para a tela.
+   A função "whatsapp" do servidor cria a instância, liga o recebimento de mensagens e devolve o QR Code. */
+var WA_ZAPI_BASE = 'https://api.z-api.io/instances/';
+function waFn(acao) {
+  var i = CAT.v.instancia;
+  return SB.auth.getSession().then(function (r) {
+    var tok = r && r.data && r.data.session ? r.data.session.access_token : SB_CFG.key;
+    return fetch(SB_CFG.url + '/functions/v1/whatsapp', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tok, apikey: SB_CFG.key, 'content-type': 'application/json' },
+      body: JSON.stringify({ acao: acao, instancia_id: i && i.id })
+    });
+  }).then(function (r) {
+    return r.json().catch(function () { return {}; }).then(function (j) {
+      if (!r.ok || j.erro) throw new Error(j.erro || 'Não foi possível falar com o servidor do WhatsApp.');
+      return j;
+    });
+  });
+}
+function waRecarregar() {
+  var i = CAT.v.instancia;
+  if (!i) return Promise.resolve();
+  return DB.ler(DB.sel('instancias_whatsapp').eq('id', i.id)).then(function (r) {
+    catSet({ instancia: r[0] || i });
+    WA_STORE.v = waTela();
+    avisar(WA_STORE);
+  });
+}
+// dados da tela a partir da instância salva
+function waNaoOficialTela() {
+  var i = CAT.v.instancia;
+  var no = i && i.tipo_api === 'nao_oficial';
+  var prov = no && /^z[- ]?api$/i.test(i.provedor_nao_oficial || '') ? 'zapi' : 'evolution';
+  var url = no ? i.api_url || '' : '';
+  return {
+    prov: prov,
+    url: prov === 'evolution' ? url : '',
+    inst: prov === 'zapi' ? url.replace(WA_ZAPI_BASE, '') : no && i.nome_instancia || 'salute-' + String(CLI() || '').slice(0, 8),
+    chave: no && i.token_configurado ? SENHA_GUARDADA : '',
+    cliente: ''
+  };
+}
+WaSvc.salvarNaoOficial = function (d) {
+  var i = CAT.v.instancia;
+  var zapi = d.prov === 'zapi';
+  var dados = {
+    nome: 'WhatsApp da clínica',
+    tipo_api: 'nao_oficial',
+    provedor_nao_oficial: zapi ? 'zapi' : 'evolution',
+    api_url: zapi ? WA_ZAPI_BASE + d.inst.trim() : d.url.trim().replace(/\/+$/, ''),
+    nome_instancia: zapi ? null : d.inst.trim(),
+    phone_number_id: null,
+    waba_id: null,
+    status: 'conectando',
+    padrao: true
+  };
+  var gravar = i ? DB.upd('instancias_whatsapp', i.id, dados, 'Não foi possível salvar o WhatsApp') : DB.ins('instancias_whatsapp', dados, 'Não foi possível salvar o WhatsApp');
+  return gravar.then(function (row) {
+    catSet({ instancia: row });
+    if (!d.chave || d.chave === SENHA_GUARDADA) return row;
+    var seg = zapi ? d.chave.trim() + (d.cliente && d.cliente.trim() ? '|' + d.cliente.trim() : '') : d.chave.trim();
+    return DB.rpc('salvar_segredo', { p_clinica: CLI(), p_provedor: 'whatsapp_nao_oficial', p_segredo: seg }, 'Não foi possível guardar a chave').then(function () { return row; });
+  }).then(waRecarregar);
+};
+WaSvc.acao = waFn;
+var WA_DESCONECTAR_BASE = WaSvc.desconectar;
+WaSvc.desconectar = function () {
+  var i = CAT.v.instancia;
+  var antes = i && i.tipo_api === 'nao_oficial' ? waFn('desconectar').catch(function () {}) : Promise.resolve();
+  return antes.then(function () { return WA_DESCONECTAR_BASE(); });
+};
+
+function WaNaoOficial(props) {
+  var h = React.createElement;
+  var mobile = props.mobile;
+  var _f = React.useState(waNaoOficialTela), f = _f[0], setF = _f[1];
+  var _q = React.useState(null), qr = _q[0], setQr = _q[1];
+  var _b = React.useState(false), busy = _b[0], setBusy = _b[1];
+  var _e = React.useState(''), erro = _e[0], setErro = _e[1];
+  var _s = React.useState(''), situacao = _s[0], setSituacao = _s[1];
+  var timer = React.useRef(null);
+  var parar = function () { if (timer.current) { clearInterval(timer.current); timer.current = null; } };
+  React.useEffect(function () { return parar; }, []);
+  var campo = function (k) { return function (e) { var n = Object.assign({}, f); n[k] = e.target.value; setF(n); }; };
+  var zapi = f.prov === 'zapi';
+  var completo = f.inst.trim() && f.chave.trim() && (zapi || /^https:\/\/\S+/i.test(f.url.trim()));
+  var conectou = function () {
+    parar(); setQr(null); setSituacao('');
+    return waRecarregar().then(function () {
+      avisoOk('WhatsApp conectado', 'As mensagens dos pacientes já chegam em Conversas.');
+    });
+  };
+  var acompanhar = function () {
+    parar();
+    var voltas = 0;
+    timer.current = setInterval(function () {
+      voltas++;
+      if (voltas > 45) { parar(); setSituacao('O QR Code venceu. Gere um novo para tentar de novo.'); setQr(null); return; }
+      waFn('estado').then(function (j) { if (j.estado === 'conectado') conectou(); }, function () {});
+    }, 4000);
+  };
+  var gerar = function () {
+    if (!SB_ON) { setErro('No modo demonstração não há conexão real com o WhatsApp.'); return; }
+    setBusy(true); setErro(''); setSituacao('');
+    WaSvc.salvarNaoOficial(f).then(function () {
+      return waFn('conectar');
+    }).then(function (j) {
+      setBusy(false);
+      setF(waNaoOficialTela());
+      if (j.estado === 'conectado') return conectou();
+      setQr(j.qr); setSituacao('Aguardando a leitura do QR Code...');
+      acompanhar();
+    }, function (e) {
+      setBusy(false);
+      setErro(e && e.message ? e.message : 'Não foi possível gerar o QR Code.');
+    });
+  };
+  var chip = function (k, rotulo) {
+    var sel = f.prov === k;
+    return h("button", {
+      key: k, type: "button",
+      onClick: function () { parar(); setQr(null); var n = Object.assign({}, f, { prov: k, chave: '', cliente: '' }); n.inst = k === 'zapi' ? '' : 'salute-' + String(CLI() || '').slice(0, 8); setF(n); },
+      style: { padding: '8px 16px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
+        border: sel ? '2px solid #1F5EFF' : '2px solid rgba(214,226,242,.95)', background: sel ? 'rgba(31,94,255,.08)' : '#fff', color: sel ? '#1F5EFF' : 'var(--text-body)' }
+    }, rotulo);
+  };
+  var grade = { display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 };
+  var I = window.OInput, Btn = window.OBtn, B = window.B || 'b';
+  return h("div", { style: { display: 'flex', flexDirection: 'column', gap: 16, padding: 18, borderRadius: 20, background: 'rgba(255,255,255,.7)', border: '1.5px solid rgba(255,255,255,.95)' } },
+    h("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
+      h("span", { style: { fontSize: 13, color: 'var(--text-muted)', marginRight: 4 } }, "Provedor:"),
+      chip('evolution', 'Evolution API'), chip('zapi', 'Z-API')),
+    h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, zapi
+      ? "Você encontra o ID e o token da instância no painel da Z-API. O Client-Token fica em Segurança, na sua conta."
+      : "Use o endereço e a chave (apikey) do seu servidor Evolution. A instância é criada sozinha se ainda não existir."),
+    h("div", { style: grade },
+      zapi ? null : h(I, { label: "Endereço do servidor", iconLeft: "globe", placeholder: "https://evolution.suaempresa.com", value: f.url, onChange: campo('url') }),
+      h(I, { label: zapi ? "ID da instância" : "Nome da instância", value: f.inst, onChange: campo('inst') }),
+      h(I, { label: zapi ? "Token da instância" : "Chave da API (apikey)", type: "password", value: f.chave, onChange: campo('chave') }),
+      zapi ? h(I, { label: "Client-Token (opcional)", type: "password", value: f.cliente, onChange: campo('cliente') }) : null),
+    h("div", { style: { display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' } },
+      h("div", { style: { padding: 10, borderRadius: 18, background: '#fff', boxShadow: '0 10px 24px -14px rgba(23,73,170,.5)' } },
+        qr ? h("img", { src: qr, alt: "QR Code do WhatsApp", width: 170, height: 170, style: { display: 'block', width: 170, height: 170, borderRadius: 12 } })
+          : h("div", { style: { width: 170, height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 14, boxSizing: 'border-box', borderRadius: 12, border: '1.5px dashed #C9D6EE', color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.4 } },
+            "Preencha os dados e toque em Gerar QR Code.")),
+      h("div", { style: { flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 10 } },
+        h("ol", { style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14, color: 'var(--text-body)' } },
+          h("li", null, "Abra o WhatsApp no celular da clínica."),
+          h("li", null, "Toque em ", h(B, null, "Aparelhos conectados"), " e depois em ", h(B, null, "Conectar aparelho"), "."),
+          h("li", null, "Aponte a câmera para este QR Code.")),
+        situacao ? h("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' } },
+          h("span", { style: { width: 8, height: 8, borderRadius: '50%', background: '#1F5EFF', boxShadow: '0 0 0 4px rgba(31,94,255,.2)' } }), situacao) : null,
+        erro ? h("div", { role: "alert", style: { fontSize: 13, color: '#C2353A', lineHeight: 1.5 } }, erro) : null,
+        h("div", null, h(Btn, { iconLeft: qr ? "refresh-cw" : "qr-code", loading: busy, disabled: !completo, onClick: gerar }, qr ? "Gerar novo QR Code" : "Gerar QR Code")))),
+    h("span", { style: { fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 } },
+      "Atenção: a API não oficial pode ter o número bloqueado pelo WhatsApp se houver muitos disparos. Use um número da clínica, não um pessoal."));
+}
+
 Object.assign(window, {
   ClinSvc: ClinSvc,
+  WaNaoOficial: WaNaoOficial,
   EquipeSvc: EquipeSvc,
   ProfSvc: ProfSvc,
   WaSvc: WaSvc,
