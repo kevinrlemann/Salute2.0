@@ -271,6 +271,7 @@ function _rnSalvarConexoes() {
           _context0.n = 7;
           return rnStatusServidor();
         case 7:
+          if (typeof RN_VOZ_OFF !== 'undefined') RN_VOZ_OFF = false;
           avisoOk('Conexões da Renata salvas');
         case 8:
           return _context0.a(2);

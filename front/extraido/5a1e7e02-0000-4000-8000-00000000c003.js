@@ -1514,6 +1514,30 @@ var AgSvc = {
         }
       }, _callee21);
     }))();
+  },
+  // reagendar / mudar profissional ou status de um agendamento existente
+  editar: function editar(id, campos) {
+    var patch = {};
+    if (campos.inicio) patch.inicio = campos.inicio.toISOString();
+    if (campos.fim) patch.fim = campos.fim.toISOString();
+    if (campos.profissionalId) patch.profissional_id = campos.profissionalId;
+    if (campos.duplicado !== undefined) patch.horario_duplicado = !!campos.duplicado;
+    if (campos.status) {
+      var st = (CAT.v.status || []).find(function (s) {
+        return s.chave === campos.status;
+      });
+      if (st) patch.status_agendamento_id = st.id;
+    }
+    return DB.upd('agendamentos', id, patch, 'Não foi possível salvar o agendamento').then(function () {
+      return DB.ler(DB.sel('agendamentos', AG_SELECT).eq('id', id));
+    }).then(function (full) {
+      var a = agTela(full[0]);
+      APPT_STORE.v = [].concat(_toConsumableArray(APPT_STORE.v.filter(function (x) {
+        return x.id !== a.id;
+      })), [a]);
+      avisar(APPT_STORE);
+      return a;
+    });
   }
 };
 // números do quadro "Atividade mensal" e indicadores da Agenda

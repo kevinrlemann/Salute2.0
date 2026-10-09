@@ -292,6 +292,7 @@ function painelTela(r) {
       value: 0
     }],
     funilTotal: fu.total || 0,
+    perdidos: fu.perdidos || 0,
     funilTrend: (tf.direction === 'down' ? '-' : '') + tf.value,
     conv: etapas.length > 1 ? pctTxt(etapas[etapas.length - 1].value, etapas[0].value) : '0,0%',
     diasMedios: fu.dias_medios ? String(fu.dias_medios).replace('.', ',') + (Number(fu.dias_medios) === 1 ? ' dia' : ' dias') : 'sem dados',

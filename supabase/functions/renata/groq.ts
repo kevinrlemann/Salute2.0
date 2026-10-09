@@ -17,7 +17,9 @@ const EXTRAS: Record<string, Record<string, unknown>> = {
 
 // o plano grátis do Groq aceita ~8 mil tokens por minuto em cada modelo (pedido + resposta).
 // O resumo da clínica é cortado nesse tamanho; o resto a Renata consulta pelas ferramentas.
-export const MAX_SISTEMA = 12000, MAX_DESC_FERRAMENTA = 300, MAX_DESC_CAMPO = 120, MAX_RESPOSTA = 1000;
+export const MAX_SISTEMA = 7000, MAX_DESC_FERRAMENTA = 200, MAX_DESC_CAMPO = 80, MAX_RESPOSTA = 1000;
+// espera máxima (segundos) quando os três modelos estão no limite por minuto
+export const MAX_ESPERA = 20;
 const corta = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
 type Bloco = { type?: string; text?: string; id?: string; name?: string; input?: unknown; tool_use_id?: string; content?: unknown };
@@ -199,7 +201,7 @@ export async function chamarGroq(key: string, corpo: Record<string, unknown>, mo
     if (![404, 413, 429, 498, 500, 502, 503].includes(r.status) && !deModelo) return ultima;
   }
   // todos no limite por minuto, mas por poucos segundos: espera e tenta uma vez mais
-  if (nova && espera <= 8) {
+  if (nova && espera <= MAX_ESPERA) {
     await new Promise((ok) => setTimeout(ok, espera * 1000 + 300));
     return chamarGroq(key, corpo, modelos, false);
   }

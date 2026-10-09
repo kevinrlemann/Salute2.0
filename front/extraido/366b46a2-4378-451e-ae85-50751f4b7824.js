@@ -2628,7 +2628,7 @@ var _window$SaluteProjeto2 = window.SaluteProjetoDesigner_8b4683,
   CrmBtn = _window$SaluteProjeto2.Button;
 var CRM_STAGES = [{
   id: 'novo',
-  label: 'Novo',
+  label: 'Novo Lead',
   c: '#1F5EFF'
 }, {
   id: 'aguardando',
@@ -2639,16 +2639,8 @@ var CRM_STAGES = [{
   label: 'Agendado',
   c: '#22C3F2'
 }, {
-  id: 'confirmado',
-  label: 'Confirmado',
-  c: '#7B4BC4'
-}, {
-  id: 'atendimento',
-  label: 'Em atendimento',
-  c: '#F2694A'
-}, {
-  id: 'finalizado',
-  label: 'Finalizado',
+  id: 'convertido',
+  label: 'Convertido',
   c: '#2DBF6A'
 }, {
   id: 'perdido',
@@ -2783,7 +2775,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Lente de contato dental',
   min: 62,
   ia: true,
-  stage: 'confirmado',
+  stage: 'agendado',
   at: crmAt(1, '09:00')
 }, {
   id: 16,
@@ -2792,7 +2784,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Botox',
   min: 175,
   ia: true,
-  stage: 'confirmado',
+  stage: 'agendado',
   at: crmAt(3, '11:30')
 }, {
   id: 17,
@@ -2801,7 +2793,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Limpeza',
   min: 360,
   ia: false,
-  stage: 'confirmado',
+  stage: 'agendado',
   at: crmAt(3, '15:30')
 }, {
   id: 18,
@@ -2810,7 +2802,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Clareamento',
   min: 1480,
   ia: true,
-  stage: 'confirmado',
+  stage: 'agendado',
   at: crmAt(4, '08:30')
 }, {
   id: 19,
@@ -2819,7 +2811,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Harmonização facial',
   min: 2,
   ia: false,
-  stage: 'atendimento'
+  stage: 'agendado'
 }, {
   id: 20,
   nome: 'Eduardo Lopes',
@@ -2827,7 +2819,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Implante',
   min: 15,
   ia: false,
-  stage: 'atendimento'
+  stage: 'agendado'
 }, {
   id: 21,
   nome: 'Isabela Freitas',
@@ -2835,7 +2827,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Botox',
   min: 40,
   ia: false,
-  stage: 'atendimento'
+  stage: 'agendado'
 }, {
   id: 22,
   nome: 'Rafaela Gomes',
@@ -2843,7 +2835,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Clareamento',
   min: 1410,
   ia: true,
-  stage: 'finalizado'
+  stage: 'convertido'
 }, {
   id: 23,
   nome: 'Marcelo Batista',
@@ -2851,7 +2843,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Limpeza',
   min: 2900,
   ia: true,
-  stage: 'finalizado'
+  stage: 'convertido'
 }, {
   id: 24,
   nome: 'Letícia Moraes',
@@ -2859,7 +2851,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Botox',
   min: 4400,
   ia: false,
-  stage: 'finalizado'
+  stage: 'convertido'
 }, {
   id: 25,
   nome: 'Gustavo Rezende',
@@ -2867,7 +2859,7 @@ var LEADS_STORE = makeStore([{
   proc: 'Lente de contato dental',
   min: 7300,
   ia: true,
-  stage: 'finalizado'
+  stage: 'convertido'
 }, {
   id: 26,
   nome: 'Priscila Santana',

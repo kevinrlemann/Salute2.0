@@ -73,7 +73,7 @@ var DAILY = [['19', 7], ['20', 3], ['21', 11], ['22', 9], ['23', 12], ['24', 10]
   };
 });
 var FUNNEL = [{
-  label: 'Novo',
+  label: 'Novo Lead',
   value: 186
 }, {
   label: 'Aguardando atendente',
@@ -82,13 +82,7 @@ var FUNNEL = [{
   label: 'Agendado',
   value: 101
 }, {
-  label: 'Confirmado',
-  value: 77
-}, {
-  label: 'Em atendimento',
-  value: 59
-}, {
-  label: 'Finalizado',
+  label: 'Convertido',
   value: 46
 }];
 var fmtPct = function fmtPct(v) {
@@ -1398,7 +1392,7 @@ function PainelScreen(_ref14) {
       fontSize: 13,
       color: 'var(--text-muted)'
     }
-  }, /*#__PURE__*/React.createElement("span", null, "Novo at\xE9 Finalizado: ", /*#__PURE__*/React.createElement("b", {
+  }, /*#__PURE__*/React.createElement("span", null, "Novo Lead at\xE9 Convertido: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: 'var(--text-strong)',
       fontWeight: 600
@@ -1408,7 +1402,12 @@ function PainelScreen(_ref14) {
       color: 'var(--text-strong)',
       fontWeight: 600
     }
-  }, D ? D.diasMedios : '6 dias')))), /*#__PURE__*/React.createElement("section", {
+  }, D ? D.diasMedios : '6 dias')), /*#__PURE__*/React.createElement("span", null, "Perdidos: ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--text-strong)',
+      fontWeight: 600
+    }
+  }, D ? D.perdidos : 22)))), /*#__PURE__*/React.createElement("section", {
     style: _objectSpread(_objectSpread({}, glass), {}, {
       padding: mobile ? 18 : 26,
       display: 'flex',

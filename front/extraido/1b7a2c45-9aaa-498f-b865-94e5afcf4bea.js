@@ -2063,6 +2063,17 @@ function rnVoice(text) {
 var RN_SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 var RN_PLAYER = typeof Audio !== 'undefined' ? new Audio() : null;
 var __rnTok = 0;
+// a voz oficial (ElevenLabs) recusou por chave ou permissão: usa a voz do aparelho direto
+// nesta sessão, sem esperar a recusa a cada fala; volta a tentar quando as conexões são salvas
+var RN_VOZ_OFF = false;
+function rnVozFalhou(e) {
+  var m = /ElevenLabs (\d+)/.exec(String(e && e.message || ''));
+  if (!m || ['401', '403', '412'].indexOf(m[1]) < 0 || RN_VOZ_OFF) return;
+  RN_VOZ_OFF = true;
+  try {
+    avisoErro('Voz oficial indisponível', 'A chave da ElevenLabs está sem a permissão Text to Speech. A Renata vai falar com a voz do aparelho até você salvar uma chave nova nas Conexões da Renata.');
+  } catch (x) {}
+}
 function rnUnlockAudio() {
   try {
     if (window.speechSynthesis) {
@@ -2131,7 +2142,7 @@ function _rnSpeak() {
           done();
           return _context25.a(2, 'none');
         case 1:
-          if (!(cfg.key && cfg.voiceId && RN_PLAYER)) {
+          if (!(cfg.key && cfg.voiceId && RN_PLAYER && !RN_VOZ_OFF)) {
             _context25.n = 12;
             break;
           }
@@ -2208,6 +2219,7 @@ function _rnSpeak() {
         case 11:
           _context25.p = 11;
           _t9 = _context25.v;
+          rnVozFalhou(_t9);
           if (!(tok !== __rnTok)) {
             _context25.n = 12;
             break;
@@ -3412,6 +3424,313 @@ function _rnAnswerCore() {
   return _rnAnswerCore.apply(this, arguments);
 }
 var RN_SUGS = [['calendar-days', 'Qual é a minha agenda de hoje?'], ['banknote', 'Quanto faturei nos últimos 30 dias?'], ['package', 'O que está em falta no estoque?'], ['user-round', 'Como foi o atendimento da Mariana Alves?'], ['triangle-alert', 'Qual a taxa de inadimplência?'], ['chart-column', 'Qual canal traz mais leads?']];
+
+/* ---------- agenda: editar / reagendar um agendamento (clique no card) ---------- */
+function abrirEdicaoAgendamento(slot) {
+  if (!SB_ON || !slot || !slot.id) return;
+  var a = APPT_STORE.v.find(function (x) {
+    return x.id === slot.id;
+  });
+  if (!a) return;
+  var host = document.createElement('div');
+  document.body.appendChild(host);
+  var root = ReactDOM.createRoot(host);
+  var fechar = function fechar() {
+    root.unmount();
+    host.remove();
+  };
+  root.render(/*#__PURE__*/React.createElement(AgEditar, {
+    a: a,
+    onClose: fechar
+  }));
+}
+function AgEditar(_ref) {
+  var a = _ref.a,
+    onClose = _ref.onClose;
+  var _React$useState = React.useState({
+      data: a.date,
+      ini: BR.hm(a.ini),
+      fim: BR.hm(a.fim),
+      prof: a.profId,
+      status: a.status && a.status !== 'cancelado' ? a.status : 'agendado'
+    }),
+    f = _React$useState[0],
+    setF = _React$useState[1];
+  var _React$useState2 = React.useState(false),
+    salvando = _React$useState2[0],
+    setSalvando = _React$useState2[1];
+  var _React$useState3 = React.useState(false),
+    confirmaCancel = _React$useState3[0],
+    setConfirmaCancel = _React$useState3[1];
+  var _React$useState4 = React.useState(''),
+    erro = _React$useState4[0],
+    setErro = _React$useState4[1];
+  React.useEffect(function () {
+    var esc = function esc(e) {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', esc);
+    return function () {
+      return window.removeEventListener('keydown', esc);
+    };
+  }, []);
+  var set = function set(k) {
+    return function (e) {
+      var v = e.target.value;
+      setF(function (o) {
+        var n = Object.assign({}, o);
+        n[k] = v;
+        return n;
+      });
+      setErro('');
+    };
+  };
+  var ini = f.data && f.ini ? BR.instante(f.data, f.ini) : null;
+  var fim = f.data && f.fim ? BR.instante(f.data, f.fim) : null;
+  var choca = ini && fim ? APPT_STORE.v.find(function (x) {
+    return x.id !== a.id && x.profId === f.prof && x.status !== 'cancelado' && new Date(x.ini) < fim && new Date(x.fim) > ini;
+  }) : null;
+  var quando = f.data ? f.data.split('-').reverse().join('/') + ' às ' + f.ini : '';
+  var salvar = function salvar(cancelar) {
+    if (!ini || !fim) return setErro('Preencha a data e os horários.');
+    if (fim <= ini) return setErro('O horário de fim precisa ser depois do início.');
+    setSalvando(true);
+    AgSvc.editar(a.id, {
+      inicio: ini,
+      fim: fim,
+      profissionalId: f.prof,
+      status: cancelar ? 'cancelado' : f.status,
+      duplicado: !cancelar && !!choca
+    }).then(function () {
+      avisoOk(cancelar ? 'Agendamento cancelado' : 'Agendamento atualizado', a.pac + (cancelar ? '' : ' · ' + quando));
+      onClose();
+    }, function () {
+      setSalvando(false);
+    });
+  };
+  var inp = {
+    height: 42,
+    borderRadius: 12,
+    border: '1.5px solid rgba(214,226,242,.95)',
+    background: '#fff',
+    padding: '0 12px',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    color: 'var(--text-strong)',
+    outline: 'none',
+    width: '100%',
+    boxSizing: 'border-box'
+  };
+  var lab = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    fontSize: 13,
+    color: 'var(--text-muted)',
+    minWidth: 0
+  };
+  var btn = {
+    height: 42,
+    padding: '0 18px',
+    borderRadius: 999,
+    border: '1.5px solid rgba(214,226,242,.95)',
+    background: '#fff',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: 'pointer',
+    color: 'var(--text-strong)'
+  };
+  var statusOpcoes = (CAT.v.status || []).filter(function (s) {
+    return s.chave !== 'cancelado';
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    onClick: onClose,
+    style: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 1000,
+      background: 'rgba(14,35,80,.35)',
+      backdropFilter: 'blur(3px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": "Editar agendamento",
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    style: {
+      width: 'min(460px, 100%)',
+      maxHeight: 'calc(100vh - 32px)',
+      overflowY: 'auto',
+      borderRadius: 24,
+      background: 'linear-gradient(180deg,#F5F9FF,#EAF2FD)',
+      boxShadow: '0 30px 60px -30px rgba(23,73,170,.6)',
+      padding: 22,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14,
+      fontFamily: 'var(--font-sans)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      display: 'block',
+      fontSize: 18,
+      color: 'var(--text-strong)'
+    }
+  }, "Editar agendamento"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)'
+    }
+  }, a.pac, a.proc ? ' · ' + a.proc : '')), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "rn-act",
+    "aria-label": "Fechar",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement(RIcon, {
+    name: "x",
+    size: 18
+  }))), /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Data", /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    style: inp,
+    value: f.data,
+    onChange: set('data')
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "In\xEDcio", /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    style: inp,
+    value: f.ini,
+    onChange: set('ini')
+  })), /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Fim", /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    style: inp,
+    value: f.fim,
+    onChange: set('fim')
+  }))), /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Profissional", /*#__PURE__*/React.createElement("select", {
+    style: inp,
+    value: f.prof || '',
+    onChange: set('prof')
+  }, PROS.map(function (p) {
+    return /*#__PURE__*/React.createElement("option", {
+      key: p.id || p.n,
+      value: p.id
+    }, p.n, p.r ? ' · ' + p.r : '');
+  }))), statusOpcoes.length ? /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Status", /*#__PURE__*/React.createElement("select", {
+    style: inp,
+    value: f.status,
+    onChange: set('status')
+  }, statusOpcoes.map(function (s) {
+    return /*#__PURE__*/React.createElement("option", {
+      key: s.chave,
+      value: s.chave
+    }, s.nome);
+  }))) : null, choca ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      color: '#9A6B00',
+      background: 'rgba(245,180,0,.12)',
+      borderRadius: 10,
+      padding: '8px 10px'
+    }
+  }, "Poss\xEDvel duplicidade: este profissional j\xE1 tem ", choca.pac, " nesse hor\xE1rio. D\xE1 para salvar mesmo assim.") : null, erro ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      color: '#C62828'
+    }
+  }, erro) : null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 4
+    }
+  }, confirmaCancel ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'inline-flex',
+      gap: 8,
+      alignItems: 'center',
+      fontSize: 13,
+      color: 'var(--text-strong)'
+    }
+  }, "Cancelar este agendamento?", /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    disabled: salvando,
+    onClick: function onClick() {
+      return salvar(true);
+    },
+    style: Object.assign({}, btn, {
+      height: 34,
+      padding: '0 12px',
+      color: '#fff',
+      background: '#D93838',
+      border: 'none'
+    })
+  }, "Sim, cancelar"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      return setConfirmaCancel(false);
+    },
+    style: Object.assign({}, btn, {
+      height: 34,
+      padding: '0 12px'
+    })
+  }, "N\xE3o")) : /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    disabled: salvando,
+    onClick: function onClick() {
+      return setConfirmaCancel(true);
+    },
+    style: Object.assign({}, btn, {
+      color: '#C62828'
+    })
+  }, "Cancelar agendamento"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    disabled: salvando,
+    onClick: function onClick() {
+      return salvar(false);
+    },
+    style: Object.assign({}, btn, {
+      color: '#fff',
+      border: 'none',
+      background: 'var(--gradient-blue)',
+      opacity: salvando ? 0.7 : 1
+    })
+  }, salvando ? 'Salvando...' : 'Salvar altera\xE7\xF5es'))));
+}
 
 /* ---------- conexões da Renata: passo a passo do Groq ---------- */
 function RnPassoGroq(_ref) {
@@ -7843,7 +8162,7 @@ RENATA_TOOLS.push({
   }
 }, {
   name: 'propor_etapa_lead',
-  description: 'Prepara, SEM gravar, a mudança de etapa de um lead no CRM (Novo, Aguardando atendente, Agendado, Confirmado, Em atendimento, Finalizado ou Perdido).',
+  description: 'Prepara, SEM gravar, a mudança de etapa de um lead no CRM (Novo Lead, Aguardando atendente, Agendado, Convertido ou Perdido).',
   inputSchema: {
     type: 'object',
     properties: {
