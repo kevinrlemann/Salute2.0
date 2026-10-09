@@ -108,4 +108,33 @@ pedidos.length = 0;
 const r7 = await chamarGroq('gsk_errada', { messages: [] });
 assert.equal(r7.status, 401); assert.equal(pedidos.length, 1);
 console.log('✓ troca de modelo no limite e parada na chave errada');
+
+// 8) 413: reenvia ao mesmo modelo com resumo menor
+{
+  const { encolher, MAX_SISTEMA } = await import('../groq.ts');
+  const grande = { messages: [{ role: 'system', content: 'x'.repeat(12000) }, { role: 'user', content: 'oi' }] };
+  const m = encolher(grande) as any;
+  assert.ok(m.messages[0].content.length < 7000 && m.messages[0].content.startsWith('x'.repeat(MAX_SISTEMA / 2)));
+  assert.equal(encolher({ messages: [{ role: 'system', content: 'curto' }] }), null);
+  const vistos: string[] = [];
+  (globalThis as any).fetch = async (_u: string, init: any) => {
+    const b = JSON.parse(init.body); vistos.push(b.model + ':' + b.messages[0].content.length);
+    return new Response(b.messages[0].content.length > 7000 ? '{"error":"too large"}' : 'data: [DONE]\n\n', { status: b.messages[0].content.length > 7000 ? 413 : 200 });
+  };
+  const r8 = await chamarGroq('gsk_x', grande);
+  assert.equal(r8.status, 200); assert.equal(vistos.length, 2); assert.equal(vistos[0].split(':')[0], vistos[1].split(':')[0]);
+  console.log('✓ 413 reenvia ao mesmo modelo com resumo menor');
+}
+
+// 9) todos no limite por poucos segundos: espera e tenta de novo
+{
+  let n = 0;
+  (globalThis as any).fetch = async () => (++n <= 3
+    ? new Response('{"error":{"message":"Please try again in 0.2s"}}', { status: 429 })
+    : new Response('data: [DONE]\n\n', { status: 200 }));
+  const r9 = await chamarGroq('gsk_x', { messages: [] });
+  assert.equal(r9.status, 200); assert.equal(n, 4);
+  console.log('✓ espera alguns segundos e tenta de novo quando todos estão no limite');
+}
+
 console.log('TODOS OS TESTES PASSARAM');

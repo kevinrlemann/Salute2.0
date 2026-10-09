@@ -5,8 +5,20 @@
 // =====================================================================
 
 export const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// em ordem de preferência; o próximo entra quando o anterior bate no limite do plano grátis
-export const GROQ_MODELOS = ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'];
+// em ordem de preferência; o próximo entra quando o anterior bate no limite do plano grátis.
+// Cada modelo tem o próprio limite por minuto, então a troca soma a capacidade dos três.
+export const GROQ_MODELOS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+// ajustes por modelo: menos "raciocínio" gasta menos tokens e responde mais rápido
+const EXTRAS: Record<string, Record<string, unknown>> = {
+  'openai/gpt-oss-120b': { reasoning_effort: 'low' },
+  'openai/gpt-oss-20b': { reasoning_effort: 'low' },
+  'qwen/qwen3.8-27b': { reasoning_effort: 'none' },
+};
+
+// o plano grátis do Groq aceita ~8 mil tokens por minuto em cada modelo (pedido + resposta).
+// O resumo da clínica é cortado nesse tamanho; o resto a Renata consulta pelas ferramentas.
+export const MAX_SISTEMA = 12000, MAX_DESC_FERRAMENTA = 300, MAX_DESC_CAMPO = 120, MAX_RESPOSTA = 1000;
+const corta = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
 type Bloco = { type?: string; text?: string; id?: string; name?: string; input?: unknown; tool_use_id?: string; content?: unknown };
 type Mensagem = { role: string; content: unknown };
@@ -29,6 +41,8 @@ export function limparSchema(s: unknown): unknown {
       const tipos = v.filter((t) => t !== 'null');
       out.type = tipos[0] || 'string';
       if (tipos.length < v.length) out.nullable = true;
+    } else if (k === 'description' && typeof v === 'string') {
+      out[k] = corta(v, MAX_DESC_CAMPO);
     } else {
       out[k] = k === 'items' || k === 'anyOf' ? limparSchema(v) : v;
     }
@@ -44,7 +58,10 @@ const textoDe = (c: unknown): string =>
 // pedido no formato Anthropic → corpo do Groq (sem o modelo, escolhido na chamada)
 export function paraGroq(p: { system?: unknown; messages: Mensagem[]; tools?: Ferramenta[]; max_tokens?: number }) {
   const msgs: Record<string, unknown>[] = [];
-  const sistema = textoDe(p.system);
+  let sistema = textoDe(p.system);
+  if (sistema.length > MAX_SISTEMA) {
+    sistema = sistema.slice(0, MAX_SISTEMA) + '\n\n[Resumo da clínica cortado para caber no limite da IA. Para dados que não aparecem acima, use as ferramentas.]';
+  }
   if (sistema) msgs.push({ role: 'system', content: sistema });
   for (const m of p.messages) {
     if (typeof m.content === 'string') { msgs.push({ role: m.role, content: m.content }); continue; }
@@ -65,10 +82,10 @@ export function paraGroq(p: { system?: unknown; messages: Mensagem[]; tools?: Fe
   }
   return {
     messages: msgs,
-    max_tokens: p.max_tokens,
+    max_tokens: Math.min(p.max_tokens || MAX_RESPOSTA, MAX_RESPOSTA),
     stream: true,
     ...(p.tools && p.tools.length ? {
-      tools: p.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description || '', parameters: limparSchema(t.input_schema || { type: 'object', properties: {} }) } })),
+      tools: p.tools.map((t) => ({ type: 'function', function: { name: t.name, description: corta(t.description || '', MAX_DESC_FERRAMENTA), parameters: limparSchema(t.input_schema || { type: 'object', properties: {} }) } })),
     } : {}),
   };
 }
@@ -140,18 +157,51 @@ export function eventosClaude(onFim: (tin: number, tout: number) => void | Promi
   });
 }
 
-// chama o Groq tentando os modelos em ordem: limite (429) ou modelo indisponível passa para o próximo
-export async function chamarGroq(key: string, corpo: Record<string, unknown>, modelos = GROQ_MODELOS) {
-  let ultima: Response | null = null;
+// mesmo pedido com o resumo da clínica pela metade (null quando não há o que cortar)
+export function encolher(corpo: Record<string, unknown>) {
+  const msgs = corpo.messages as { role: string; content: unknown }[] | undefined;
+  const sis = msgs && msgs[0] && msgs[0].role === 'system' && typeof msgs[0].content === 'string' ? msgs[0].content : '';
+  if (sis.length < 4000) return null;
+  const novo = sis.slice(0, Math.floor(MAX_SISTEMA / 2)) + '\n\n[Resumo da clínica cortado para caber no limite da IA. Para dados que não aparecem acima, use as ferramentas.]';
+  return { ...corpo, messages: [{ role: 'system', content: novo }, ...msgs!.slice(1)] };
+}
+
+// chama o Groq tentando os modelos em ordem: limite (429/413) ou modelo indisponível (404/400 de modelo) passa para o próximo
+export async function chamarGroq(key: string, corpo: Record<string, unknown>, modelos = GROQ_MODELOS, nova = true): Promise<Response> {
+  let ultima: Response | null = null, espera = Infinity;
+  const enviar = (modelo: string, extras: Record<string, unknown>) => fetch(GROQ_URL, {
+    method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ ...corpo, ...extras, model: modelo }),
+  });
   for (const modelo of modelos) {
-    const r = await fetch(GROQ_URL, {
-      method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ ...corpo, model: modelo }),
-    });
+    let r = await enviar(modelo, EXTRAS[modelo] || {});
+    // se o modelo não aceitar o ajuste de raciocínio, tenta de novo sem ele
+    if (r.status === 400 && EXTRAS[modelo]) {
+      const txt = await r.clone().text();
+      if (/reasoning/i.test(txt)) { await r.body?.cancel(); r = await enviar(modelo, {}); }
+    }
+    // pedido grande demais para este modelo: tenta de novo com o resumo da clínica menor
+    if (r.status === 413) {
+      const menor = encolher(corpo);
+      if (menor) { await r.body?.cancel(); r = await fetch(GROQ_URL, {
+        method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ ...menor, ...(EXTRAS[modelo] || {}), model: modelo }),
+      }); }
+    }
     if (r.ok) return r;
-    ultima = r;
-    if (r.status !== 429 && r.status !== 404 && r.status !== 503) return r;
-    await r.body?.cancel();
+    if (r.status === 401 || r.status === 403) return r; // chave errada: não adianta trocar de modelo
+    const txt = await r.text();
+    console.warn(`[groq] ${modelo} respondeu ${r.status}: ${txt.slice(0, 200)}`);
+    ultima = new Response(txt, { status: r.status, headers: r.headers });
+    const seg = /try again in ([\d.]+)s/i.exec(txt);
+    if (r.status === 429 && seg) espera = Math.min(espera, Number(seg[1]));
+    const deModelo = r.status === 400 && /model|reasoning/i.test(txt);
+    if (![404, 413, 429, 498, 500, 502, 503].includes(r.status) && !deModelo) return ultima;
+  }
+  // todos no limite por minuto, mas por poucos segundos: espera e tenta uma vez mais
+  if (nova && espera <= 8) {
+    await new Promise((ok) => setTimeout(ok, espera * 1000 + 300));
+    return chamarGroq(key, corpo, modelos, false);
   }
   return ultima as Response;
 }

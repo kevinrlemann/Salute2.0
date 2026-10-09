@@ -32,6 +32,14 @@ const MODELOS = /^claude-(haiku-4-5|sonnet-4-5|sonnet-5-5)(-\d{8})?$/;
 const LIMITE_PADRAO = Number(Deno.env.get('RENATA_LIMITE_PADRAO') || 300);
 const MAX_MENSAGENS = 100, MAX_FERRAMENTAS = 40, MAX_BYTES = 400_000;
 
+// erro da ElevenLabs com o motivo em português (chave sem permissão é o caso comum)
+const erroVoz = async (r: Response, permissao: string) => {
+  const txt = await r.text();
+  const semPermissao = /missing_permissions|missing the permission/i.test(txt);
+  console.warn(`[elevenlabs] ${r.status}: ${txt.slice(0, 200)}`);
+  return json({ erro: semPermissao ? `A chave da ElevenLabs está sem a permissão "${permissao}". Crie outra chave com essa permissão ligada e salve nas Conexões da Renata.` : 'A ElevenLabs recusou o pedido.', status: r.status }, r.status);
+};
+
 // uma pergunta nova da pessoa (não conta as voltas de resultado de ferramenta)
 const ehPerguntaNova = (msgs: unknown[]) => {
   const u = msgs[msgs.length - 1] as { role?: string; content?: unknown } | undefined;
@@ -159,7 +167,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ text: texto, model_id: modelo, ...(/v2_5/.test(modelo) ? { language_code: 'pt' } : {}),
         voice_settings: { stability: Number(v.estabilidade ?? 0.45), similarity_boost: Number(v.similaridade ?? 0.8), style: Number(v.estilo ?? 0.2) } }),
     });
-    if (!r.ok || !r.body) return new Response(await r.text(), { status: r.status, headers: { ...CORS, 'content-type': 'application/json' } });
+    if (!r.ok || !r.body) return erroVoz(r, 'Text to Speech');
     await consumo({ chars: texto.length });
     return new Response(r.body, { headers: { ...CORS, 'content-type': 'audio/mpeg' } });
   }
@@ -173,8 +181,9 @@ Deno.serve(async (req) => {
     fd.append('model_id', String(form.get('model_id') || 'scribe_v1'));
     fd.append('file', arq, arq.name || 'fala.webm');
     const r = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': key }, body: fd });
+    if (!r.ok) return erroVoz(r, 'Speech to Text');
     const corpoR = await r.text();
-    if (r.ok) await consumo({ segs: Number(corpo.segundos || 0) });
+    await consumo({ segs: Number(corpo.segundos || 0) });
     return new Response(corpoR, { status: r.status, headers: { ...CORS, 'content-type': 'application/json' } });
   }
 
