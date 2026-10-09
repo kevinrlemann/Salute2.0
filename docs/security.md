@@ -247,3 +247,17 @@ limite baixo de envios por hora e é feito para teste. [inferido: SMTP não conf
 | S10 | BAIXO | `contato_optout` sem checagem de clínica | **corrigido** (só servidor) [confirmado] |
 | — | — | Funções de fila do agente (`reivindicar_*`, `concluir_*`, `registrar_webhook`) recusam quem não é `service_role`; as tabelas novas só permitem leitura pela própria clínica | [confirmado pelos testes 38/38] |
 
+## Correções aplicadas em 2026-10-09 (manhã) [confirmado]
+
+| Achado | O que mudou | Onde |
+|---|---|---|
+| A1 / M3 (impressão da anamnese) | iframe com `sandbox`, título escapado, assinatura só com números (tela e banco) | `c00b`, migration `anamnese_assinatura_valida` |
+| Cabeçalhos (CSP etc.) | CSP com `connect-src` restrito, anti-iframe, nosniff, HSTS, Permissions-Policy | `netlify.toml` (vale ao publicar) |
+| M2 (Lucide sem SRI) | `integrity` sha384 + `crossorigin` | `7bf0` |
+| M5 (envio público) | arquivo conferido no Storage, tamanho/tipo do Storage, 30 por link, resposta até 10 mil caracteres | migration `documentos_link_limites` |
+| B3 / B4 | links externos com `noopener` e só `https://`; CSV sem fórmula | `d476` |
+| B5 | nenhuma função de gatilho executável por anon/authenticated | migration `funcoes_gatilho_sem_execucao_publica` |
+| S8 (feriados) | leitura para membros ativos, gravação só gestão | migration `feriados_politicas_padrao` |
+| WhatsApp "enviado" falso | "Aguardando envio", Renata honesta, sem QR falso | `c005`, `366b`, `1b7a`, `c007`, `d476` |
+| Segredos no repositório | busca automática no CI | `tools/verificar_segredos.py` |
+

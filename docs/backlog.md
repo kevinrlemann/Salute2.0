@@ -329,6 +329,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** G.
 
 ### P1-05 — Testes automatizados quase inexistentes e sem CI
+> ✅ **Primeira parte feita em 2026-10-09:** `.github/workflows/verificar.yml` (sintaxe de todos os scripts, `index.html` em dia
+> com `front/extraido`, testes da `renata`, busca de segredos com `tools/verificar_segredos.py`). Falta: testes de tela e de RLS no CI.
 - **Problema:** o único teste é `supabase/functions/renata/testes/groq.test.mts` (tradução Groq). Não há testes de RLS,
   de RPCs públicas, nem de telas; o teste headless é manual (`docs/frontend.md` §9). Não há CI no GitHub.
 - **Evidência:** listagem de `supabase/functions/renata/testes/` e do repositório [confirmado nesta leitura]; Auditoria 02
