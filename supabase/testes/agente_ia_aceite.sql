@@ -1,6 +1,6 @@
--- Testes de aceite do backend do Agente de IA (38 casos). Rodar inteiro no SQL do Supabase.
+-- Testes de aceite do backend do Agente de IA (39 casos). Rodar inteiro no SQL do Supabase.
 -- Usa a clínica, o dono, um procedimento e o funil da base de demonstração (ajuste os ids se forem outros).
--- Resultado de 2026-10-09: 38 de 38 aprovados (depois de contato_optout_interno; também com as tabelas ia_* da outra implementação ativas).
+-- Resultado de 2026-10-09: 39 de 39 aprovados (depois de contato_optout_interno; também com as tabelas ia_* da outra implementação ativas).
 -- Ao final o bloco levanta um erro proposital com os resultados: isso desfaz tudo o que o teste gravou.
 do $$
 declare
@@ -157,8 +157,17 @@ begin
   execute 'set local role authenticated';
   select count(*) into n from public.tarefas_automacao;
   insert into resultado (teste, ok, detalhe) values ('dono vê a fila da própria clínica', n > 0, n::text);
+  begin
+    r := public.agente_ia_config(v_cli);
+    insert into resultado (teste, ok, detalhe) values ('dono não lê a configuração do agente (só o administrador master)', false, 'leu');
+  exception when insufficient_privilege then
+    insert into resultado (teste, ok, detalhe) values ('dono não lê a configuração do agente (só o administrador master)', true, 'recusado');
+  end;
+  execute 'reset role';
+  perform set_config('request.jwt.claims', json_build_object('role', 'authenticated', 'sub', (select id from public.perfis_usuario where admin_plataforma limit 1))::text, true);
+  execute 'set local role authenticated';
   r := public.agente_ia_config(v_cli);
-  insert into resultado (teste, ok, detalhe) values ('dono lê a configuração completa', r ? 'agente' and r ? 'servicos' and r ? 'regras_texto', 'servicos: ' || jsonb_array_length(r -> 'servicos'));
+  insert into resultado (teste, ok, detalhe) values ('administrador master lê a configuração completa', r ? 'agente' and r ? 'servicos' and r ? 'regras_texto', 'servicos: ' || jsonb_array_length(r -> 'servicos'));
   execute 'reset role';
   raise exception 'RESULTADO_TESTES %', (select json_agg(json_build_object('n', x.n, 'ok', x.ok, 'teste', x.teste, 'detalhe', left(x.detalhe, 140)) order by x.n) from resultado x);
 end $$;

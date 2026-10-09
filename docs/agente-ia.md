@@ -76,3 +76,10 @@ gatilhos em `conversas` e `mensagens`). Ela resolve o mesmo documento com outros
 - Peças `ia_*` ainda usadas (não apagar): `ia_despertar` (chama o n8n via `pg_net`), `ia_manutencao` (cron `ia-manutencao`, 1/min),
   `ia_notificar_equipe`, `ia_param`, `ia_tel_normalizar`, `ia_tel_variantes`, `ia_agendamento_do_contato`, `ia_resolver_*`.
 
+## Quem configura (decisão do fundador, 2026-10-09) [confirmado]
+
+Só o **administrador master** (`perfis_usuario.admin_plataforma`, função `eh_admin_plataforma()`) vê e altera o Agente de IA:
+`agente_ia` (ler e gravar), `renata_horarios` e `renata_base_conhecimento` (gravar), campos `ia_*` de `procedimentos`
+(gatilho `tg_procedimentos_campos_ia`) e `agente_ia_config` para usuário logado. `agente_ia_regras` só para o servidor.
+A aba some para os demais e saiu das permissões da equipe (`SUBMODS.perfil`). Migration `agente_ia_so_admin_master`. Testes 39/39.
+

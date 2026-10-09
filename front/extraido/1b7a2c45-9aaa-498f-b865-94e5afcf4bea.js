@@ -3805,8 +3805,8 @@ function AgEditar(_ref) {
    (Desfazer / Salvar). Serviços (procedimentos e profissionais_procedimentos), horário da IA
    (renata_horarios), conhecimento (renata_base_conhecimento) e fuso (clinicas) têm tabelas próprias
    e salvam item por item, com botão próprio. As regras de gravação de verdade estão na RLS:
-   agente_ia, renata_horarios e renata_base_conhecimento só gestão; procedimentos, vínculos e fuso
-   também para quem tem o módulo Cadastro. */
+   a aba inteira é só do administrador master (agente_ia, renata_horarios, renata_base_conhecimento
+   e os campos ia_* dos procedimentos exigem eh_admin_plataforma). */
 var AGENTE_PADRAO = {
   nome: 'Renata',
   tom: 'acolhedor',
@@ -4074,13 +4074,12 @@ function agPermissoes() {
     cadastro: true,
     procedimentos: true
   };
-  var c = SESSAO.v.clinica || {};
-  var mods = c.modulos || [];
-  var gestao = !!(c.dono || c.papel === 'dono' || c.papel === 'gestor' || c.suporte);
+  // só o administrador master mexe no Agente de IA (RLS: eh_admin_plataforma)
+  var master = !!SESSAO.v.admin;
   return {
-    gestao: gestao,
-    cadastro: gestao || mods.indexOf('perfil.cadastro') >= 0,
-    procedimentos: gestao || mods.indexOf('perfil.cadastro') >= 0 || mods.indexOf('gestao.financeiro') >= 0
+    gestao: master,
+    cadastro: master,
+    procedimentos: master
   };
 }
 // abre Configurações > Cadastro na parte pedida (clinica, profissionais, procedimentos...)

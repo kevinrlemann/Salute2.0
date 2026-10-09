@@ -521,9 +521,15 @@ var lsSet = function lsSet(k, v) {
 /* ===== Módulos do sistema (fonte única: menu, abas e permissões) ===== */
 var GESTAO_AREAS = [['estoque', 'Estoque', 'package', 'Produtos, validade e consumo'], ['financeiro', 'Financeiro', 'wallet', 'Receitas, despesas e caixa']];
 var CONFIG_TABS = [['cadastro', 'Cadastro', 'clipboard-pen'], ['canais', 'Integrações', 'radio-tower'], ['agente', 'Agente de IA', 'bot'], ['flix', 'Saluteflix', 'clapperboard'], ['parcerias', 'Parcerias', 'handshake'], ['cert', 'Certificações', 'award'], ['conta', 'Minha conta', 'user']];
+// a aba Agente de IA é só do administrador master (perfis_usuario.admin_plataforma): não entra nas permissões da equipe
+var agenteIaPermitido = function agenteIaPermitido() {
+  return !SB_ON || !!(SESSAO.v && SESSAO.v.admin);
+};
 var SUBMODS = {
   gestao: GESTAO_AREAS,
-  perfil: CONFIG_TABS
+  perfil: CONFIG_TABS.filter(function (t) {
+    return t[0] !== 'agente';
+  })
 };
 var moduleTree = function moduleTree() {
   return KIT_NAV.map(function (n) {
@@ -984,6 +990,7 @@ Object.assign(window, {
   lsSet: lsSet,
   GESTAO_AREAS: GESTAO_AREAS,
   CONFIG_TABS: CONFIG_TABS,
+  agenteIaPermitido: agenteIaPermitido,
   moduleTree: moduleTree,
   allModuleIds: allModuleIds,
   withKids: withKids,

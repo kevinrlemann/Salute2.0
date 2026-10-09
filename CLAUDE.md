@@ -67,7 +67,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `AnamSvc` (`c00b`), `ContSvc` (`c007`). O conteúdo da Salute é global (`clinica_id` nulo; só admin grava).
 - Renata no front (`1b7a2c45`): ferramentas de leitura e `propor_*`. As `propor_*` só preparam; a gravação
   acontece quando a pessoa confirma. As regras do **Agente de IA** (tabela `agente_ia`, função `agente_ia_regras`)
-  entram no começo das instruções pelo servidor. Atenção: dentro do artifact, a Renata usa primeiro `window.claude`,
+  entram no começo das instruções pelo servidor. A aba Agente de IA é **só do administrador master**
+  (`eh_admin_plataforma()`): nem o dono da clínica vê ou altera (decisão do fundador, 2026-10-09). Atenção: dentro do artifact, a Renata usa primeiro `window.claude`,
   que fica fora dessas travas.
 
 ## Regras de negócio observadas (confirmado no código)
