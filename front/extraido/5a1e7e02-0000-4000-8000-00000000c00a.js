@@ -798,9 +798,9 @@ function rnApplyDB(a) {
         dbId: id,
         desc: "".concat(x.produto, " (").concat(rnUnPl(x.quantidade, x.un), ")"),
         cat: 'Insumos e fornecedores',
-        forn: 'Não informado',
+        forn: x.fornecedor || 'Não informado',
         total: x.valorTotal,
-        forma: 'Pix',
+        forma: x.forma || 'Pix',
         data: TODAY_ISO,
         venc: TODAY_ISO,
         parc: 1,
@@ -837,7 +837,7 @@ function rnApplyDB(a) {
                       id: x.prodId,
                       dbId: x.prodId
                     }), x.tipo === 'saida' ? -x.quantidade : x.quantidade, _objectSpread(_objectSpread({}, ia), {}, {
-                      motivo: 'Lançado pela Renata IA'
+                      motivo: (x.motivo ? x.motivo + ' · ' : '') + 'Lançado pela Renata IA'
                     }));
                   case 1:
                     r = _context3.v;

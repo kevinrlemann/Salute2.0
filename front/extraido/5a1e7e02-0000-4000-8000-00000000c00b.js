@@ -70,6 +70,63 @@ var temOpcoes = function temOpcoes(k) {
 };
 var ICONES_BLOCO = ['clipboard-list', 'stethoscope', 'heart-pulse', 'sparkles', 'activity', 'smile', 'target', 'pill', 'info', 'message-square-text'];
 var DECLARACAO_PADRAO = 'Declaro que as informações acima são verdadeiras e completas e entendo que elas serão usadas para planejar o meu atendimento com segurança.';
+/* local da assinatura: pede o GPS do aparelho quando o paciente começa a assinar */
+var ANAM_LOCAL = {
+  p: null,
+  v: null
+};
+function anamPedirLocal() {
+  if (ANAM_LOCAL.p) return ANAM_LOCAL.p;
+  ANAM_LOCAL.p = new Promise(function (res) {
+    if (!navigator.geolocation) return res({
+      status: 'indisponivel'
+    });
+    var fim = false;
+    var t = setTimeout(function () {
+      if (!fim) {
+        fim = true;
+        res({
+          status: 'tempo_esgotado'
+        });
+      }
+    }, 15000);
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      if (fim) return;
+      fim = true;
+      clearTimeout(t);
+      res({
+        status: 'ok',
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        precisao: pos.coords.accuracy
+      });
+    }, function (err) {
+      if (fim) return;
+      fim = true;
+      clearTimeout(t);
+      res({
+        status: err && err.code === 1 ? 'negado' : err && err.code === 3 ? 'tempo_esgotado' : 'indisponivel'
+      });
+    }, {
+      enableHighAccuracy: true,
+      timeout: 12000,
+      maximumAge: 60000
+    });
+  }).then(function (v) {
+    ANAM_LOCAL.v = v;
+    return v;
+  });
+  return ANAM_LOCAL.p;
+}
+// texto do local para a ficha e para a impressão
+function localAssTexto(l) {
+  if (!l || !l.status) return '';
+  if (l.status === 'ok' && l.lat != null && l.lng != null) return 'Local ' + Number(l.lat).toFixed(5) + ', ' + Number(l.lng).toFixed(5) + (l.precisao_m ? ' (±' + l.precisao_m + ' m)' : '');
+  return l.status === 'negado' ? 'Local não autorizado pelo paciente' : 'Local indisponível no aparelho';
+}
+var localAssLink = function localAssLink(l) {
+  return l && l.status === 'ok' && l.lat != null ? 'https://www.google.com/maps?q=' + l.lat + ',' + l.lng : null;
+};
 var ACEITE_ASSINATURA = 'Li e confirmo que as informações são verdadeiras. Concordo em assinar este documento eletronicamente.';
 var idLocal = function idLocal(p) {
   return p + Math.random().toString(36).slice(2, 10);
@@ -727,7 +784,7 @@ var AnamSvc = {
         while (1) switch (_context8.n) {
           case 0:
             _context8.n = 1;
-            return DB.ler(DB.sel('anamnese_envios', 'id,token,status,modo,enviado_em,expira_em,respondido_em,rascunho,assinatura,assinante_nome,assinante_cpf,assinado_em,ip_assinatura,texto_declaracao,hash_respostas,modelo_id,modelo:anamnese_modelos(nome),respostas:anamnese_respostas(ordem,pergunta_texto,resposta,detalhe,bloco_titulo,alerta,rotulo_alerta,excluido_em)').eq('id', id));
+            return DB.ler(DB.sel('anamnese_envios', 'id,token,status,modo,enviado_em,expira_em,respondido_em,rascunho,assinatura,assinante_nome,assinante_cpf,assinado_em,ip_assinatura,local_assinatura,texto_declaracao,hash_respostas,modelo_id,modelo:anamnese_modelos(nome),respostas:anamnese_respostas(ordem,pergunta_texto,resposta,detalhe,bloco_titulo,alerta,rotulo_alerta,excluido_em)').eq('id', id));
           case 1:
             r = _context8.v;
             return _context8.a(2, r[0] ? envioTela(r[0]) : null);
@@ -810,6 +867,7 @@ function envioTela(e) {
     cpfAss: e.assinante_cpf,
     assinadoEm: e.assinado_em,
     ip: e.ip_assinatura,
+    local: e.local_assinatura || null,
     declaracao: e.texto_declaracao || '',
     codigo: e.hash_respostas ? e.hash_respostas.slice(0, 12).toUpperCase() : null,
     answers: resp.length ? resp.map(function (r) {
@@ -916,7 +974,7 @@ function imprimirAnamnese(r, paciente) {
     return '<h2>' + escHtml(g.t) + '</h2>' + g.l.map(function (a) {
       return '<div class="q"><span class="m">' + escHtml(a[0]) + '</span><b' + (a[4] ? ' class="al"' : '') + '>' + escHtml(a[1]) + (a[2] ? ': ' + escHtml(a[2]) : '') + '</b></div>';
     }).join('');
-  }).join('') + (r.assinatura ? '<h2>Assinatura</h2><div class="ass">' + assinaturaSvgTexto(r.assinatura) + '<div>' + escHtml(r.assinante || '') + (r.cpfAss ? ' · CPF ' + escHtml(cpfOculto(r.cpfAss)) : '') + '</div><div class="m">' + (r.assinadoEm ? 'Assinada em ' + escHtml(dataHoraBR(r.assinadoEm)) : '') + (r.ip ? ' · IP ' + escHtml(r.ip) : '') + (r.codigo ? ' · Código de conferência ' + escHtml(r.codigo) : '') + '</div>' + (r.declaracao ? '<div class="m"><b>Declaração aceita:</b> ' + escHtml(r.declaracao) + '</div>' : '') + '</div>' : '');
+  }).join('') + (r.assinatura ? '<h2>Assinatura</h2><div class="ass">' + assinaturaSvgTexto(r.assinatura) + '<div>' + escHtml(r.assinante || '') + (r.cpfAss ? ' · CPF ' + escHtml(cpfOculto(r.cpfAss)) : '') + '</div><div class="m">' + (r.assinadoEm ? 'Assinada em ' + escHtml(dataHoraBR(r.assinadoEm)) : '') + (r.ip ? ' · IP ' + escHtml(r.ip) : '') + (localAssTexto(r.local) ? ' · ' + escHtml(localAssTexto(r.local)) : '') + (r.codigo ? ' · Código de conferência ' + escHtml(r.codigo) : '') + '</div>' + (r.declaracao ? '<div class="m"><b>Declaração aceita:</b> ' + escHtml(r.declaracao) + '</div>' : '') + '</div>' : '');
   imprimirHtml(r.title, corpo);
 }
 
@@ -1507,7 +1565,7 @@ function AnamnesePreenchimento(_ref0) {
   }, [vals]);
   var enviar = /*#__PURE__*/function () {
     var _ref1 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee9() {
-      var assinatura, m, _t, _t2;
+      var assinatura, localAss, m, _t, _t2;
       return _regenerator().w(function (_context9) {
         while (1) switch (_context9.p = _context9.n) {
           case 0:
@@ -1549,7 +1607,18 @@ function AnamnesePreenchimento(_ref0) {
             }
             return _context9.a(2);
           case 7:
+            _context9.n = 7.5;
+            return pedeAss ? Promise.race([anamPedirLocal(), new Promise(function (r) {
+              return setTimeout(function () {
+                return r(null);
+              }, 6000);
+            })]) : null;
+          case 7.5:
+            localAss = _context9.v;
             assinatura = pedeAss ? {
+              local: localAss || {
+                status: 'tempo_esgotado'
+              },
               nome: ass.nome.trim(),
               cpf: onlyDigits(ass.cpf),
               aceite: true,
@@ -1818,6 +1887,7 @@ function AnamnesePreenchimento(_ref0) {
   }, "Assinatura *"), /*#__PURE__*/React.createElement(AssinaturaPad, {
     tracos: ass.tracos,
     onChange: function onChange(t) {
+      if (modo !== 'previa') anamPedirLocal();
       return setAss(_objectSpread(_objectSpread({}, ass), {}, {
         tracos: t
       }));
@@ -1825,12 +1895,19 @@ function AnamnesePreenchimento(_ref0) {
   })), /*#__PURE__*/React.createElement(OCheck, {
     checked: ass.aceite,
     onChange: function onChange(v) {
+      if (v && modo !== 'previa') anamPedirLocal();
       return setAss(_objectSpread(_objectSpread({}, ass), {}, {
         aceite: v
       }));
     },
     label: ACEITE_ASSINATURA
-  })) : null, erroAss ? /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      lineHeight: 1.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Para validar a assinatura, registramos data, hora, IP e o local do aparelho (o navegador vai pedir sua permiss\xE3o).")) : null, erroAss ? /*#__PURE__*/React.createElement("div", {
     role: "alert",
     style: {
       padding: '10px 14px',
@@ -2630,7 +2707,14 @@ function RespostasAnamnese(_ref17) {
       fontSize: 12,
       color: 'var(--text-muted)'
     }
-  }, r.assinadoEm ? 'Assinada em ' + dataHoraBR(r.assinadoEm) : '', r.ip ? ' · IP ' + r.ip : '', r.codigo ? ' · Código ' + r.codigo : ''), r.declaracao ? /*#__PURE__*/React.createElement("span", {
+  }, r.assinadoEm ? 'Assinada em ' + dataHoraBR(r.assinadoEm) : '', r.ip ? ' · IP ' + r.ip : '', localAssTexto(r.local) ? ' · ' : '', localAssLink(r.local) ? /*#__PURE__*/React.createElement("a", {
+    href: localAssLink(r.local),
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      color: '#1F5EFF'
+    }
+  }, localAssTexto(r.local)) : localAssTexto(r.local), r.codigo ? ' · Código ' + r.codigo : ''), r.declaracao ? /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 12,
       lineHeight: 1.5,

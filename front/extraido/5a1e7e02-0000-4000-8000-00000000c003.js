@@ -474,7 +474,7 @@ var ProntSvc = {
           case 0:
             P = p.dbId;
             _context8.n = 1;
-            return Promise.all([DB.ler(DB.sel('anamnese_envios', 'id,token,status,modo,enviado_em,expira_em,respondido_em,rascunho,assinatura,assinante_nome,assinante_cpf,assinado_em,ip_assinatura,texto_declaracao,hash_respostas,modelo_id,modelo:anamnese_modelos(nome),respostas:anamnese_respostas(ordem,pergunta_texto,resposta,detalhe,bloco_titulo,alerta,rotulo_alerta,excluido_em)').eq('paciente_id', P).order('enviado_em', {
+            return Promise.all([DB.ler(DB.sel('anamnese_envios', 'id,token,status,modo,enviado_em,expira_em,respondido_em,rascunho,assinatura,assinante_nome,assinante_cpf,assinado_em,ip_assinatura,local_assinatura,texto_declaracao,hash_respostas,modelo_id,modelo:anamnese_modelos(nome),respostas:anamnese_respostas(ordem,pergunta_texto,resposta,detalhe,bloco_titulo,alerta,rotulo_alerta,excluido_em)').eq('paciente_id', P).order('enviado_em', {
               ascending: false
             })), DB.ler(DB.sel('mapeamentos', 'id,titulo,data,criado_em,imagem_path,origem_imagem,categoria,area_descricao,observacoes,modelo:mapeamento_modelos(chave_sistema,imagem_path,sistema),marcacoes:mapeamento_marcacoes(id,tipo,ordem,item_mapa,dose,unidade,posicao_x,posicao_y,pontos_tracado,cor,espessura,opacidade,comentario,excluido_em)').eq('paciente_id', P).order('criado_em', {
               ascending: false
@@ -1466,6 +1466,19 @@ function agendaDoDia(d) {
     return s.col >= 0;
   });
 }
+/* agenda em blocos de 30 minutos: início sempre em hora cheia ou meia hora, fim arredondado para o próximo bloco */
+var AG_PASSO_MIN = 30;
+function agMeiaHoraOk(v) {
+  var m = v instanceof Date ? v.getMinutes() : +(String(v || '').split(':')[1] || NaN);
+  var seg = v instanceof Date ? v.getSeconds() : 0;
+  return m % AG_PASSO_MIN === 0 && seg === 0;
+}
+function agFimNoBloco(ini, fim) {
+  var passo = AG_PASSO_MIN * 60000;
+  var dur = Math.max(passo, Math.ceil((fim.getTime() - ini.getTime()) / passo) * passo);
+  return new Date(ini.getTime() + dur);
+}
+var AG_MSG_PASSO = 'Os agendamentos são de 30 em 30 minutos (ex.: 09:00 ou 09:30).';
 var AgSvc = {
   criar: function criar(_ref9) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21() {
@@ -1477,7 +1490,12 @@ var AgSvc = {
             pr = procedimento ? (CAT.v.procedimentos || []).find(function (x) {
               return x.nome === procedimento;
             }) : null; // fim pode ser passado diretamente (horaFim) ou calculado por minutos/duração padrão
+            if (!agMeiaHoraOk(inicio)) {
+              avisoErro('Horário fora do padrão', AG_MSG_PASSO);
+              throw new Error(AG_MSG_PASSO);
+            }
             fim = fimParam instanceof Date ? fimParam : new Date(inicio.getTime() + (minutos || pr && pr.duracao_padrao_minutos || 60) * 60000);
+            fim = agFimNoBloco(inicio, fim);
             st = (CAT.v.status || []).find(function (s) {
               return s.chave === 'agendado';
             });
@@ -1518,6 +1536,10 @@ var AgSvc = {
   // reagendar / mudar profissional ou status de um agendamento existente
   editar: function editar(id, campos) {
     var patch = {};
+    if (campos.inicio && !agMeiaHoraOk(campos.inicio) || campos.fim && !agMeiaHoraOk(campos.fim)) {
+      avisoErro('Horário fora do padrão', AG_MSG_PASSO);
+      return Promise.reject(new Error(AG_MSG_PASSO));
+    }
     if (campos.inicio) patch.inicio = campos.inicio.toISOString();
     if (campos.fim) patch.fim = campos.fim.toISOString();
     if (campos.profissionalId) patch.profissional_id = campos.profissionalId;
@@ -1608,6 +1630,9 @@ Object.assign(window, {
   PacSvc: PacSvc,
   ProntSvc: ProntSvc,
   AgSvc: AgSvc,
+  agMeiaHoraOk: agMeiaHoraOk,
+  agFimNoBloco: agFimNoBloco,
+  AG_MSG_PASSO: AG_MSG_PASSO,
   agendaDoDia: agendaDoDia,
   agendaGarantirMes: agendaGarantirMes,
   agendaResumo: agendaResumo,
@@ -1650,13 +1675,21 @@ function _agendarRapido() {
         case 2:
           hm = /^\d{1,2}:\d{2}$/.test(String(nv.hora || '')) ? String(nv.hora).padStart(5, '0') : '09:00';
           hmFim = /^\d{1,2}:\d{2}$/.test(String(nv.horaFim || '')) ? String(nv.horaFim).padStart(5, '0') : null;
-          dia = TODAY_ISO, ini = BR.instante(dia, hm);
+          if (!agMeiaHoraOk(hm) || hmFim && !agMeiaHoraOk(hmFim)) {
+            avisoErro('Horário fora do padrão', AG_MSG_PASSO);
+            return _context23.a(2, false);
+          }
+          dia = /^\d{4}-\d{2}-\d{2}$/.test(String(nv.data || '')) ? nv.data : TODAY_ISO, ini = BR.instante(dia, hm);
+          if (nv.data && ini < new Date()) {
+            avisoErro('Horário que já passou', 'Escolha um dia e horário a partir de agora.');
+            return _context23.a(2, false);
+          }
           if (ini < new Date()) {
             dia = isoOf(addD(TODAY, 1));
             ini = BR.instante(dia, hm);
           } // horário que já passou vai para amanhã
           // fim: usa horaFim se fornecido, caso contrário +1h
-          fim = hmFim ? BR.instante(dia, hmFim) : new Date(ini.getTime() + 3600000); // garante que fim > ini (se horaFim inválido ou menor, +1h do início)
+          fim = hmFim ? BR.instante(dia, hmFim) : new Date(ini.getTime() + (Number(nv.minutos) || 60) * 60000); // garante que fim > ini (se horaFim inválido ou menor, +1h do início)
           fimFinal = fim > ini ? fim : new Date(ini.getTime() + 3600000);
           _context23.p = 3;
           _context23.n = 4;
@@ -1677,6 +1710,7 @@ function _agendarRapido() {
             inicio: ini,
             fim: fimFinal,
             duplicado: choca,
+            procedimento: nv.proc || undefined,
             whatsapp: nv.wpp,
             origem: 'equipe',
             conversaId: nv.conversaId || null
@@ -1707,6 +1741,15 @@ function _agendarRapido() {
   return _agendarRapido.apply(this, arguments);
 }
 window.agendarRapido = agendarRapido;
+// horários do formulário de agendamento, de 30 em 30 minutos
+var AG_HORAS = function () {
+  var out = [];
+  for (var m = 6 * 60; m <= 22 * 60; m += AG_PASSO_MIN) out.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
+  return out;
+}();
+var AG_DURACOES = [['30', '30 min'], ['60', '1 hora'], ['90', '1h30'], ['120', '2 horas'], ['150', '2h30'], ['180', '3 horas']];
+window.AG_HORAS = AG_HORAS;
+window.AG_DURACOES = AG_DURACOES;
 
 // demonstração: produtos do mapa ligados ao estoque de exemplo
 if (!SB_ON) hidratarMapa();

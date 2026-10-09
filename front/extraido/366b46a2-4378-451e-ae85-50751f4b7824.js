@@ -1584,6 +1584,135 @@ function WaMenu(_ref11) {
     }, r);
   })), item('reply', 'Responder', 'reply'), m.kind === 'text' || !m.kind ? item('copy', 'Copiar', 'copy') : null, m.kind === 'image' || m.kind === 'file' || m.kind === 'audio' || m.kind === 'video' ? item('download', 'Baixar', 'download') : null, item('trash-2', out ? 'Apagar para todos' : 'Apagar para mim', 'delete'));
 }
+/* câmera do computador: abre a webcam e tira a foto, como no WhatsApp Web */
+function WaCamera(_ref) {
+  var onFoto = _ref.onFoto,
+    onClose = _ref.onClose,
+    onFalha = _ref.onFalha;
+  var vid = React.useRef(null),
+    strm = React.useRef(null);
+  var _st = React.useState(false),
+    pronta = _st[0],
+    setPronta = _st[1];
+  React.useEffect(function () {
+    var vivo = true;
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'user'
+      },
+      audio: false
+    }).then(function (st) {
+      if (!vivo) return st.getTracks().forEach(function (t) {
+        return t.stop();
+      });
+      strm.current = st;
+      if (vid.current) {
+        vid.current.srcObject = st;
+        vid.current.play()["catch"](function () {});
+      }
+      setPronta(true);
+    }, function () {
+      if (vivo) onFalha();
+    });
+    var esc = function esc(e) {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', esc);
+    return function () {
+      vivo = false;
+      window.removeEventListener('keydown', esc);
+      if (strm.current) strm.current.getTracks().forEach(function (t) {
+        return t.stop();
+      });
+    };
+  }, []);
+  var tirar = function tirar() {
+    var v = vid.current;
+    if (!v || !v.videoWidth) return;
+    var c = document.createElement('canvas');
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0);
+    c.toBlob(function (b) {
+      if (b) onFoto(b);
+    }, 'image/jpeg', 0.9);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    role: "dialog",
+    "aria-label": "C\xE2mera",
+    style: {
+      position: 'absolute',
+      inset: 0,
+      zIndex: 20,
+      background: '#0b141a',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    "aria-label": "Fechar c\xE2mera",
+    onClick: onClose,
+    style: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      width: 40,
+      height: 40,
+      borderRadius: '50%',
+      border: 0,
+      background: 'transparent',
+      color: '#e9edef',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "x",
+    size: 22
+  })), /*#__PURE__*/React.createElement("video", {
+    ref: vid,
+    muted: true,
+    playsInline: true,
+    style: {
+      maxWidth: '100%',
+      maxHeight: 'calc(100% - 100px)',
+      borderRadius: 12,
+      background: '#000',
+      transform: 'scaleX(-1)'
+    }
+  }), pronta ? null : /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#8696a0',
+      fontSize: 14
+    }
+  }, "Permita o acesso \xE0 c\xE2mera no navegador..."), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    "aria-label": "Tirar foto",
+    title: "Tirar foto",
+    disabled: !pronta,
+    onClick: tirar,
+    style: {
+      width: 64,
+      height: 64,
+      borderRadius: '50%',
+      border: '4px solid #e9edef',
+      background: pronta ? '#00a884' : '#374248',
+      color: '#fff',
+      cursor: pronta ? 'pointer' : 'default',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: "camera",
+    size: 26
+  })));
+}
 function WaChat(_ref13) {
   var chatKey = _ref13.chatKey,
     seed = _ref13.seed,
@@ -1647,6 +1776,9 @@ function WaChat(_ref13) {
     _React$useState38 = _slicedToArray(_React$useState37, 2),
     note = _React$useState38[0],
     setNote = _React$useState38[1];
+  var _camSt = React.useState(false),
+    cam = _camSt[0],
+    setCam = _camSt[1];
   var endRef = React.useRef(null),
     inpRef = React.useRef(null),
     fileRef = React.useRef(null),
@@ -1940,6 +2072,13 @@ function WaChat(_ref13) {
   }], ['image', 'Fotos e vídeos', '#007bfc', function () {
     return pick('image/*,video/*');
   }], ['camera', 'Câmera', '#ff2e74', function () {
+    // celular: abre a câmera do aparelho; computador: abre a webcam aqui mesmo
+    var toque = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (!toque && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setAttach(false);
+      setPanel(null);
+      return setCam(true);
+    }
     return pick('image/*', true);
   }], ['headphones', 'Áudio', '#fa6533', function () {
     return pick('audio/*');
@@ -2415,7 +2554,27 @@ function WaChat(_ref13) {
   }, /*#__PURE__*/React.createElement(MIcon, {
     name: v.trim() ? 'send-horizontal' : 'mic',
     size: 22
-  })))), preview ? /*#__PURE__*/React.createElement("div", {
+  })))), cam ? /*#__PURE__*/React.createElement(WaCamera, {
+    onClose: function onClose() {
+      return setCam(false);
+    },
+    onFalha: function onFalha() {
+      setCam(false);
+      setNote('Não consegui abrir a câmera. Escolha uma foto do computador.');
+      pick('image/*', true);
+    },
+    onFoto: function onFoto(b) {
+      setCam(false);
+      setPreview({
+        kind: 'image',
+        url: URL.createObjectURL(b),
+        name: 'foto-' + Date.now() + '.jpg',
+        size: b.size,
+        cap: v
+      });
+      setV('');
+    }
+  }) : null, preview ? /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       inset: 0,

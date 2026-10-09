@@ -385,6 +385,68 @@ var FinSvc = {
       }, _callee3);
     }))();
   },
+  // edição de um lançamento já salvo (r = como ficou, antes = como estava)
+  editar: function editar(kind, r, antes) {
+    var isR = kind === 'rec',
+      pago = r.status !== 'Pendente',
+      final = isR ? Math.max(r.total - (r.desc || 0), 0) : r.total,
+      fk = isR ? 'conta_receber_id' : 'conta_pagar_id',
+      tabela = isR ? 'contas_receber' : 'contas_pagar';
+    var mudouPago = (antes.status !== 'Pendente') !== pago;
+    var comum = {
+      forma_pagamento_id: catId('formas', r.forma),
+      valor_total: r.total,
+      numero_parcelas: r.parc || 1,
+      data_vencimento: r.venc || r.data
+    };
+    // a baixa só é refeita quando o status muda; se continua pago, atualiza o valor pago
+    if (mudouPago) Object.assign(comum, FinSvc.baixa(pago, final));else if (pago) comum.valor_pago = final;
+    var dados;
+    if (isR) {
+      var p = PacSvc.achar(r.pac),
+        pr = porNome(CAT.v.procedimentos, r.proc),
+        pf = PROF0.find(function (x) {
+          return x.nome === r.pro;
+        });
+      dados = Promise.resolve(Object.assign(comum, {
+        paciente_id: p ? p.dbId : null,
+        paciente_nome: p ? null : r.pac || null,
+        procedimento_id: pr ? pr.id : null,
+        procedimento_nome: r.proc || null,
+        profissional_id: pf ? pf.dbId : null,
+        categoria_financeira_id: FinSvc.idCat('receita', r.cat),
+        tipo_atendimento: r.atend === 'Convênio' ? 'convenio' : 'particular',
+        convenio_id: r.atend === 'Convênio' && p && p.conv ? catId('convenios', p.conv) : null,
+        valor_desconto: r.desc || 0
+      }));
+    } else {
+      dados = FinSvc.fornecedor(r.forn).then(function (fid) {
+        return Object.assign(comum, {
+          descricao: r.desc,
+          categoria_financeira_id: FinSvc.idCat('despesa', r.cat),
+          fornecedor_id: fid
+        });
+      });
+    }
+    var refazParcelas = (antes.parc || 1) !== (r.parc || 1) || (isR ? liq(antes) : antes.total) !== final || antes.venc !== r.venc || mudouPago;
+    return dados.then(function (d) {
+      return DB.upd(tabela, r.dbId, d, 'Não foi possível salvar a alteração');
+    }).then(function () {
+      if (!refazParcelas || (antes.parc || 1) <= 1 && (r.parc || 1) <= 1) return null;
+      // parcelas antigas saem (exclusão lógica) e entram as novas
+      return DB.ler(DB.sel('parcelas', 'id').eq(fk, r.dbId).is('excluido_em', null)).then(function (ps) {
+        return Promise.all(ps.map(function (x) {
+          return DB.upd('parcelas', x.id, {
+            excluido_em: agoraIso()
+          }, 'Não foi possível atualizar as parcelas');
+        }));
+      }).then(function () {
+        return (r.parc || 1) > 1 ? DB.ins('parcelas', FinSvc.parcelas(isR, r.dbId, final, r.parc, r.venc || r.data, pago), 'Não foi possível salvar as parcelas') : null;
+      });
+    }).then(function () {
+      avisoOk(isR ? 'Receita atualizada' : 'Despesa atualizada');
+    });
+  },
   // marcar como recebido/pago ou voltar para pendente
   status: function status(kind, r, novo) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {

@@ -1045,7 +1045,7 @@ RENATA_TOOLS.push({
   }
 });
 var RENATA_RULES = function RENATA_RULES(voice) {
-  return "Voc\xEA \xE9 a Renata, a assistente de IA da ".concat(RN_CLINICA.fantasia, ", dentro do sistema Salute IA. Est\xE1 conversando com ").concat(rnQuem(), ".\n\nRegras:\n1. Responda SOMENTE com base nos dados desta cl\xEDnica, que est\xE3o no JSON abaixo ou nas ferramentas. Nunca use, cite ou invente dados de outras cl\xEDnicas. Se a informa\xE7\xE3o n\xE3o existir nos dados, diga isso com clareza e sugira onde a pessoa pode ver ou cadastrar no sistema.\n2. Nunca invente n\xFAmeros. Calcule a partir dos dados. Para per\xEDodos, dias ou pacientes que n\xE3o est\xE3o no resumo, use as ferramentas.\n3. Voc\xEA tamb\xE9m pode trazer conhecimento de mercado (benchmarks de cl\xEDnicas de est\xE9tica e odontologia no Brasil, boas pr\xE1ticas de gest\xE3o, marketing e atendimento). Quando fizer isso, deixe claro que \xE9 refer\xEAncia de mercado e use faixas realistas e cr\xEDveis, nunca n\xFAmeros exagerados.\n4. Hoje \xE9 ").concat(rnHojeTxt(), ". Valores em reais no formato brasileiro (R$ 1.234,56). Datas no formato dd/mm/aaaa.\n5. Portugu\xEAs do Brasil, tom acolhedor, direto e profissional, como uma colega de trabalho. Comece pela resposta. N\xE3o use travess\xF5es. N\xE3o narre o uso das ferramentas.\n6. Voc\xEA \xE9 um agente do pr\xF3prio sistema: quando pedirem para abrir uma tela ou aba, use abrir_tela; para a ficha, o prontu\xE1rio ou a conversa de um paciente, use abrir_paciente. Confirme em uma frase.\n7. Se a pessoa s\xF3 cumprimentar, agradecer ou se despedir, responda de forma breve e calorosa. Para perguntas que dependem da conversa anterior (por exemplo \"e em agosto?\"), use o contexto das mensagens anteriores.\n8. A\xE7\xF5es no sistema: para lan\xE7ar, receber, pagar, dar entrada ou baixa no estoque, dar baixa em conta pendente, agendar, remarcar, cancelar ou confirmar agendamento, cadastrar ou atualizar paciente, enviar anamnese ou mensagem de WhatsApp, registrar procedimento no prontu\xE1rio, mover lead no CRM ou ligar e pausar a IA de um lead, use as ferramentas propor_*. Elas s\xF3 preparam: o sistema mostra um cart\xE3o e grava quando a pessoa disser sim ou tocar em Confirmar. Nunca diga que fez antes disso. Depois de propor, fa\xE7a UMA pergunta curta de confirma\xE7\xE3o, por exemplo \"Agendar a Mariana para ter\xE7a, 07/10 \xE0s 10:00 com a Dra. Camila?\". Se faltar algo essencial, pergunte antes de propor. Quando a pessoa n\xE3o disser a hora ou a ferramenta avisar conflito, consulte horarios_livres e ofere\xE7a at\xE9 3 op\xE7\xF5es. Se uma ferramenta devolver erro, explique em uma frase e pe\xE7a o que falta. Com um mapeamento aberto, use ajustar_ponto_mapa para mudar quantidade, unidade, produto ou coment\xE1rio de um ponto pelo n\xFAmero; isso n\xE3o precisa de confirma\xE7\xE3o.\n").concat(voice ? '9. MODO VOZ: é uma conversa falada, como uma ligação. Responda em até 3 frases curtas, sem listas, sem markdown e sem emojis, com números e datas escritos de forma natural para serem falados. Se houver muitos itens, diga os 3 principais e pergunte se a pessoa quer ouvir o resto.' : '9. Respostas curtas. Use **negrito** para o número principal e listas curtas com "- " quando ajudar. Sem tabelas.', "\n\nDADOS DA CL\xCDNICA (JSON):\n");
+  return "Voc\xEA \xE9 a Renata, a assistente de IA da ".concat(RN_CLINICA.fantasia, ", dentro do sistema Salute IA. Est\xE1 conversando com ").concat(rnQuem(), ".\n\nRegras:\n1. Responda SOMENTE com base nos dados desta cl\xEDnica, que est\xE3o no JSON abaixo ou nas ferramentas. Nunca use, cite ou invente dados de outras cl\xEDnicas. Se a informa\xE7\xE3o n\xE3o existir nos dados, diga isso com clareza e sugira onde a pessoa pode ver ou cadastrar no sistema.\n2. Nunca invente n\xFAmeros. Calcule a partir dos dados. Para per\xEDodos, dias ou pacientes que n\xE3o est\xE3o no resumo, use as ferramentas.\n3. Voc\xEA tamb\xE9m pode trazer conhecimento de mercado (benchmarks de cl\xEDnicas de est\xE9tica e odontologia no Brasil, boas pr\xE1ticas de gest\xE3o, marketing e atendimento). Quando fizer isso, deixe claro que \xE9 refer\xEAncia de mercado e use faixas realistas e cr\xEDveis, nunca n\xFAmeros exagerados.\n4. Hoje \xE9 ").concat(rnHojeTxt(), ". Valores em reais no formato brasileiro (R$ 1.234,56). Datas no formato dd/mm/aaaa.\n5. Portugu\xEAs do Brasil, tom acolhedor, direto e profissional, como uma colega de trabalho. Comece pela resposta. N\xE3o use travess\xF5es. N\xE3o narre o uso das ferramentas.\n6. Voc\xEA \xE9 um agente do pr\xF3prio sistema: quando pedirem para abrir uma tela ou aba, use abrir_tela; para a ficha, o prontu\xE1rio ou a conversa de um paciente, use abrir_paciente. Confirme em uma frase.\n7. Se a pessoa s\xF3 cumprimentar, agradecer ou se despedir, responda de forma breve e calorosa. Para perguntas que dependem da conversa anterior (por exemplo \"e em agosto?\"), use o contexto das mensagens anteriores.\n8. A\xE7\xF5es no sistema: para lan\xE7ar, receber, pagar, dar entrada ou baixa no estoque, dar baixa em conta pendente, agendar, remarcar, cancelar ou confirmar agendamento, cadastrar ou atualizar paciente, enviar anamnese ou mensagem de WhatsApp, registrar procedimento no prontu\xE1rio, mover lead no CRM ou ligar e pausar a IA de um lead, use as ferramentas propor_*. Elas s\xF3 preparam: o sistema mostra um cart\xE3o e grava quando a pessoa disser sim ou tocar em Confirmar. Nunca diga que fez antes disso. Depois de propor, fa\xE7a UMA pergunta curta de confirma\xE7\xE3o, por exemplo \"Agendar a Mariana para ter\xE7a, 07/10 \xE0s 10:00 com a Dra. Camila?\". Em lan\xE7amentos financeiros e movimenta\xE7\xF5es de estoque \xE9 obrigat\xF3rio ter TODOS os campos do padr\xE3o ditos pela pessoa: nunca suponha valor, data, forma de pagamento, profissional, categoria, fornecedor ou motivo. Pergunte tudo o que faltar numa s\xF3 pergunta antes de propor. Agendamentos s\xF3 em hor\xE1rios cheios ou meia hora (09:00, 09:30, 10:00...). Quando a pessoa n\xE3o disser a hora ou a ferramenta avisar conflito, consulte horarios_livres e ofere\xE7a at\xE9 3 op\xE7\xF5es. Se uma ferramenta devolver erro, explique em uma frase e pe\xE7a o que falta. Com um mapeamento aberto, use ajustar_ponto_mapa para mudar quantidade, unidade, produto ou coment\xE1rio de um ponto pelo n\xFAmero; isso n\xE3o precisa de confirma\xE7\xE3o.\n").concat(voice ? '9. MODO VOZ: é uma conversa falada, como uma ligação. Responda em até 3 frases curtas, sem listas, sem markdown e sem emojis, com números e datas escritos de forma natural para serem falados. Se houver muitos itens, diga os 3 principais e pergunte se a pessoa quer ouvir o resto.' : '9. Respostas curtas. Use **negrito** para o número principal e listas curtas com "- " quando ajudar. Sem tabelas.', "\n\nDADOS DA CL\xCDNICA (JSON):\n");
 };
 Object.assign(window, {
   rnResetCtx: rnResetCtx,
@@ -1291,9 +1291,9 @@ function rnBuildFin(items) {
             paciente: pac,
             procedimento: proc,
             cat: fp ? fp.cat : 'Consulta',
-            profissional: FIN_PROS.find(function (p) {
+            profissional: rnProsFin().find(function (p) {
               return rnNorm(p).includes(rnNorm(x.profissional || '#'));
-            }) || 'Dra. Camila Rocha',
+            }) || rnProsFin()[0] || '',
             forma: rnFormaOf(x.forma || '') || (pago ? 'Pix' : 'Boleto')
           });
         } else {
@@ -1374,7 +1374,10 @@ function rnBuildEst(items) {
           quantidade: n,
           de: p.qtd,
           para: tipo === 'saida' ? p.qtd - n : p.qtd + n,
-          valorTotal: x.valorTotal > 0 ? Math.round(x.valorTotal * 100) / 100 : 0
+          valorTotal: x.valorTotal > 0 ? Math.round(x.valorTotal * 100) / 100 : 0,
+          fornecedor: x.fornecedor ? String(x.fornecedor).trim() : '',
+          forma: rnFormaOf(x.forma || '') || '',
+          motivo: x.motivo ? String(x.motivo).trim() : ''
         });
       },
       _ret2;
@@ -1643,9 +1646,53 @@ var rnIsNo = function rnIsNo(q) {
   var n = rnNorm(q).replace(/[^a-z ]/g, ' ').trim();
   return n.split(/\s+/).length <= 4 && /^(nao|cancela|cancelar|cancele|errado|esquece|deixa|negativo|nao lanca|para)\b/.test(n);
 };
+/* campos obrigatórios das ações da Renata: nada é preenchido por padrão, ela pergunta o que faltar */
+/* profissionais da clínica (no modo real vêm do cadastro; na demonstração, da lista de exemplo) */
+function rnProsFin() {
+  return typeof PROS !== 'undefined' && PROS.length && SB_ON ? PROS.map(function (p) { return p.n; }) : FIN_PROS;
+}
+function rnFaltaFin(items) {
+  var falta = [];
+  (items || []).forEach(function (x, k) {
+    var f = [];
+    var rec = x.tipo !== 'despesa';
+    if (!(Number(x.valor) > 0)) f.push('valor');
+    if (x.status !== 'pago' && x.status !== 'pendente') f.push(rec ? 'se já foi recebido ou está a receber' : 'se já foi pago ou está a pagar');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(x.data || ''))) f.push(x.status === 'pendente' ? 'data de vencimento' : rec ? 'data do recebimento' : 'data do pagamento');
+    if (!rnFormaOf(x.forma || '')) f.push('forma de pagamento (Pix, cartão de crédito, cartão de débito, dinheiro, boleto ou convênio)');
+    if (rec) {
+      if (!String(x.paciente || '').trim()) f.push('paciente');
+      if (!String(x.procedimento || '').trim()) f.push('procedimento');
+      if (!String(x.profissional || '').trim() || !rnProsFin().find(function (p) { return rnNorm(p).includes(rnNorm(x.profissional)); })) f.push('profissional (' + rnProsFin().join(', ') + ')');
+    } else {
+      if (!String(x.descricao || '').trim()) f.push('descrição da despesa');
+      if (!DESP_CATS.find(function (c) { return rnNorm(c) === rnNorm(x.categoria || ''); })) f.push('categoria (' + DESP_CATS.join(', ') + ')');
+      if (!String(x.fornecedor || '').trim()) f.push('fornecedor');
+    }
+    if (f.length) falta.push(((items.length > 1 ? 'Lançamento ' + (k + 1) + ': ' : '')) + f.join(', '));
+  });
+  return falta.length ? { erro: 'Faltam informações. Pergunte à pessoa, sem supor nenhum valor: ' + falta.join('; ') + '.', faltando: true } : null;
+}
+function rnFaltaEst(items) {
+  var falta = [];
+  (items || []).forEach(function (x, k) {
+    var f = [];
+    if (x.tipo !== 'entrada' && x.tipo !== 'saida') f.push('se é entrada ou baixa');
+    if (!String(x.produto || '').trim()) f.push('produto');
+    if (!(Number(x.quantidade) > 0)) f.push('quantidade');
+    if (x.tipo === 'entrada') {
+      if (x.valorTotal === undefined || x.valorTotal === null || !(Number(x.valorTotal) >= 0)) f.push('valor total pago na compra (0 se foi doação ou bonificação)');
+      if (Number(x.valorTotal) > 0 && !String(x.fornecedor || '').trim()) f.push('fornecedor');
+      if (Number(x.valorTotal) > 0 && !rnFormaOf(x.forma || '')) f.push('forma de pagamento da compra');
+    }
+    if (x.tipo === 'saida' && !String(x.motivo || '').trim()) f.push('motivo da baixa (uso em procedimento, vencimento, perda ou outro)');
+    if (f.length) falta.push(((items.length > 1 ? 'Item ' + (k + 1) + ': ' : '')) + f.join(', '));
+  });
+  return falta.length ? { erro: 'Faltam informações. Pergunte à pessoa, sem supor nenhum valor: ' + falta.join('; ') + '.', faltando: true } : null;
+}
 RENATA_TOOLS.push({
   name: 'propor_lancamento_financeiro',
-  description: 'Prepara, SEM gravar, um ou mais lançamentos financeiros para a pessoa confirmar: receitas de pacientes (pagamentos recebidos ou a receber) e despesas da clínica (pagas ou a pagar). Ex.: "recebi 3 mil da Joana Xavier e falta mil para o dia 10" vira duas receitas: 3000 pago hoje e 1000 pendente com data do dia 10. Depois de chamar, faça UMA pergunta curta de confirmação resumindo valores, status e datas. O sistema só grava quando a pessoa disser sim.',
+  description: 'Prepara, SEM gravar, um ou mais lançamentos financeiros para a pessoa confirmar: receitas de pacientes (pagamentos recebidos ou a receber) e despesas da clínica (pagas ou a pagar). Ex.: "recebi 3 mil da Joana Xavier e falta mil para o dia 10" vira duas receitas: 3000 pago hoje e 1000 pendente com data do dia 10. Antes de chamar, tenha TODOS os campos ditos pela pessoa (nunca suponha): receita = valor, paciente, procedimento, profissional, forma, recebido ou a receber e data; despesa = valor, descrição, categoria, fornecedor, forma, pago ou a pagar e data. Se faltar algo, pergunte tudo o que falta numa só pergunta. Depois de chamar, faça UMA pergunta curta de confirmação. O sistema só grava quando a pessoa disser sim.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -1697,13 +1744,15 @@ RENATA_TOOLS.push({
               type: 'string'
             }
           },
-          required: ['tipo', 'valor', 'status']
+          required: ['tipo', 'valor', 'status', 'data', 'forma']
         }
       }
     },
     required: ['lancamentos']
   },
   execute: function execute(i) {
+    var falta = rnFaltaFin(i.lancamentos);
+    if (falta) return falta;
     var r = rnBuildFin(i.lancamentos);
     if (r.erro) return {
       erro: r.erro
@@ -1719,7 +1768,7 @@ RENATA_TOOLS.push({
   }
 }, {
   name: 'propor_movimentacao_estoque',
-  description: 'Prepara, SEM gravar, entradas ou baixas de produtos no estoque para a pessoa confirmar. Use o nome do produto como está no estoque. Depois de chamar, faça UMA pergunta curta de confirmação. O sistema só grava quando a pessoa disser sim.',
+  description: 'Prepara, SEM gravar, entradas ou baixas de produtos no estoque para a pessoa confirmar. Use o nome do produto como está no estoque. Antes de chamar, tenha TODOS os campos ditos pela pessoa (nunca suponha): entrada = produto, quantidade, valor total da compra, fornecedor e forma de pagamento; baixa = produto, quantidade e motivo. Se faltar algo, pergunte tudo o que falta numa só pergunta. Depois de chamar, faça UMA pergunta curta de confirmação.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -1740,7 +1789,19 @@ RENATA_TOOLS.push({
             },
             valorTotal: {
               type: 'number',
-              description: 'Valor total pago na compra, se informado (só entrada)'
+              description: 'Valor total pago na compra (só entrada; 0 se doação)'
+            },
+            fornecedor: {
+              type: 'string',
+              description: 'Só entrada com valor'
+            },
+            forma: {
+              type: 'string',
+              description: 'Forma de pagamento da compra'
+            },
+            motivo: {
+              type: 'string',
+              description: 'Só baixa: uso em procedimento, vencimento, perda ou outro'
             }
           },
           required: ['tipo', 'produto', 'quantidade']
@@ -1750,6 +1811,8 @@ RENATA_TOOLS.push({
     required: ['movimentos']
   },
   execute: function execute(i) {
+    var falta = rnFaltaEst(i.movimentos);
+    if (falta) return falta;
     var r = rnBuildEst(i.movimentos);
     if (r.erro) return {
       erro: r.erro
@@ -3494,6 +3557,7 @@ function AgEditar(_ref) {
   var salvar = function salvar(cancelar) {
     if (!ini || !fim) return setErro('Preencha a data e os horários.');
     if (fim <= ini) return setErro('O horário de fim precisa ser depois do início.');
+    if (!agMeiaHoraOk(f.ini) || !agMeiaHoraOk(f.fim)) return setErro(AG_MSG_PASSO);
     setSalvando(true);
     AgSvc.editar(a.id, {
       inicio: ini,
@@ -3624,6 +3688,7 @@ function AgEditar(_ref) {
     style: lab
   }, "In\xEDcio", /*#__PURE__*/React.createElement("input", {
     type: "time",
+    step: 1800,
     style: inp,
     value: f.ini,
     onChange: set('ini')
@@ -3631,6 +3696,7 @@ function AgEditar(_ref) {
     style: lab
   }, "Fim", /*#__PURE__*/React.createElement("input", {
     type: "time",
+    step: 1800,
     style: inp,
     value: f.fim,
     onChange: set('fim')
@@ -6714,7 +6780,7 @@ RENATA_TOOLS.push({
       },
       hora: {
         type: 'string',
-        description: 'HH:MM'
+        description: 'HH:MM, só hora cheia ou meia hora (:00 ou :30)'
       },
       profissional: {
         type: 'string'
@@ -6764,6 +6830,9 @@ RENATA_TOOLS.push({
               erro: 'Qual dia e horário?'
             });
           case 3:
+            if (!agMeiaHoraOk(hh)) return _context10.a(2, {
+              erro: AG_MSG_PASSO + ' Ofereça o horário cheio ou a meia hora mais próxima.'
+            });
             if (!(iso < TODAY_ISO || iso === TODAY_ISO && rnDec(hh) < BR.horaDec())) {
               _context10.n = 4;
               break;
@@ -7115,6 +7184,9 @@ RENATA_TOOLS.push({
               erro: 'Para qual dia e horário vai remarcar?'
             });
           case 5:
+            if (!agMeiaHoraOk(hh)) return _context14.a(2, {
+              erro: AG_MSG_PASSO + ' Ofereça o horário cheio ou a meia hora mais próxima.'
+            });
             if (!(iso < TODAY_ISO)) {
               _context14.n = 6;
               break;
@@ -7969,6 +8041,10 @@ RENATA_TOOLS.push({
     var alvo = rnNorm(rec ? i.paciente : i.descricao);
     if (!alvo) return {
       erro: rec ? 'De qual paciente é o pagamento?' : 'Qual conta foi paga?'
+    };
+    if (!rnFormaOf(i.forma || '')) return {
+      erro: 'Faltam informações. Pergunte à pessoa a forma de pagamento (Pix, cartão de crédito, cartão de débito, dinheiro, boleto ou convênio).',
+      faltando: true
     };
     var ws = alvo.split(/\s+/).filter(function (w) {
       return w.length > 2;
@@ -9520,11 +9596,32 @@ function App() {
       pac: '',
       pro: '',
       hora: '09:00',
+      data: '',
+      proc: '',
+      minutos: '60',
       wpp: true
     }),
     _React$useState52 = _slicedToArray(_React$useState51, 2),
     nv = _React$useState52[0],
     setNv = _React$useState52[1];
+  // o formulário padrão de agendamento pode ser aberto de qualquer tela (ex.: ficha do paciente)
+  React.useEffect(function () {
+    window.abrirNovoAgendamento = function (pre) {
+      setNv(Object.assign({
+        pac: '',
+        pro: '',
+        hora: '09:00',
+        data: '',
+        proc: '',
+        minutos: '60',
+        wpp: true
+      }, pre || {}));
+      setNovo(true);
+    };
+    return function () {
+      delete window.abrirNovoAgendamento;
+    };
+  }, []);
   React.useEffect(function () {
     try {
       localStorage.setItem('salute-kit:route', route0);
@@ -9603,6 +9700,9 @@ function App() {
                 pac: '',
                 pro: '',
                 hora: '09:00',
+                data: '',
+                proc: '',
+                minutos: '60',
                 wpp: true
               });
             }
@@ -9656,13 +9756,59 @@ function App() {
       }));
     }
   }), /*#__PURE__*/React.createElement(XInput, {
+    label: "Dia",
+    type: "date",
+    min: TODAY_ISO,
+    value: nv.data || TODAY_ISO,
+    onChange: function onChange(e) {
+      return setNv(_objectSpread(_objectSpread({}, nv), {}, {
+        data: e.target.value
+      }));
+    }
+  }), /*#__PURE__*/React.createElement(XSelect, {
     label: "Hor\xE1rio",
-    type: "time",
+    options: AG_HORAS,
     value: nv.hora,
     onChange: function onChange(e) {
       return setNv(_objectSpread(_objectSpread({}, nv), {}, {
         hora: e.target.value
       }));
+    }
+  }), /*#__PURE__*/React.createElement(XSelect, {
+    label: "Dura\xE7\xE3o",
+    options: AG_DURACOES.map(function (d) {
+      return d[1];
+    }),
+    value: (AG_DURACOES.find(function (d) {
+      return d[0] === String(nv.minutos);
+    }) || AG_DURACOES[1])[1],
+    onChange: function onChange(e) {
+      var d = AG_DURACOES.find(function (x) {
+        return x[1] === e.target.value;
+      });
+      return setNv(_objectSpread(_objectSpread({}, nv), {}, {
+        minutos: d ? d[0] : '60'
+      }));
+    }
+  }), /*#__PURE__*/React.createElement(XSelect, {
+    label: "Procedimento",
+    options: ['N\xE3o informado'].concat((CAT.v.procedimentos || []).filter(function (x) {
+      return x.ativo !== false;
+    }).map(function (x) {
+      return x.nome;
+    })),
+    value: nv.proc || 'N\xE3o informado',
+    onChange: function onChange(e) {
+      var nome = e.target.value === 'N\xE3o informado' ? '' : e.target.value;
+      var pr = (CAT.v.procedimentos || []).find(function (x) {
+        return x.nome === nome;
+      });
+      var dur = pr && pr.duracao_padrao_minutos ? Math.max(30, Math.ceil(pr.duracao_padrao_minutos / 30) * 30) : null;
+      return setNv(_objectSpread(_objectSpread({}, nv), {}, {
+        proc: nome
+      }, dur ? {
+        minutos: String(dur)
+      } : {}));
     }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
