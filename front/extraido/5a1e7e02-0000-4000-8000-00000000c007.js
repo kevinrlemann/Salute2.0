@@ -27,6 +27,14 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
    Clínica, equipe e acessos, profissionais, WhatsApp, som e os conteúdos
    da Salute (Saluteflix, Salute Cast, Parcerias e Certificações).
    ===================================================================== */
+// logos oficiais das certificações que já vêm no front: usados quando a certificação não tem logo enviado
+var SELOS_LOGOS = {};
+(SELOS_STORE.v || []).forEach(function (x) {
+  if (x.logo) SELOS_LOGOS[x.nome] = {
+    logo: x.logo,
+    pad: x.pad
+  };
+});
 if (SB_ON) {
   TEAM_STORE.v = [];
   CAST_STORE.v = [];
@@ -782,9 +790,9 @@ CARGAS.conteudo = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(f
             cat: s.categoria || '',
             desc: s.descricao || '',
             ic: s.icone || 'award',
-            logo: logos[i] || null,
+            logo: logos[i] || (SELOS_LOGOS[s.nome] || {}).logo || null,
             logoPath: s.logo_path,
-            pad: s.logo_espacamento || undefined
+            pad: s.logo_espacamento || (logos[i] ? undefined : (SELOS_LOGOS[s.nome] || {}).pad)
           };
         });
         avisar(SELOS_STORE);

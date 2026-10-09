@@ -15,6 +15,7 @@
 //
 // Proteções do chat (S2): só modelos conhecidos, tamanho máximo de pedido e
 // limite mensal de mensagens quando a clínica usa a chave da Salute.
+// As regras do Agente de IA (tabela agente_ia) entram sempre no começo das instruções.
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { chamarGroq, eventosClaude, paraGroq } from './groq.ts';
@@ -146,7 +147,14 @@ Deno.serve(async (req) => {
 
     const maxTokens = Math.min(Number(p.max_tokens) || 1000, 2000);
 
-    const rg = await chamarGroq(ia.key, paraGroq({ system: p.system, messages: msgs as { role: string; content: unknown }[], tools: tools as { name: string }[] | undefined, max_tokens: maxTokens }));
+    // regras do Agente de IA da clínica vêm do banco e entram no começo das instruções
+    // (o começo nunca é cortado quando o pedido precisa encolher)
+    const { data: regras } = await adm.rpc('agente_ia_regras', { p_clinica: clinica, p_canal: 'assistente' });
+    const sisFront = typeof p.system === 'string' ? p.system
+      : Array.isArray(p.system) ? p.system.map((b) => (b && typeof b === 'object' && 'text' in b ? String((b as { text: unknown }).text) : '')).join('\n') : '';
+    const sistema = typeof regras === 'string' && regras ? regras + '\n\n' + sisFront : sisFront;
+
+    const rg = await chamarGroq(ia.key, paraGroq({ system: sistema, messages: msgs as { role: string; content: unknown }[], tools: tools as { name: string }[] | undefined, max_tokens: maxTokens }));
     if (!rg.ok || !rg.body) return new Response(await rg.text(), { status: rg.status, headers: { ...CORS, 'content-type': 'application/json' } });
     // traduz o streaming para o formato do Claude e soma o consumo no fim
     // (a mensagem é contada pelo servidor, não pelo que o navegador manda)

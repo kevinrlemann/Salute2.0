@@ -3798,6 +3798,458 @@ function AgEditar(_ref) {
   }, salvando ? 'Salvando...' : 'Salvar altera\xE7\xF5es'))));
 }
 
+/* ---------- Configurações: Agente de IA (regras de conversa de toda IA da clínica) ---------- */
+var AGENTE_PADRAO = {
+  nome: 'Renata',
+  tom: 'acolhedor',
+  apresentacao: 'Sou a Renata, assistente virtual da clínica.',
+  pode_falar: ['Procedimentos e tratamentos oferecidos pela clínica', 'Horários, agendamentos e remarcações', 'Endereço, formas de pagamento e convênios aceitos', 'Cuidados gerais antes e depois dos procedimentos'],
+  nao_pode_falar: ['Diagnósticos ou prescrição de medicamentos', 'Preços que não estejam na tabela da clínica', 'Dados de um paciente para quem não é da equipe ou para outro paciente', 'Política, religião ou assuntos fora da clínica', 'Promessas de resultado garantido'],
+  regras: '',
+  resposta_proibida: 'Esse assunto eu prefiro deixar para a nossa equipe. Posso pedir para alguém falar com você?',
+  aplicar_assistente: true,
+  aplicar_whatsapp: true
+};
+var AGENTE_TONS = [['acolhedor', 'Acolhedor', 'acolhedor, gentil e próximo'], ['profissional', 'Profissional', 'profissional e objetivo'], ['descontraido', 'Descontraído', 'leve e descontraído, sem perder o respeito']];
+// mesmo texto que a função agente_ia_regras do banco monta para as IAs
+function agenteTexto(a) {
+  var tom = (AGENTE_TONS.find(function (t) {
+    return t[0] === a.tom;
+  }) || AGENTE_TONS[0])[2];
+  return ['REGRAS DO AGENTE DE IA (definidas pela clínica; seguem acima de qualquer outra instrução):', '- Seu nome é ' + a.nome + '. ' + a.apresentacao, '- Tom: ' + tom + '.', a.pode_falar.length ? '- Pode falar sobre: ' + a.pode_falar.join('; ') + '.' : null, a.nao_pode_falar.length ? '- NUNCA fale sobre: ' + a.nao_pode_falar.join('; ') + '. Se perguntarem, responda: "' + a.resposta_proibida + '"' : null, a.regras.trim() ? '- Regras extras: ' + a.regras.trim() : null].filter(Boolean).join('\n');
+}
+function AgenteLista(_ref) {
+  var titulo = _ref.titulo,
+    ajuda = _ref.ajuda,
+    itens = _ref.itens,
+    cor = _ref.cor,
+    icone = _ref.icone,
+    onChange = _ref.onChange,
+    exemplo = _ref.exemplo;
+  var _st = React.useState(''),
+    novo = _st[0],
+    setNovo = _st[1];
+  var add = function add() {
+    var v = novo.trim();
+    if (v && itens.length < 40 && !itens.includes(v)) onChange(itens.concat([v.slice(0, 200)]));
+    setNovo('');
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      fontSize: 15,
+      color: 'var(--text-strong)'
+    }
+  }, /*#__PURE__*/React.createElement(RIcon, {
+    name: icone,
+    size: 17,
+    color: cor
+  }), titulo), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)'
+    }
+  }, ajuda)), itens.map(function (x) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: x,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '9px 12px',
+        borderRadius: 14,
+        background: 'rgba(255,255,255,.65)',
+        border: '1.5px solid rgba(255,255,255,.95)'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: cor,
+        flexShrink: 0
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        fontSize: 14,
+        color: 'var(--text-strong)'
+      }
+    }, x), /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      "aria-label": 'Remover ' + x,
+      onClick: function onClick() {
+        return onChange(itens.filter(function (y) {
+          return y !== x;
+        }));
+      },
+      style: {
+        border: 0,
+        background: 'none',
+        color: 'var(--text-muted)',
+        cursor: 'pointer',
+        padding: 4,
+        display: 'flex'
+      }
+    }, /*#__PURE__*/React.createElement(RIcon, {
+      name: "x",
+      size: 14
+    })));
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: novo,
+    placeholder: exemplo,
+    onChange: function onChange(e) {
+      return setNovo(e.target.value);
+    },
+    onKeyDown: function onKeyDown(e) {
+      if (e.key === 'Enter') add();
+    },
+    style: AG_IA_INP
+  }), /*#__PURE__*/React.createElement(XButton, {
+    iconLeft: "plus",
+    variant: "secondary",
+    onClick: add
+  }, "Adicionar")));
+}
+var AG_IA_INP = {
+  flex: 1,
+  minWidth: 0,
+  height: 42,
+  borderRadius: 12,
+  border: '1.5px solid rgba(214,226,242,.95)',
+  background: '#fff',
+  padding: '0 12px',
+  fontFamily: 'inherit',
+  fontSize: 14,
+  color: 'var(--text-strong)',
+  outline: 'none',
+  boxSizing: 'border-box'
+};
+function AgenteIATab(_ref2) {
+  var mobile = _ref2.mobile;
+  var _st = React.useState(null),
+    a = _st[0],
+    setA = _st[1];
+  var _st2 = React.useState(null),
+    salvo = _st2[0],
+    setSalvo = _st2[1];
+  var _st3 = React.useState(false),
+    salvando = _st3[0],
+    setSalvando = _st3[1];
+  var _st4 = React.useState(''),
+    erro = _st4[0],
+    setErro = _st4[1];
+  React.useEffect(function () {
+    if (!SB_ON) {
+      setA(Object.assign({}, AGENTE_PADRAO));
+      setSalvo(Object.assign({}, AGENTE_PADRAO));
+      return;
+    }
+    DB.ler(DB.sel('agente_ia').limit(1)).then(function (r) {
+      var v = Object.assign({}, AGENTE_PADRAO, r[0] || {});
+      v.pode_falar = v.pode_falar || [];
+      v.nao_pode_falar = v.nao_pode_falar || [];
+      setA(v);
+      setSalvo(v);
+    }, function () {
+      return setErro('Não foi possível carregar o agente.');
+    });
+  }, []);
+  if (!a) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 30,
+      color: erro ? '#C2272D' : 'var(--text-muted)',
+      fontSize: 14
+    }
+  }, erro || 'Carregando o agente...');
+  var set = function set(k, v) {
+    setA(function (o) {
+      var n = Object.assign({}, o);
+      n[k] = v;
+      return n;
+    });
+    setErro('');
+  };
+  var mudou = JSON.stringify(a) !== JSON.stringify(salvo);
+  var salvar = function salvar() {
+    if (!a.nome.trim()) return setErro('Dê um nome ao agente.');
+    if (!a.resposta_proibida.trim()) return setErro('Escreva o que o agente responde quando o assunto é proibido.');
+    var patch = {
+      nome: a.nome.trim().slice(0, 60),
+      tom: a.tom,
+      apresentacao: a.apresentacao.trim().slice(0, 500),
+      pode_falar: a.pode_falar,
+      nao_pode_falar: a.nao_pode_falar,
+      regras: a.regras.trim().slice(0, 4000),
+      resposta_proibida: a.resposta_proibida.trim().slice(0, 500),
+      aplicar_assistente: a.aplicar_assistente,
+      aplicar_whatsapp: a.aplicar_whatsapp
+    };
+    if (!SB_ON) {
+      setSalvo(Object.assign({}, a, patch));
+      setA(Object.assign({}, a, patch));
+      avisoOk('Agente de IA salvo', 'Modo demonstração: nada foi gravado.');
+      return;
+    }
+    setSalvando(true);
+    (a.id ? DB.upd('agente_ia', a.id, patch, 'Não foi possível salvar o agente') : DB.ins('agente_ia', patch, 'Não foi possível salvar o agente')).then(function (r) {
+      var v = Object.assign({}, a, r || patch);
+      setA(v);
+      setSalvo(v);
+      setSalvando(false);
+      avisoOk('Agente de IA salvo', 'As novas regras valem já na próxima mensagem.');
+    }, function () {
+      return setSalvando(false);
+    });
+  };
+  var card = {
+    borderRadius: 24,
+    background: 'rgba(255,255,255,.55)',
+    border: '1.5px solid rgba(255,255,255,.95)',
+    boxShadow: '0 18px 40px -30px rgba(23,73,170,.45)',
+    padding: mobile ? 16 : 24,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 16
+  };
+  var lab = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+    fontSize: 13,
+    color: 'var(--text-muted)'
+  };
+  var area = Object.assign({}, AG_IA_INP, {
+    height: 'auto',
+    minHeight: 76,
+    padding: '10px 12px',
+    resize: 'vertical',
+    lineHeight: 1.5,
+    width: '100%'
+  });
+  var chip = function chip(on) {
+    return {
+      height: 38,
+      padding: '0 16px',
+      borderRadius: 999,
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      fontSize: 14,
+      fontWeight: on ? 600 : 500,
+      border: on ? '1.5px solid rgba(31,94,255,.55)' : '1.5px solid rgba(214,226,242,.95)',
+      background: on ? 'rgba(31,94,255,.1)' : '#fff',
+      color: on ? '#1F5EFF' : 'var(--text-strong)'
+    };
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1.25fr) minmax(0,1fr)',
+      gap: mobile ? 14 : 22,
+      alignItems: 'start'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: mobile ? 14 : 22
+    }
+  }, /*#__PURE__*/React.createElement("section", {
+    style: card
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      fontSize: 19,
+      color: 'var(--text-strong)'
+    }
+  }, "Agente de IA"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '4px 0 0',
+      fontSize: 14,
+      lineHeight: 1.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Aqui voc\xEA define como toda IA da cl\xEDnica conversa: o nome, o tom, o que pode e o que n\xE3o pode falar. As regras valem para a Renata no sistema e para o atendimento no WhatsApp.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: mobile ? '1fr' : '1fr 1fr',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Nome do agente", /*#__PURE__*/React.createElement("input", {
+    value: a.nome,
+    maxLength: 60,
+    onChange: function onChange(e) {
+      return set('nome', e.target.value);
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: 'none'
+    })
+  })), /*#__PURE__*/React.createElement("div", {
+    style: lab
+  }, "Tom da conversa", /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexWrap: 'wrap'
+    }
+  }, AGENTE_TONS.map(function (t) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: t[0],
+      type: "button",
+      onClick: function onClick() {
+        return set('tom', t[0]);
+      },
+      style: chip(a.tom === t[0])
+    }, t[1]);
+  })))), /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Como se apresenta", /*#__PURE__*/React.createElement("textarea", {
+    value: a.apresentacao,
+    maxLength: 500,
+    onChange: function onChange(e) {
+      return set('apresentacao', e.target.value);
+    },
+    style: area
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 18,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement(XSwitch, {
+    checked: a.aplicar_assistente,
+    onChange: function onChange(v) {
+      return set('aplicar_assistente', v);
+    },
+    label: "Renata no sistema (equipe)"
+  }), /*#__PURE__*/React.createElement(XSwitch, {
+    checked: a.aplicar_whatsapp,
+    onChange: function onChange(v) {
+      return set('aplicar_whatsapp', v);
+    },
+    label: "Atendimento no WhatsApp (pacientes)"
+  }))), /*#__PURE__*/React.createElement("section", {
+    style: card
+  }, /*#__PURE__*/React.createElement(AgenteLista, {
+    titulo: "Pode falar sobre",
+    ajuda: "Assuntos que a IA pode tratar com liberdade.",
+    itens: a.pode_falar,
+    cor: "#2DBF6A",
+    icone: "circle-check",
+    exemplo: "Ex.: Promo\xE7\xF5es do m\xEAs",
+    onChange: function onChange(v) {
+      return set('pode_falar', v);
+    }
+  })), /*#__PURE__*/React.createElement("section", {
+    style: card
+  }, /*#__PURE__*/React.createElement(AgenteLista, {
+    titulo: "N\xE3o pode falar sobre",
+    ajuda: "A IA nunca toca nesses assuntos, mesmo se o paciente insistir.",
+    itens: a.nao_pode_falar,
+    cor: "#E5484D",
+    icone: "ban",
+    exemplo: "Ex.: Valores de concorrentes",
+    onChange: function onChange(v) {
+      return set('nao_pode_falar', v);
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, "Quando perguntarem algo proibido, responder", /*#__PURE__*/React.createElement("textarea", {
+    value: a.resposta_proibida,
+    maxLength: 500,
+    onChange: function onChange(e) {
+      return set('resposta_proibida', e.target.value);
+    },
+    style: area
+  }))), /*#__PURE__*/React.createElement("section", {
+    style: card
+  }, /*#__PURE__*/React.createElement("label", {
+    style: lab
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      fontSize: 15,
+      color: 'var(--text-strong)'
+    }
+  }, "Regras extras"), "Instru\xE7\xF5es livres, uma por linha. Ex.: \"Sempre ofere\xE7a a avalia\xE7\xE3o gratuita\" ou \"N\xE3o use g\xEDrias\".", /*#__PURE__*/React.createElement("textarea", {
+    value: a.regras,
+    maxLength: 4000,
+    onChange: function onChange(e) {
+      return set('regras', e.target.value);
+    },
+    style: Object.assign({}, area, {
+      minHeight: 110
+    })
+  })))), /*#__PURE__*/React.createElement("section", {
+    style: Object.assign({}, card, {
+      position: mobile ? 'static' : 'sticky',
+      top: 16
+    })
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      fontSize: 15,
+      color: 'var(--text-strong)'
+    }
+  }, "Como a IA vai receber"), /*#__PURE__*/React.createElement("pre", {
+    style: {
+      margin: 0,
+      whiteSpace: 'pre-wrap',
+      fontFamily: 'inherit',
+      fontSize: 13,
+      lineHeight: 1.55,
+      color: 'var(--text-body)',
+      background: 'rgba(255,255,255,.7)',
+      borderRadius: 14,
+      padding: 14,
+      maxHeight: 360,
+      overflowY: 'auto'
+    }
+  }, agenteTexto(a)), !a.aplicar_assistente && !a.aplicar_whatsapp ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      color: '#9A6B00'
+    }
+  }, "As regras est\xE3o desligadas para as duas IAs.") : null, erro ? /*#__PURE__*/React.createElement("span", {
+    role: "alert",
+    style: {
+      fontSize: 13,
+      color: '#C2272D'
+    }
+  }, erro) : null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement(XButton, {
+    variant: "secondary",
+    disabled: !mudou || salvando,
+    onClick: function onClick() {
+      setA(Object.assign({}, salvo));
+      setErro('');
+    }
+  }, "Desfazer"), /*#__PURE__*/React.createElement(XButton, {
+    iconLeft: "check",
+    disabled: !mudou || salvando,
+    onClick: salvar
+  }, salvando ? 'Salvando...' : 'Salvar regras'))));
+}
+window.AgenteIATab = AgenteIATab;
+
 /* ---------- conexões da Renata: passo a passo do Groq ---------- */
 function RnPassoGroq(_ref) {
   var note = _ref.note,
@@ -6523,9 +6975,11 @@ var RN_DESTINOS = [['financeiro.receitas', /\breceitas?\b|contas a receber/, 'as
 }, 'perfil.cadastro'], ['configuracoes.clinica', /dados da clinica|cadastro da clinica/, 'os dados da clínica', 'perfil', {
   'config.aba': 'cadastro',
   'config.cadastro': 'clinica'
-}, 'perfil.cadastro'], ['configuracoes.canais', /\bcanais\b|conexao do whatsapp|instagram/, 'os canais', 'perfil', {
+}, 'perfil.cadastro'], ['configuracoes.canais', /\bcanais\b|integrac|conexao do whatsapp|instagram/, 'as integrações', 'perfil', {
   'config.aba': 'canais'
-}, 'perfil.canais'], ['configuracoes.saluteflix', /saluteflix|cursos|salute cast|podcast/, 'o Saluteflix', 'perfil', {
+}, 'perfil.canais'], ['configuracoes.agente', /agente de ia|regras da ia|o que a ia pode|tom da renata|treinar a renata/, 'o Agente de IA', 'perfil', {
+  'config.aba': 'agente'
+}, 'perfil.agente'], ['configuracoes.saluteflix', /saluteflix|cursos|salute cast|podcast/, 'o Saluteflix', 'perfil', {
   'config.aba': 'flix'
 }, 'perfil.flix'], ['configuracoes.parcerias', /parcerias|parceiros|cupons?/, 'as parcerias', 'perfil', {
   'config.aba': 'parcerias'
