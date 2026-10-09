@@ -3799,7 +3799,14 @@ function AgEditar(_ref) {
   }, salvando ? 'Salvando...' : 'Salvar altera\xE7\xF5es'))));
 }
 
-/* ---------- Configurações: Agente de IA (regras de conversa de toda IA da clínica) ---------- */
+/* ---------- Configurações: Agente de IA (regras de conversa de toda IA da clínica) ----------
+   Seção 3 da especificação "Arquitetura do Agente de IA no n8n": a clínica controla o agente aqui
+   e o n8n só lê a configuração. O registro único da clínica em agente_ia é salvo pelo rodapé
+   (Desfazer / Salvar). Serviços (procedimentos e profissionais_procedimentos), horário da IA
+   (renata_horarios), conhecimento (renata_base_conhecimento) e fuso (clinicas) têm tabelas próprias
+   e salvam item por item, com botão próprio. As regras de gravação de verdade estão na RLS:
+   agente_ia, renata_horarios e renata_base_conhecimento só gestão; procedimentos, vínculos e fuso
+   também para quem tem o módulo Cadastro. */
 var AGENTE_PADRAO = {
   nome: 'Renata',
   tom: 'acolhedor',
@@ -3809,121 +3816,285 @@ var AGENTE_PADRAO = {
   regras: '',
   resposta_proibida: 'Esse assunto eu prefiro deixar para a nossa equipe. Posso pedir para alguém falar com você?',
   aplicar_assistente: true,
-  aplicar_whatsapp: true
+  aplicar_whatsapp: true,
+  ia_ativa: false,
+  automacoes_pausadas: false,
+  modo_teste: true,
+  saudacao: 'Olá! Sou a Renata, assistente virtual da clínica. Como posso ajudar?',
+  tamanho_resposta: 'curta',
+  idioma: 'pt-BR',
+  apresentar_como_assistente: true,
+  ia_consulta_horarios: true,
+  ia_cria_agendamento: true,
+  politica_sinal: 'nenhum',
+  sinal_tipo: 'fixo',
+  sinal_valor: 0,
+  antecedencia_min_horas: 2,
+  horizonte_dias: 30,
+  intervalo_entre_consultas_min: 0,
+  janela_inicio: '08:00',
+  janela_fim: '20:00',
+  crm_mover_automatico: true,
+  crm_mapa: {
+    novo: 'novo_lead',
+    em_contato: 'aguardando_atendente',
+    agendado: 'agendado',
+    humano: 'aguardando_atendente',
+    perdido: 'perdido'
+  },
+  followup_ativo: true,
+  followup_max: 4,
+  followup_atrasos_min: [180, 360, 2880, 10080],
+  followup_parar_ao_responder: true,
+  followup_parar_se_agendado: true,
+  followup_mensagens: ['Oi! Passando para saber se ficou alguma dúvida. Posso ajudar a encontrar um horário?', 'Olá! Consegui separar alguns horários para você. Quer que eu mostre?', 'Oi! Ainda tenho horários disponíveis nos próximos dias. Posso reservar um para você?', 'Oi! Vou encerrar por aqui, mas fico à disposição quando quiser agendar.'],
+  lembretes_ativos: true,
+  lembretes_offsets_min: [2880, 1440, 120, 15],
+  lembrete_pedir_confirmacao: true,
+  lembrete_permitir_cancelar: true,
+  transferencia_usuarios: [],
+  transferencia_inicio: '08:00',
+  transferencia_fim: '18:00',
+  transferencia_categorias: ['Pedido para falar com uma pessoa', 'Reclamação', 'Dúvida clínica ou sobre sintomas', 'Pedido de desconto ou exceção', 'Pagamento, reembolso ou estorno'],
+  transferencia_mensagem: 'Vou chamar alguém da nossa equipe para continuar com você. Já já te respondemos.',
+  transferencia_sla_min: 30,
+  privacidade_texto: 'Seus dados são usados só para o seu atendimento nesta clínica. Para não receber mais mensagens, responda PARAR.',
+  pedir_consentimento: false,
+  palavras_optout: ['parar', 'pare', 'sair', 'não quero mais', 'remover meu número', 'não me chame'],
+  retencao_conversas_dias: 365,
+  config_versao: 1
 };
 var AGENTE_TONS = [['acolhedor', 'Acolhedor', 'acolhedor, gentil e próximo'], ['profissional', 'Profissional', 'profissional e objetivo'], ['descontraido', 'Descontraído', 'leve e descontraído, sem perder o respeito']];
-// mesmo texto que a função agente_ia_regras do banco monta para as IAs
-function agenteTexto(a) {
+var AG_TAMANHOS = [['curta', 'Curta', 'Até 2 ou 3 frases. Melhor para WhatsApp.'], ['media', 'Média', 'Um parágrafo curto.'], ['longa', 'Longa', 'Explica com mais detalhes quando precisa.']];
+var AG_IDIOMAS = [['pt-BR', 'Português (Brasil)'], ['en', 'Inglês'], ['es', 'Espanhol']];
+var AG_SINAIS = [['nenhum', 'Sem sinal', 'A IA marca a consulta sem pedir pagamento antes.'], ['opcional', 'Sinal opcional', 'A IA pode oferecer o sinal com o valor da clínica, mas nunca transforma em obrigação.'], ['obrigatorio_confirmar', 'Sinal para confirmar', 'O horário fica pendente e só é confirmado depois que o pagamento for aprovado.'], ['obrigatorio_reservar', 'Sinal para segurar o horário', 'O horário fica guardado por um prazo. Se o pagamento não vier, ele é liberado sozinho.'], ['aprovacao_humana', 'Aprovação da equipe', 'A IA anota o pedido e passa para a equipe, sem prometer que o horário está reservado.']];
+var AG_CRM_SITUACOES = [['novo', 'Novo contato', 'Primeira mensagem de alguém que ainda não está no CRM.'], ['em_contato', 'Em conversa', 'O lead respondeu e a conversa está andando.'], ['agendado', 'Agendou', 'A consulta foi confirmada pelo sistema.'], ['humano', 'Pediu atendimento humano', 'A IA passou a conversa para a equipe.'], ['perdido', 'Perdido', 'O lead disse que não tem interesse. Silêncio sozinho não conta.']];
+var AG_ETAPAS_DEMO = [{
+  chave: 'novo_lead',
+  nome: 'Novo Lead'
+}, {
+  chave: 'aguardando_atendente',
+  nome: 'Aguardando atendente'
+}, {
+  chave: 'agendado',
+  nome: 'Agendado'
+}, {
+  chave: 'convertido',
+  nome: 'Convertido'
+}, {
+  chave: 'perdido',
+  nome: 'Perdido'
+}];
+var AG_LEMBRETES = [[2880, '48 horas antes', 'Prepara o paciente e confirma que ele lembra da consulta.'], [1440, '24 horas antes', 'Reforça a data e o horário.'], [120, '2 horas antes', 'Lembrete perto do horário.'], [15, '15 minutos antes', 'Último aviso, bem curto e sem dados de saúde.']];
+var AG_UNIDADES = [[1, 'minutos'], [60, 'horas'], [1440, 'dias']];
+var AG_FUSOS = [['America/Sao_Paulo', 'Brasília (SP, RJ, MG, Sul, GO, DF)'], ['America/Bahia', 'Bahia'], ['America/Fortaleza', 'Ceará, RN, PB, PI, MA'], ['America/Recife', 'Pernambuco'], ['America/Maceio', 'Alagoas e Sergipe'], ['America/Belem', 'Pará (leste) e Amapá'], ['America/Araguaina', 'Tocantins'], ['America/Santarem', 'Pará (oeste)'], ['America/Campo_Grande', 'Mato Grosso do Sul'], ['America/Cuiaba', 'Mato Grosso'], ['America/Manaus', 'Amazonas'], ['America/Porto_Velho', 'Rondônia'], ['America/Boa_Vista', 'Roraima'], ['America/Rio_Branco', 'Acre'], ['America/Noronha', 'Fernando de Noronha']];
+var AG_CATEGORIAS_BASE = ['Perguntas frequentes', 'Endereço e como chegar', 'Estacionamento', 'Preparo antes do procedimento', 'Cuidados depois do procedimento', 'Formas de pagamento', 'Política de cancelamento', 'Outro'];
+var AG_DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, 'Sexta'], [6, 'Sábado'], [0, 'Domingo']];
+var AG_SECOES = [['status', 'Status', 'power'], ['identidade', 'Identidade e tom', 'smile'], ['assuntos', 'Assuntos', 'message-square-text'], ['servicos', 'Serviços', 'syringe'], ['agendamento', 'Agendamento', 'calendar-check'], ['horarios', 'Horários', 'clock'], ['crm', 'CRM', 'kanban'], ['followup', 'Follow-up', 'repeat'], ['lembretes', 'Lembretes', 'bell-ring'], ['transferencia', 'Transferência humana', 'headset'], ['conhecimento', 'Conhecimento', 'book-open'], ['privacidade', 'Privacidade', 'shield-check'], ['previa', 'Prévia', 'eye']];
+// em qual seção fica cada campo do agente_ia (para marcar alterações e erros no menu)
+var AG_CAMPO_SECAO = {
+  ia_ativa: 'status',
+  automacoes_pausadas: 'status',
+  modo_teste: 'status',
+  aplicar_assistente: 'status',
+  aplicar_whatsapp: 'status',
+  nome: 'identidade',
+  saudacao: 'identidade',
+  tom: 'identidade',
+  apresentacao: 'identidade',
+  tamanho_resposta: 'identidade',
+  idioma: 'identidade',
+  apresentar_como_assistente: 'identidade',
+  pode_falar: 'assuntos',
+  nao_pode_falar: 'assuntos',
+  resposta_proibida: 'assuntos',
+  regras: 'assuntos',
+  ia_consulta_horarios: 'agendamento',
+  ia_cria_agendamento: 'agendamento',
+  politica_sinal: 'agendamento',
+  sinal_tipo: 'agendamento',
+  sinal_valor: 'agendamento',
+  antecedencia_min_horas: 'agendamento',
+  horizonte_dias: 'agendamento',
+  intervalo_entre_consultas_min: 'agendamento',
+  janela_inicio: 'horarios',
+  janela_fim: 'horarios',
+  crm_mover_automatico: 'crm',
+  crm_mapa: 'crm',
+  followup_ativo: 'followup',
+  followup_max: 'followup',
+  followup_atrasos_min: 'followup',
+  followup_parar_ao_responder: 'followup',
+  followup_parar_se_agendado: 'followup',
+  followup_mensagens: 'followup',
+  lembretes_ativos: 'lembretes',
+  lembretes_offsets_min: 'lembretes',
+  lembrete_pedir_confirmacao: 'lembretes',
+  lembrete_permitir_cancelar: 'lembretes',
+  transferencia_usuarios: 'transferencia',
+  transferencia_inicio: 'transferencia',
+  transferencia_fim: 'transferencia',
+  transferencia_categorias: 'transferencia',
+  transferencia_mensagem: 'transferencia',
+  transferencia_sla_min: 'transferencia',
+  privacidade_texto: 'privacidade',
+  pedir_consentimento: 'privacidade',
+  palavras_optout: 'privacidade',
+  retencao_conversas_dias: 'privacidade'
+};
+var AG_CAMPOS = Object.keys(AG_CAMPO_SECAO);
+var agH = React.createElement;
+var agHM = function agHM(t) {
+  return String(t || '').slice(0, 5);
+};
+var agMoeda = function agMoeda(v) {
+  return v === null || v === undefined || v === '' ? '' : 'R$ ' + Number(v).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+var agInt = function agInt(v) {
+  return v !== '' && v !== null && v !== undefined && Number.isInteger(Number(v));
+};
+// 180 -> "3 horas"; 2880 -> "2 dias"; 90 -> "1 hora e 30 minutos"
+function agTempoTxt(min) {
+  min = Number(min) || 0;
+  if (min > 0 && min % 1440 === 0) return min / 1440 + (min === 1440 ? ' dia' : ' dias');
+  if (min > 0 && min % 60 === 0) return min / 60 + (min === 60 ? ' hora' : ' horas');
+  if (min > 60) return Math.floor(min / 60) + (min < 120 ? ' hora' : ' horas') + ' e ' + min % 60 + ' minutos';
+  return min + (min === 1 ? ' minuto' : ' minutos');
+}
+var agUnidade = function agUnidade(min) {
+  return min > 0 && min % 1440 === 0 ? 1440 : min > 0 && min % 60 === 0 ? 60 : 1;
+};
+// junta o que veio do banco com o padrão e deixa no formato da tela
+function agNormal(r) {
+  var v = Object.assign({}, AGENTE_PADRAO, r || {});
+  ['pode_falar', 'nao_pode_falar', 'followup_atrasos_min', 'followup_mensagens', 'lembretes_offsets_min', 'transferencia_usuarios', 'transferencia_categorias', 'palavras_optout'].forEach(function (k) {
+    v[k] = Array.isArray(v[k]) ? v[k].slice() : [];
+  });
+  ['janela_inicio', 'janela_fim', 'transferencia_inicio', 'transferencia_fim'].forEach(function (k) {
+    v[k] = agHM(v[k]);
+  });
+  ['regras', 'apresentacao', 'resposta_proibida', 'saudacao', 'transferencia_mensagem', 'privacidade_texto', 'nome'].forEach(function (k) {
+    v[k] = v[k] == null ? '' : String(v[k]);
+  });
+  v.sinal_valor = Number(v.sinal_valor) || 0;
+  v.crm_mapa = Object.assign({}, AGENTE_PADRAO.crm_mapa, v.crm_mapa && typeof v.crm_mapa === 'object' && !Array.isArray(v.crm_mapa) ? v.crm_mapa : {});
+  // mensagens do follow-up sempre do mesmo tamanho da lista de tempos
+  while (v.followup_mensagens.length < v.followup_atrasos_min.length) v.followup_mensagens.push('');
+  v.followup_mensagens = v.followup_mensagens.slice(0, v.followup_atrasos_min.length);
+  v.lembretes_offsets_min = v.lembretes_offsets_min.slice().sort(function (x, y) {
+    return y - x;
+  });
+  return v;
+}
+// mesmas regras do banco (check agente_ia_controles_ok e agente_ia_tamanhos), com mensagens simples
+function agValidar(a, etapas) {
+  var e = {};
+  var faixa = function faixa(k, min, max, txt) {
+    if (!agInt(a[k]) || Number(a[k]) < min || Number(a[k]) > max) e[k] = txt;
+  };
+  if (!a.nome.trim()) e.nome = 'Dê um nome ao agente.';else if (a.nome.length > 60) e.nome = 'Use no máximo 60 letras.';
+  if (a.saudacao.length > 500) e.saudacao = 'Use no máximo 500 letras.';
+  if (a.apresentacao.length > 500) e.apresentacao = 'Use no máximo 500 letras.';
+  if (!a.resposta_proibida.trim()) e.resposta_proibida = 'Escreva o que o agente responde quando o assunto é proibido.';else if (a.resposta_proibida.length > 500) e.resposta_proibida = 'Use no máximo 500 letras.';
+  if (a.regras.length > 4000) e.regras = 'Use no máximo 4.000 letras.';
+  if (a.politica_sinal !== 'nenhum' && a.politica_sinal !== 'aprovacao_humana') {
+    var sv = Number(a.sinal_valor);
+    if (a.sinal_valor === '' || !isFinite(sv) || sv < 0) e.sinal_valor = 'Informe um valor válido.';else if (a.sinal_tipo === 'percentual' && sv > 100) e.sinal_valor = 'A porcentagem vai até 100.';else if (a.politica_sinal !== 'opcional' && sv <= 0) e.sinal_valor = 'Com sinal obrigatório, o valor precisa ser maior que zero.';
+  }
+  faixa('antecedencia_min_horas', 0, 720, 'Use de 0 a 720 horas (30 dias).');
+  faixa('horizonte_dias', 1, 365, 'Use de 1 a 365 dias.');
+  faixa('intervalo_entre_consultas_min', 0, 240, 'Use de 0 a 240 minutos.');
+  if (!a.janela_inicio || !a.janela_fim || a.janela_inicio >= a.janela_fim) e.janela_fim = 'O fim precisa ser depois do início.';
+  if (!a.transferencia_inicio || !a.transferencia_fim || a.transferencia_inicio >= a.transferencia_fim) e.transferencia_fim = 'O fim precisa ser depois do início.';
+  var chaves = (etapas || []).map(function (x) {
+    return x.chave;
+  });
+  if (a.crm_mover_automatico && chaves.length && AG_CRM_SITUACOES.some(function (s) {
+    return chaves.indexOf(a.crm_mapa[s[0]]) < 0;
+  })) e.crm_mapa = 'Escolha uma etapa do funil para cada situação.';
+  var at = a.followup_atrasos_min;
+  if (at.length > 10) e.followup_atrasos_min = 'Use no máximo 10 mensagens.';else if (at.some(function (m) {
+    return !(Number(m) > 0);
+  })) e.followup_atrasos_min = 'Informe o tempo de cada mensagem.';else if (a.followup_ativo && at.some(function (m, i) {
+    return i > 0 && Number(m) <= Number(at[i - 1]);
+  })) e.followup_atrasos_min = 'Os tempos precisam ser crescentes: cada mensagem sai depois da anterior.';
+  if (a.followup_ativo && a.followup_mensagens.some(function (m) {
+    return !String(m).trim();
+  })) e.followup_mensagens = 'Escreva o texto de cada mensagem.';else if (a.followup_mensagens.some(function (m) {
+    return String(m).length > 500;
+  })) e.followup_mensagens = 'Cada mensagem pode ter até 500 letras.';
+  if (!agInt(a.followup_max) || a.followup_max < 0 || a.followup_max > 10) e.followup_max = 'Use de 0 a 10 tentativas.';else if (a.followup_ativo && a.followup_max > at.length) e.followup_max = 'O máximo não pode passar do número de mensagens da lista.';
+  if (a.followup_ativo && !at.length) e.followup_atrasos_min = 'Adicione pelo menos uma mensagem ou desligue o follow-up.';
+  if (!a.transferencia_mensagem.trim()) e.transferencia_mensagem = 'Escreva a mensagem que o paciente recebe na troca.';else if (a.transferencia_mensagem.length > 500) e.transferencia_mensagem = 'Use no máximo 500 letras.';
+  faixa('transferencia_sla_min', 1, 1440, 'Use de 1 a 1.440 minutos (24 horas).');
+  if (a.privacidade_texto.length > 1500) e.privacidade_texto = 'Use no máximo 1.500 letras.';
+  faixa('retencao_conversas_dias', 30, 3650, 'Use de 30 a 3.650 dias (10 anos).');
+  return e;
+}
+// prévia aproximada: o texto de verdade é montado no servidor pela função agente_ia_regras
+// (canal assistente = Renata no sistema; canal whatsapp = pacientes); aqui resumimos os mesmos controles
+function agenteTexto(a, extra) {
   var tom = (AGENTE_TONS.find(function (t) {
     return t[0] === a.tom;
   }) || AGENTE_TONS[0])[2];
-  return ['REGRAS DO AGENTE DE IA (definidas pela clínica; seguem acima de qualquer outra instrução):', '- Seu nome é ' + a.nome + '. ' + a.apresentacao, '- Tom: ' + tom + '.', a.pode_falar.length ? '- Pode falar sobre: ' + a.pode_falar.join('; ') + '.' : null, a.nao_pode_falar.length ? '- NUNCA fale sobre: ' + a.nao_pode_falar.join('; ') + '. Se perguntarem, responda: "' + a.resposta_proibida + '"' : null, a.regras.trim() ? '- Regras extras: ' + a.regras.trim() : null].filter(Boolean).join('\n');
+  var base = ['REGRAS DO AGENTE DE IA (definidas pela clínica; seguem acima de qualquer outra instrução):', '- Seu nome é ' + a.nome + '. ' + a.apresentacao, '- Tom: ' + tom + '.', a.pode_falar.length ? '- Pode falar sobre: ' + a.pode_falar.join('; ') + '.' : null, a.nao_pode_falar.length ? '- NUNCA fale sobre: ' + a.nao_pode_falar.join('; ') + '. Se perguntarem, responda: "' + a.resposta_proibida + '"' : null, a.regras.trim() ? '- Regras extras: ' + a.regras.trim() : null];
+  if (!extra) return base.filter(Boolean).join('\n');
+  var procs = (extra.procs || []).filter(function (p) {
+    return p.ativo;
+  });
+  var pub = procs.filter(function (p) {
+    return p.ia_preco_publico && Number(p.valor) > 0;
+  }).map(function (p) {
+    return p.nome + ' (' + agMoeda(p.valor) + ', ' + (p.duracao_padrao_minutos || 30) + ' min)';
+  });
+  var sinal = (AG_SINAIS.find(function (s) {
+    return s[0] === a.politica_sinal;
+  }) || AG_SINAIS[0])[1].toLowerCase();
+  if (a.politica_sinal !== 'nenhum' && a.politica_sinal !== 'aprovacao_humana') sinal += ' de ' + (a.sinal_tipo === 'percentual' ? Number(a.sinal_valor) + '%' : agMoeda(a.sinal_valor));
+  var tam = (AG_TAMANHOS.find(function (t) {
+    return t[0] === a.tamanho_resposta;
+  }) || AG_TAMANHOS[0])[1].toLowerCase();
+  var idi = {
+    'pt-BR': 'português do Brasil',
+    en: 'inglês',
+    es: 'espanhol'
+  }[a.idioma] || 'português do Brasil';
+  var resto = ['', 'ATENDIMENTO NO WHATSAPP (usado quando a integração for ligada):', '- Saudação: "' + a.saudacao.trim() + '"', '- Respostas de tamanho ' + tam + ', em ' + idi + '.', a.apresentar_como_assistente ? '- Diga logo no início que é uma assistente virtual.' : '- Não precisa abrir dizendo que é assistente virtual, mas nunca negue que é uma IA se perguntarem.', procs.length ? '- Serviços com preço que pode informar: ' + (pub.length ? pub.slice(0, 8).join('; ') + (pub.length > 8 ? '; e mais ' + (pub.length - 8) : '') : 'nenhum') + '. Para os outros, diga que a equipe informa o valor. Nunca invente preço.' : null, '- Agenda: ' + (a.ia_consulta_horarios ? 'pode consultar horários livres' : 'não consulta horários') + '; ' + (a.ia_cria_agendamento ? 'pode marcar' : 'não marca, só a equipe') + '; ' + sinal + '; pelo menos ' + a.antecedencia_min_horas + ' h de antecedência e até ' + a.horizonte_dias + ' dias à frente.', a.transferencia_categorias.length ? '- Passe para a equipe quando: ' + a.transferencia_categorias.join('; ') + '. Mensagem: "' + a.transferencia_mensagem.trim() + '"' : null, '- Privacidade: "' + a.privacidade_texto.trim() + '"' + (a.palavras_optout.length ? ' Se a pessoa pedir para parar (' + a.palavras_optout.slice(0, 6).join(', ') + '), não envie mais mensagens.' : '')];
+  return base.concat(resto).filter(function (x) {
+    return x !== null;
+  }).join('\n');
 }
-function AgenteLista(_ref) {
-  var titulo = _ref.titulo,
-    ajuda = _ref.ajuda,
-    itens = _ref.itens,
-    cor = _ref.cor,
-    icone = _ref.icone,
-    onChange = _ref.onChange,
-    exemplo = _ref.exemplo;
-  var _st = React.useState(''),
-    novo = _st[0],
-    setNovo = _st[1];
-  var add = function add() {
-    var v = novo.trim();
-    if (v && itens.length < 40 && !itens.includes(v)) onChange(itens.concat([v.slice(0, 200)]));
-    setNovo('');
+// quem pode gravar: espelha a RLS (o banco é quem decide de verdade)
+function agPermissoes() {
+  if (!SB_ON) return {
+    gestao: true,
+    cadastro: true,
+    procedimentos: true
   };
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      fontSize: 15,
-      color: 'var(--text-strong)'
-    }
-  }, /*#__PURE__*/React.createElement(RIcon, {
-    name: icone,
-    size: 17,
-    color: cor
-  }), titulo), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      color: 'var(--text-muted)'
-    }
-  }, ajuda)), itens.map(function (x) {
-    return /*#__PURE__*/React.createElement("div", {
-      key: x,
-      style: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '9px 12px',
-        borderRadius: 14,
-        background: 'rgba(255,255,255,.65)',
-        border: '1.5px solid rgba(255,255,255,.95)'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        width: 8,
-        height: 8,
-        borderRadius: '50%',
-        background: cor,
-        flexShrink: 0
-      }
-    }), /*#__PURE__*/React.createElement("span", {
-      style: {
-        flex: 1,
-        fontSize: 14,
-        color: 'var(--text-strong)'
-      }
-    }, x), /*#__PURE__*/React.createElement("button", {
-      type: "button",
-      "aria-label": 'Remover ' + x,
-      onClick: function onClick() {
-        return onChange(itens.filter(function (y) {
-          return y !== x;
-        }));
-      },
-      style: {
-        border: 0,
-        background: 'none',
-        color: 'var(--text-muted)',
-        cursor: 'pointer',
-        padding: 4,
-        display: 'flex'
-      }
-    }, /*#__PURE__*/React.createElement(RIcon, {
-      name: "x",
-      size: 14
-    })));
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("input", {
-    value: novo,
-    placeholder: exemplo,
-    onChange: function onChange(e) {
-      return setNovo(e.target.value);
-    },
-    onKeyDown: function onKeyDown(e) {
-      if (e.key === 'Enter') add();
-    },
-    style: AG_IA_INP
-  }), /*#__PURE__*/React.createElement(XButton, {
-    iconLeft: "plus",
-    variant: "secondary",
-    onClick: add
-  }, "Adicionar")));
+  var c = SESSAO.v.clinica || {};
+  var mods = c.modulos || [];
+  var gestao = !!(c.dono || c.papel === 'dono' || c.papel === 'gestor' || c.suporte);
+  return {
+    gestao: gestao,
+    cadastro: gestao || mods.indexOf('perfil.cadastro') >= 0,
+    procedimentos: gestao || mods.indexOf('perfil.cadastro') >= 0 || mods.indexOf('gestao.financeiro') >= 0
+  };
+}
+// abre Configurações > Cadastro na parte pedida (clinica, profissionais, procedimentos...)
+function agIrCadastro(parte, sujo) {
+  if (sujo && !window.confirm('Há alterações não salvas no Agente de IA. Sair mesmo assim?')) return;
+  if (SB_ON && typeof salvarPref === 'function' && PREF.v) salvarPref({
+    filtros: Object.assign({}, PREF.v.filtros || {}, {
+      'config.cadastro': parte
+    })
+  });
+  ABA_CONFIG.v = 'cadastro';
+  ABA_CONFIG.subs.forEach(function (f) {
+    return f();
+  });
 }
 var AG_IA_INP = {
   flex: 1,
@@ -3939,8 +4110,2016 @@ var AG_IA_INP = {
   outline: 'none',
   boxSizing: 'border-box'
 };
-function AgenteIATab(_ref2) {
-  var mobile = _ref2.mobile;
+var AG_AREA = Object.assign({}, AG_IA_INP, {
+  height: 'auto',
+  minHeight: 76,
+  padding: '10px 12px',
+  resize: 'vertical',
+  lineHeight: 1.5,
+  width: '100%'
+});
+var AG_LAB = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  fontSize: 13,
+  color: 'var(--text-muted)',
+  minWidth: 0
+};
+var AG_SUB = {
+  fontSize: 15,
+  fontWeight: 600,
+  color: 'var(--text-strong)',
+  margin: 0
+};
+var agBloco = function agBloco(mobile) {
+  return {
+    borderRadius: 18,
+    background: 'rgba(255,255,255,.6)',
+    border: '1.5px solid rgba(255,255,255,.95)',
+    padding: mobile ? 14 : 18,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+    minWidth: 0
+  };
+};
+var agChip = function agChip(on) {
+  return {
+    minHeight: 38,
+    padding: '6px 16px',
+    borderRadius: 999,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    fontWeight: on ? 600 : 500,
+    border: on ? '1.5px solid rgba(31,94,255,.55)' : '1.5px solid rgba(214,226,242,.95)',
+    background: on ? 'rgba(31,94,255,.1)' : '#fff',
+    color: on ? '#1F5EFF' : 'var(--text-strong)'
+  };
+};
+var agBtnLink = {
+  border: 0,
+  background: 'none',
+  padding: 0,
+  color: '#1F5EFF',
+  fontFamily: 'inherit',
+  fontSize: 13.5,
+  fontWeight: 600,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  textAlign: 'left'
+};
+
+/* peças pequenas da tela */
+function AgErro(_ref) {
+  var msg = _ref.msg;
+  return msg ? agH("span", {
+    role: "alert",
+    style: {
+      fontSize: 12.5,
+      color: '#C2272D',
+      display: 'flex',
+      gap: 6,
+      alignItems: 'center'
+    }
+  }, agH(RIcon, {
+    name: "circle-alert",
+    size: 14
+  }), msg) : null;
+}
+function AgContador(_ref2) {
+  var txt = _ref2.txt,
+    max = _ref2.max;
+  var n = String(txt || '').length;
+  return agH("span", {
+    "aria-hidden": "true",
+    style: {
+      fontSize: 11.5,
+      color: n > max ? '#C2272D' : 'var(--text-muted)',
+      alignSelf: 'flex-end'
+    }
+  }, n.toLocaleString('pt-BR') + ' / ' + max.toLocaleString('pt-BR'));
+}
+function AgAviso(_ref3) {
+  var tipo = _ref3.tipo,
+    icone = _ref3.icone,
+    children = _ref3.children;
+  var c = tipo === 'perigo' ? ['#B42318', 'rgba(229,72,77,.08)', 'rgba(229,72,77,.35)'] : tipo === 'alerta' ? ['#8A5A00', 'rgba(245,180,0,.1)', 'rgba(245,180,0,.4)'] : tipo === 'ok' ? ['#1E7A47', 'rgba(45,191,106,.08)', 'rgba(45,191,106,.3)'] : ['#1749AA', 'rgba(31,94,255,.06)', 'rgba(31,94,255,.22)'];
+  return agH("div", {
+    role: tipo === 'perigo' ? 'alert' : undefined,
+    style: {
+      display: 'flex',
+      gap: 10,
+      alignItems: 'flex-start',
+      padding: '11px 14px',
+      borderRadius: 14,
+      background: c[1],
+      border: '1.5px solid ' + c[2],
+      color: c[0],
+      fontSize: 13.5,
+      lineHeight: 1.5
+    }
+  }, agH("span", {
+    style: {
+      flexShrink: 0,
+      marginTop: 1,
+      display: 'flex'
+    }
+  }, agH(RIcon, {
+    name: icone || (tipo === 'perigo' ? 'octagon-alert' : tipo === 'alerta' ? 'triangle-alert' : tipo === 'ok' ? 'circle-check' : 'info'),
+    size: 16
+  })), agH("div", {
+    style: {
+      minWidth: 0
+    }
+  }, children));
+}
+// chave liga/desliga com título e explicação; "grande" para o Status, "perigo" fica vermelho quando ligada
+function AgChave(_ref4) {
+  var titulo = _ref4.titulo,
+    desc = _ref4.desc,
+    on = _ref4.on,
+    onChange = _ref4.onChange,
+    perigo = _ref4.perigo,
+    grande = _ref4.grande,
+    icone = _ref4.icone,
+    extra = _ref4.extra;
+  var id = React.useRef('agc' + Math.random().toString(36).slice(2, 9)).current;
+  var cor = perigo ? '#E5484D' : '#1F5EFF';
+  var destaque = on && (perigo || grande);
+  return agH("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 14,
+      padding: grande ? '16px 18px' : '12px 14px',
+      borderRadius: 16,
+      background: destaque ? perigo ? 'rgba(229,72,77,.07)' : 'rgba(31,94,255,.06)' : 'rgba(255,255,255,.7)',
+      border: '1.5px solid ' + (destaque ? perigo ? 'rgba(229,72,77,.45)' : 'rgba(31,94,255,.3)' : 'rgba(214,226,242,.9)'),
+      minWidth: 0
+    }
+  }, icone ? agH("span", {
+    "aria-hidden": "true",
+    style: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: on ? perigo ? 'rgba(229,72,77,.14)' : 'rgba(31,94,255,.12)' : 'rgba(120,140,170,.12)',
+      color: on ? cor : 'var(--text-muted)'
+    }
+  }, agH(RIcon, {
+    name: icone,
+    size: 19
+  })) : null, agH("div", {
+    style: {
+      flex: 1,
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 3
+    }
+  }, agH("span", {
+    id: id + 't',
+    style: {
+      fontSize: grande ? 15.5 : 14.5,
+      fontWeight: 600,
+      color: destaque && perigo ? '#B42318' : 'var(--text-strong)'
+    }
+  }, titulo), desc ? agH("span", {
+    id: id + 'd',
+    style: {
+      fontSize: 13,
+      lineHeight: 1.45,
+      color: 'var(--text-muted)'
+    }
+  }, desc) : null, extra || null), agH("button", {
+    type: "button",
+    role: "switch",
+    "aria-checked": !!on,
+    "aria-labelledby": id + 't',
+    "aria-describedby": desc ? id + 'd' : undefined,
+    onClick: function onClick() {
+      return onChange(!on);
+    },
+    style: {
+      position: 'relative',
+      width: 48,
+      height: 28,
+      flexShrink: 0,
+      borderRadius: 999,
+      border: 0,
+      padding: 0,
+      cursor: 'pointer',
+      marginTop: grande ? 5 : 1,
+      background: on ? perigo ? '#E5484D' : 'var(--gradient-blue-h, #1F5EFF)' : 'var(--ink-200, #D5DEEA)',
+      boxShadow: on ? '0 4px 12px -4px ' + (perigo ? 'rgba(229,72,77,.7)' : 'rgba(10,92,255,.6)') : 'inset 0 1px 2px rgba(8,28,68,.08)',
+      transition: 'background .2s'
+    }
+  }, agH("span", {
+    style: {
+      position: 'absolute',
+      top: 3,
+      left: on ? 23 : 3,
+      width: 22,
+      height: 22,
+      borderRadius: '50%',
+      background: '#fff',
+      boxShadow: '0 1px 3px rgba(8,28,68,.25)',
+      transition: 'left .2s'
+    }
+  })));
+}
+function AgNumero(_ref5) {
+  var rotulo = _ref5.rotulo,
+    ajuda = _ref5.ajuda,
+    valor = _ref5.valor,
+    onChange = _ref5.onChange,
+    min = _ref5.min,
+    max = _ref5.max,
+    passo = _ref5.passo,
+    sufixo = _ref5.sufixo,
+    erro = _ref5.erro;
+  return agH("label", {
+    style: AG_LAB
+  }, agH("span", {
+    style: {
+      color: 'var(--text-strong)',
+      fontWeight: 500,
+      fontSize: 13.5
+    }
+  }, rotulo), agH("span", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8
+    }
+  }, agH("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: min,
+    max: max,
+    step: passo || 1,
+    value: valor,
+    "aria-invalid": erro ? 'true' : undefined,
+    onChange: function onChange(e) {
+      return _onChange(e.target.value === '' ? '' : Number(e.target.value));
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: 'none',
+      width: 110,
+      borderColor: erro ? 'rgba(229,72,77,.6)' : 'rgba(214,226,242,.95)'
+    })
+  }), sufixo ? agH("span", {
+    style: {
+      fontSize: 13.5,
+      color: 'var(--text-strong)'
+    }
+  }, sufixo) : null), ajuda ? agH("span", {
+    style: {
+      fontSize: 12.5,
+      lineHeight: 1.45
+    }
+  }, ajuda) : null, agH(AgErro, {
+    msg: erro
+  }));
+  function _onChange(v) {
+    onChange(v);
+  }
+}
+function AgHora(_ref6) {
+  var rotulo = _ref6.rotulo,
+    valor = _ref6.valor,
+    onChange = _ref6.onChange,
+    erro = _ref6.erro,
+    disabled = _ref6.disabled;
+  return agH("label", {
+    style: Object.assign({}, AG_LAB, {
+      flex: '1 1 130px'
+    })
+  }, rotulo, agH("input", {
+    type: "time",
+    step: 300,
+    value: valor,
+    disabled: disabled,
+    "aria-invalid": erro ? 'true' : undefined,
+    onChange: function onChange(e) {
+      return _onChange2(e.target.value);
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: 'none',
+      width: '100%',
+      borderColor: erro ? 'rgba(229,72,77,.6)' : 'rgba(214,226,242,.95)'
+    })
+  }));
+  function _onChange2(v) {
+    onChange(v);
+  }
+}
+// grupo de opções em cartões (role=radiogroup)
+function AgOpcoes(_ref7) {
+  var rotulo = _ref7.rotulo,
+    opcoes = _ref7.opcoes,
+    valor = _ref7.valor,
+    onChange = _ref7.onChange,
+    colunas = _ref7.colunas;
+  return agH("div", {
+    role: "radiogroup",
+    "aria-label": rotulo,
+    style: {
+      display: 'grid',
+      gridTemplateColumns: colunas || 'repeat(auto-fill, minmax(200px, 1fr))',
+      gap: 8
+    }
+  }, opcoes.map(function (o) {
+    var on = valor === o[0];
+    return agH("button", {
+      key: o[0],
+      type: "button",
+      role: "radio",
+      "aria-checked": on,
+      onClick: function onClick() {
+        return onChange(o[0]);
+      },
+      style: {
+        textAlign: 'left',
+        display: 'flex',
+        gap: 10,
+        alignItems: 'flex-start',
+        padding: '11px 13px',
+        borderRadius: 14,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        border: on ? '1.5px solid rgba(31,94,255,.55)' : '1.5px solid rgba(214,226,242,.95)',
+        background: on ? 'rgba(31,94,255,.07)' : '#fff'
+      }
+    }, agH("span", {
+      "aria-hidden": "true",
+      style: {
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        flexShrink: 0,
+        marginTop: 1,
+        border: on ? '5px solid #1F5EFF' : '2px solid rgba(150,170,200,.8)',
+        boxSizing: 'border-box',
+        background: '#fff'
+      }
+    }), agH("span", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        minWidth: 0
+      }
+    }, agH("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: 600,
+        color: on ? '#1F5EFF' : 'var(--text-strong)'
+      }
+    }, o[1]), o[2] ? agH("span", {
+      style: {
+        fontSize: 12.5,
+        lineHeight: 1.45,
+        color: 'var(--text-muted)'
+      }
+    }, o[2]) : null));
+  }));
+}
+// lista editável de textos curtos (assuntos, categorias, palavras de saída)
+function AgenteLista(_ref8) {
+  var titulo = _ref8.titulo,
+    ajuda = _ref8.ajuda,
+    itens = _ref8.itens,
+    cor = _ref8.cor,
+    icone = _ref8.icone,
+    onChange = _ref8.onChange,
+    exemplo = _ref8.exemplo,
+    _ref8$max = _ref8.max,
+    max = _ref8$max === void 0 ? 40 : _ref8$max,
+    _ref8$maxLen = _ref8.maxLen,
+    maxLen = _ref8$maxLen === void 0 ? 200 : _ref8$maxLen,
+    compacta = _ref8.compacta;
+  var _st = React.useState(''),
+    novo = _st[0],
+    setNovo = _st[1];
+  var _st2 = React.useState(''),
+    aviso = _st2[0],
+    setAviso = _st2[1];
+  var add = function add() {
+    var v = novo.trim().slice(0, maxLen);
+    if (!v) return;
+    if (itens.length >= max) return setAviso('Limite de ' + max + ' itens.');
+    if (itens.some(function (x) {
+      return x.toLowerCase() === v.toLowerCase();
+    })) return setAviso('Esse item já está na lista.');
+    onChange(itens.concat([v]));
+    setNovo('');
+    setAviso('');
+  };
+  var rotulo = titulo ? 'Adicionar em ' + titulo : 'Adicionar item';
+  return agH("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, titulo || ajuda ? agH("div", null, titulo ? agH("b", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      fontSize: 15,
+      color: 'var(--text-strong)'
+    }
+  }, icone ? agH(RIcon, {
+    name: icone,
+    size: 17,
+    color: cor
+  }) : null, titulo) : null, ajuda ? agH("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)'
+    }
+  }, ajuda) : null) : null, agH("div", {
+    style: compacta ? {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: 8
+    } : {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8
+    }
+  }, itens.map(function (x) {
+    return agH("div", {
+      key: x,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: compacta ? '5px 6px 5px 12px' : '9px 12px',
+        borderRadius: compacta ? 999 : 14,
+        background: 'rgba(255,255,255,.75)',
+        border: '1.5px solid rgba(214,226,242,.9)',
+        minWidth: 0
+      }
+    }, compacta ? null : agH("span", {
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: cor,
+        flexShrink: 0
+      }
+    }), agH("span", {
+      style: {
+        flex: 1,
+        fontSize: 14,
+        color: 'var(--text-strong)',
+        overflowWrap: 'anywhere'
+      }
+    }, x), agH("button", {
+      type: "button",
+      "aria-label": 'Remover ' + x,
+      onClick: function onClick() {
+        return onChange(itens.filter(function (y) {
+          return y !== x;
+        }));
+      },
+      style: {
+        border: 0,
+        background: 'none',
+        color: 'var(--text-muted)',
+        cursor: 'pointer',
+        padding: 4,
+        display: 'flex'
+      }
+    }, agH(RIcon, {
+      name: "x",
+      size: 14
+    })));
+  }), !itens.length ? agH("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      fontStyle: 'italic'
+    }
+  }, "Lista vazia.") : null), agH("div", {
+    style: {
+      display: 'flex',
+      gap: 8
+    }
+  }, agH("input", {
+    value: novo,
+    placeholder: exemplo,
+    maxLength: maxLen,
+    "aria-label": rotulo,
+    onChange: function onChange(e) {
+      setNovo(e.target.value);
+      setAviso('');
+    },
+    onKeyDown: function onKeyDown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        add();
+      }
+    },
+    style: AG_IA_INP
+  }), agH(XButton, {
+    iconLeft: "plus",
+    variant: "secondary",
+    onClick: add
+  }, "Adicionar")), aviso ? agH("span", {
+    role: "status",
+    style: {
+      fontSize: 12.5,
+      color: '#8A5A00'
+    }
+  }, aviso) : null);
+}
+function AgSecaoCab(_ref9) {
+  var icone = _ref9.icone,
+    titulo = _ref9.titulo,
+    desc = _ref9.desc,
+    direita = _ref9.direita;
+  return agH("header", {
+    style: {
+      display: 'flex',
+      gap: 14,
+      alignItems: 'flex-start',
+      flexWrap: 'wrap'
+    }
+  }, agH("span", {
+    "aria-hidden": "true",
+    style: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      flexShrink: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, rgba(31,94,255,.14), rgba(34,195,242,.14))',
+      color: '#1F5EFF'
+    }
+  }, agH(RIcon, {
+    name: icone,
+    size: 21
+  })), agH("div", {
+    style: {
+      flex: '1 1 260px',
+      minWidth: 0
+    }
+  }, agH("h3", {
+    style: {
+      margin: 0,
+      fontSize: 20,
+      fontWeight: 600,
+      color: 'var(--text-strong)',
+      letterSpacing: '-0.01em'
+    }
+  }, titulo), agH("p", {
+    style: {
+      margin: '4px 0 0',
+      fontSize: 14,
+      lineHeight: 1.55,
+      color: 'var(--text-muted)'
+    }
+  }, desc)), direita || null);
+}
+
+/* ---- Serviços: o que a IA pode dizer e agendar de cada procedimento ---- */
+function AgServicos(_ref10) {
+  var procs = _ref10.procs,
+    setProcs = _ref10.setProcs,
+    profs = _ref10.profs,
+    links = _ref10.links,
+    setLinks = _ref10.setLinks,
+    perm = _ref10.perm,
+    mobile = _ref10.mobile,
+    sujo = _ref10.sujo,
+    setSujoServ = _ref10.setSujoServ;
+  var _s1 = React.useState(''),
+    busca = _s1[0],
+    setBusca = _s1[1];
+  var _s2 = React.useState(null),
+    aberto = _s2[0],
+    setAberto = _s2[1];
+  var _s3 = React.useState({}),
+    rasc = _s3[0],
+    setRasc = _s3[1];
+  var _s4 = React.useState(null),
+    salvando = _s4[0],
+    setSalvando = _s4[1];
+  var _s5 = React.useState(false),
+    verInativos = _s5[0],
+    setVerInativos = _s5[1];
+  var profsDe = function profsDe(pid) {
+    return links.filter(function (l) {
+      return l.procedimento_id === pid;
+    }).map(function (l) {
+      return l.profissional_id;
+    });
+  };
+  var atual = function atual(p) {
+    return rasc[p.id] || {
+      ia_preco_publico: p.ia_preco_publico !== false,
+      ia_agendavel: p.ia_agendavel !== false,
+      ia_descricao: p.ia_descricao || '',
+      profs: profsDe(p.id)
+    };
+  };
+  var mudouItem = function mudouItem(p) {
+    if (!rasc[p.id]) return false;
+    var r = rasc[p.id];
+    var antes = profsDe(p.id).slice().sort().join(',');
+    return r.ia_preco_publico !== (p.ia_preco_publico !== false) || r.ia_agendavel !== (p.ia_agendavel !== false) || r.ia_descricao !== (p.ia_descricao || '') || r.profs.slice().sort().join(',') !== antes;
+  };
+  React.useEffect(function () {
+    setSujoServ(procs.some(mudouItem));
+  });
+  var editar = function editar(p, k, v) {
+    setRasc(function (o) {
+      var n = Object.assign({}, o);
+      n[p.id] = Object.assign({}, atual(p));
+      n[p.id][k] = v;
+      return n;
+    });
+  };
+  var descartar = function descartar(p) {
+    setRasc(function (o) {
+      var n = Object.assign({}, o);
+      delete n[p.id];
+      return n;
+    });
+  };
+  var salvar = function salvar(p) {
+    var r = atual(p);
+    if (r.ia_descricao.length > 600) return avisoErro('Descrição muito longa', {
+      message: 'Use no máximo 600 letras na descrição para a IA.'
+    });
+    var patch = {
+      ia_preco_publico: r.ia_preco_publico,
+      ia_agendavel: r.ia_agendavel,
+      ia_descricao: r.ia_descricao.trim() || null
+    };
+    var antes = profsDe(p.id);
+    var novos = r.profs.filter(function (x) {
+      return antes.indexOf(x) < 0;
+    });
+    var saem = links.filter(function (l) {
+      return l.procedimento_id === p.id && r.profs.indexOf(l.profissional_id) < 0;
+    });
+    var fim = function fim(novosLinks) {
+      setProcs(function (ps) {
+        return ps.map(function (x) {
+          return x.id === p.id ? Object.assign({}, x, patch) : x;
+        });
+      });
+      setLinks(function (ls) {
+        return ls.filter(function (l) {
+          return !saem.some(function (s) {
+            return s.id === l.id;
+          });
+        }).concat(novosLinks);
+      });
+      descartar(p);
+      setSalvando(null);
+    };
+    if (!SB_ON) {
+      fim(novos.map(function (pid, i) {
+        return {
+          id: 'demo-l' + Date.now() + i,
+          procedimento_id: p.id,
+          profissional_id: pid
+        };
+      }));
+      avisoOk('Serviço salvo', 'Modo demonstração: nada foi gravado.');
+      return;
+    }
+    setSalvando(p.id);
+    var ops = [DB.upd('procedimentos', p.id, patch, 'Não foi possível salvar o serviço')];
+    if (perm.cadastro) {
+      novos.forEach(function (pid) {
+        ops.push(DB.ins('profissionais_procedimentos', {
+          procedimento_id: p.id,
+          profissional_id: pid
+        }, 'Não foi possível ligar o profissional'));
+      });
+      saem.forEach(function (l) {
+        ops.push(DB.del('profissionais_procedimentos', l.id, 'Não foi possível desligar o profissional'));
+      });
+    }
+    Promise.all(ops).then(function (res) {
+      fim(res.slice(1, 1 + (perm.cadastro ? novos.length : 0)).filter(Boolean).map(function (x) {
+        return {
+          id: x.id,
+          procedimento_id: x.procedimento_id,
+          profissional_id: x.profissional_id
+        };
+      }));
+      carregar('catalogos', true);
+      avisoOk('Serviço salvo', p.nome + ': a IA já usa as novas regras.');
+    }, function () {
+      setSalvando(null);
+    });
+  };
+  var q = busca.trim().toLowerCase();
+  var ativos = procs.filter(function (p) {
+    return p.ativo;
+  });
+  var inativos = procs.filter(function (p) {
+    return !p.ativo;
+  });
+  var lista = (verInativos ? procs : ativos).filter(function (p) {
+    return !q || p.nome.toLowerCase().indexOf(q) >= 0;
+  });
+  var nomeProf = function nomeProf(id) {
+    var p = profs.find(function (x) {
+      return x.id === id;
+    });
+    return p ? p.nome : 'Profissional removido';
+  };
+  var selo = function selo(on, sim, nao) {
+    return agH("span", {
+      style: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        height: 24,
+        padding: '0 9px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 500,
+        whiteSpace: 'nowrap',
+        background: on ? 'rgba(45,191,106,.1)' : 'rgba(120,140,170,.12)',
+        color: on ? '#1E7A47' : 'var(--text-muted)'
+      }
+    }, agH(RIcon, {
+      name: on ? 'check' : 'minus',
+      size: 12
+    }), on ? sim : nao);
+  };
+  return agH("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, agH(AgAviso, {
+    tipo: "info",
+    icone: "badge-dollar-sign"
+  }, "A IA nunca inventa pre\xE7o. Ela s\xF3 informa o valor dos servi\xE7os marcados como \"pre\xE7o p\xFAblico\" e que t\xEAm valor no cadastro. Nos outros, ela diz que a equipe informa o valor."), agH("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap',
+      alignItems: 'center'
+    }
+  }, agH("input", {
+    type: "search",
+    value: busca,
+    placeholder: "Buscar servi\xE7o",
+    "aria-label": "Buscar servi\xE7o",
+    onChange: function onChange(e) {
+      return setBusca(e.target.value);
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: '1 1 220px'
+    })
+  }), agH("button", {
+    type: "button",
+    style: agBtnLink,
+    onClick: function onClick() {
+      return agIrCadastro('procedimentos', sujo);
+    }
+  }, agH(RIcon, {
+    name: "external-link",
+    size: 14
+  }), "Nome, valor e dura\xE7\xE3o ficam no Cadastro")), !perm.procedimentos ? agH(AgAviso, {
+    tipo: "alerta",
+    icone: "lock"
+  }, "Voc\xEA pode ver, mas s\xF3 quem tem acesso ao Cadastro ou ao Financeiro altera os servi\xE7os.") : null, !procs.length ? agH(AgAviso, {
+    tipo: "alerta"
+  }, "Nenhum procedimento cadastrado. Cadastre em Configura\xE7\xF5es > Cadastro > Procedimentos para a IA conhecer os servi\xE7os.") : null, lista.map(function (p) {
+    var r = atual(p);
+    var abertoAqui = aberto === p.id;
+    var mud = mudouItem(p);
+    var semValor = !(Number(p.valor) > 0);
+    var painelId = 'ag-serv-' + p.id;
+    return agH("div", {
+      key: p.id,
+      style: Object.assign({}, agBloco(mobile), {
+        gap: 0,
+        padding: 0,
+        opacity: p.ativo ? 1 : 0.7,
+        border: mud ? '1.5px solid rgba(245,180,0,.6)' : '1.5px solid rgba(255,255,255,.95)'
+      })
+    }, agH("button", {
+      type: "button",
+      "aria-expanded": abertoAqui,
+      "aria-controls": painelId,
+      onClick: function onClick() {
+        return setAberto(abertoAqui ? null : p.id);
+      },
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: mobile ? '12px 14px' : '14px 18px',
+        border: 0,
+        background: 'none',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        textAlign: 'left',
+        width: '100%',
+        flexWrap: mobile ? 'wrap' : 'nowrap'
+      }
+    }, agH("span", {
+      style: {
+        flex: '1 1 180px',
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2
+      }
+    }, agH("span", {
+      style: {
+        fontSize: 15,
+        fontWeight: 600,
+        color: 'var(--text-strong)'
+      }
+    }, p.nome, !p.ativo ? ' (inativo)' : '', mud ? agH("span", {
+      style: {
+        marginLeft: 8,
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#8A5A00'
+      }
+    }, "N\xE3o salvo") : null), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, (semValor ? 'Sem valor cadastrado' : agMoeda(p.valor)) + ' · ' + (p.duracao_padrao_minutos || 30) + ' min')), agH("span", {
+      style: {
+        display: 'flex',
+        gap: 6,
+        flexWrap: 'wrap'
+      }
+    }, selo(r.ia_preco_publico && !semValor, 'Preço público', 'Preço com a equipe'), selo(r.ia_agendavel, 'IA agenda', 'Só a equipe agenda')), agH(RIcon, {
+      name: abertoAqui ? 'chevron-up' : 'chevron-down',
+      size: 18,
+      color: "var(--text-muted)"
+    })), abertoAqui ? agH("fieldset", {
+      id: painelId,
+      disabled: !perm.procedimentos || salvando === p.id,
+      style: {
+        border: 0,
+        margin: 0,
+        padding: mobile ? '0 14px 14px' : '0 18px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        minWidth: 0
+      }
+    }, agH("legend", {
+      style: {
+        position: 'absolute',
+        width: 1,
+        height: 1,
+        overflow: 'hidden',
+        clip: 'rect(0 0 0 0)'
+      }
+    }, 'Regras da IA para ' + p.nome), agH(AgChave, {
+      titulo: "IA pode informar o pre\xE7o",
+      desc: semValor ? 'Este serviço não tem valor no cadastro, então a IA vai dizer que a equipe informa o preço.' : 'A IA pode dizer que custa ' + agMoeda(p.valor) + '. Desligado, ela diz que a equipe informa o valor.',
+      on: r.ia_preco_publico,
+      onChange: function onChange(v) {
+        return editar(p, 'ia_preco_publico', v);
+      }
+    }), agH(AgChave, {
+      titulo: "IA pode agendar",
+      desc: "Ligado, a IA oferece hor\xE1rios livres deste servi\xE7o. Desligado, ela passa o pedido para a equipe.",
+      on: r.ia_agendavel,
+      onChange: function onChange(v) {
+        return editar(p, 'ia_agendavel', v);
+      }
+    }), agH("label", {
+      style: AG_LAB
+    }, agH("span", {
+      style: {
+        color: 'var(--text-strong)',
+        fontWeight: 500,
+        fontSize: 13.5
+      }
+    }, "Descri\xE7\xE3o aprovada para a IA"), "O que a IA pode explicar sobre o servi\xE7o. Escreva s\xF3 o que a cl\xEDnica aprova; ela n\xE3o vai al\xE9m disso.", agH("textarea", {
+      value: r.ia_descricao,
+      maxLength: 600,
+      placeholder: "Ex.: Aplica\xE7\xE3o r\xE1pida, cerca de 30 minutos. O resultado aparece entre 7 e 15 dias.",
+      onChange: function onChange(e) {
+        return editar(p, 'ia_descricao', e.target.value);
+      },
+      style: AG_AREA
+    }), agH(AgContador, {
+      txt: r.ia_descricao,
+      max: 600
+    })), agH("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8
+      }
+    }, agH("span", {
+      id: painelId + '-pr',
+      style: {
+        fontSize: 13.5,
+        fontWeight: 500,
+        color: 'var(--text-strong)'
+      }
+    }, "Profissionais que fazem este servi\xE7o"), agH("div", {
+      role: "group",
+      "aria-labelledby": painelId + '-pr',
+      style: {
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap'
+      }
+    }, profs.map(function (pr) {
+      var on = r.profs.indexOf(pr.id) >= 0;
+      return agH("button", {
+        key: pr.id,
+        type: "button",
+        role: "checkbox",
+        "aria-checked": on,
+        disabled: !perm.cadastro,
+        onClick: function onClick() {
+          return editar(p, 'profs', on ? r.profs.filter(function (x) {
+            return x !== pr.id;
+          }) : r.profs.concat([pr.id]));
+        },
+        style: Object.assign({}, agChip(on), {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          cursor: perm.cadastro ? 'pointer' : 'default'
+        })
+      }, agH(RIcon, {
+        name: on ? 'check' : 'plus',
+        size: 14
+      }), pr.nome);
+    }), r.profs.filter(function (id) {
+      return !profs.some(function (x) {
+        return x.id === id;
+      });
+    }).map(function (id) {
+      return agH("span", {
+        key: id,
+        style: agChip(true)
+      }, nomeProf(id));
+    }), !profs.length ? agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "Nenhum profissional cadastrado.") : null), !perm.cadastro ? agH("span", {
+      style: {
+        fontSize: 12.5,
+        color: 'var(--text-muted)'
+      }
+    }, "S\xF3 quem tem acesso ao Cadastro muda os profissionais.") : null, r.ia_agendavel && !r.profs.length ? agH(AgAviso, {
+      tipo: "alerta"
+    }, "Nenhum profissional ligado: a IA n\xE3o vai encontrar hor\xE1rios para este servi\xE7o.") : null), perm.procedimentos ? agH("div", {
+      style: {
+        display: 'flex',
+        gap: 10,
+        justifyContent: 'flex-end',
+        flexWrap: 'wrap'
+      }
+    }, agH(XButton, {
+      variant: "secondary",
+      disabled: !mud || salvando === p.id,
+      onClick: function onClick() {
+        return descartar(p);
+      }
+    }, "Desfazer"), agH(XButton, {
+      iconLeft: "check",
+      disabled: !mud || salvando === p.id,
+      onClick: function onClick() {
+        return salvar(p);
+      }
+    }, salvando === p.id ? 'Salvando...' : 'Salvar este serviço')) : null) : null);
+  }), q && !lista.length ? agH("span", {
+    style: {
+      fontSize: 13.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Nenhum servi\xE7o com esse nome.") : null, inativos.length ? agH("button", {
+    type: "button",
+    style: agBtnLink,
+    onClick: function onClick() {
+      return setVerInativos(!verInativos);
+    }
+  }, verInativos ? 'Esconder serviços inativos' : 'Mostrar ' + inativos.length + (inativos.length === 1 ? ' serviço inativo' : ' serviços inativos') + ' (a IA não usa)') : null);
+}
+
+/* ---- Horário em que a IA responde (renata_horarios). Sem linhas = responde a qualquer hora ---- */
+function agHorarioInicial(linhas) {
+  var msg = '';
+  var dias = AG_DIAS.map(function (d) {
+    var l = linhas.find(function (x) {
+      return x.dia_semana === d[0];
+    });
+    if (l && l.mensagem_fora_horario && !msg) msg = l.mensagem_fora_horario;
+    return l ? {
+      dia: d[0],
+      on: !!l.ativo,
+      ini: agHM(l.hora_inicio) || '08:00',
+      fim: agHM(l.hora_fim) || '18:00'
+    } : {
+      dia: d[0],
+      on: !linhas.length ? d[0] >= 1 && d[0] <= 6 : false,
+      ini: '08:00',
+      fim: d[0] === 6 ? '12:00' : '18:00'
+    };
+  });
+  return {
+    livre: !linhas.length,
+    dias: dias,
+    msg: msg || 'Oi! Recebemos sua mensagem. Nosso atendimento automático volta no próximo horário de funcionamento e a equipe responde você assim que possível.'
+  };
+}
+function AgHorarioIA(_ref11) {
+  var linhas = _ref11.linhas,
+    setLinhas = _ref11.setLinhas,
+    pode = _ref11.pode,
+    mobile = _ref11.mobile,
+    setSujoHor = _ref11.setSujoHor;
+  var inicial = React.useMemo(function () {
+    return agHorarioInicial(linhas);
+  }, [linhas]);
+  var _s1 = React.useState(inicial),
+    f = _s1[0],
+    setF = _s1[1];
+  var _s2 = React.useState(false),
+    salvando = _s2[0],
+    setSalvando = _s2[1];
+  React.useEffect(function () {
+    setF(inicial);
+  }, [inicial]);
+  var mudou = JSON.stringify(f) !== JSON.stringify(inicial);
+  React.useEffect(function () {
+    setSujoHor(mudou);
+  }, [mudou]);
+  var erroDia = f.livre ? null : f.dias.find(function (d) {
+    return d.on && (!d.ini || !d.fim || d.ini >= d.fim);
+  });
+  var erroMsg = !f.livre && !f.msg.trim() ? 'Escreva a resposta fora do horário.' : f.msg.length > 500 ? 'Use no máximo 500 letras.' : '';
+  var setDia = function setDia(dia, k, v) {
+    setF(function (o) {
+      return Object.assign({}, o, {
+        dias: o.dias.map(function (d) {
+          if (d.dia !== dia) return d;
+          var n = Object.assign({}, d);
+          n[k] = v;
+          return n;
+        })
+      });
+    });
+  };
+  var salvar = function salvar() {
+    if (erroDia || erroMsg) return;
+    if (!SB_ON) {
+      setLinhas(f.livre ? [] : f.dias.map(function (d) {
+        return {
+          id: 'demo-h' + d.dia,
+          dia_semana: d.dia,
+          ativo: d.on,
+          hora_inicio: d.ini,
+          hora_fim: d.fim,
+          mensagem_fora_horario: f.msg.trim()
+        };
+      }));
+      avisoOk('Horário da IA salvo', 'Modo demonstração: nada foi gravado.');
+      return;
+    }
+    setSalvando(true);
+    var titulo = 'Não foi possível salvar o horário da IA';
+    var ops = f.livre ? linhas.map(function (l) {
+      return DB.del('renata_horarios', l.id, titulo);
+    }) : f.dias.map(function (d) {
+      var l = linhas.find(function (x) {
+        return x.dia_semana === d.dia;
+      });
+      var row = {
+        dia_semana: d.dia,
+        ativo: d.on,
+        hora_inicio: d.ini,
+        hora_fim: d.fim,
+        mensagem_fora_horario: f.msg.trim()
+      };
+      return l ? DB.upd('renata_horarios', l.id, row, titulo) : DB.ins('renata_horarios', row, titulo);
+    });
+    Promise.all(ops).then(function (res) {
+      setSalvando(false);
+      setLinhas(f.livre ? [] : res.filter(Boolean));
+      avisoOk('Horário da IA salvo', f.livre ? 'A IA responde a qualquer hora.' : 'Fora desse horário, a IA envia a resposta automática.');
+    }, function () {
+      setSalvando(false);
+      DB.ler(DB.sel('renata_horarios').order('dia_semana')).then(setLinhas, function () {});
+    });
+  };
+  return agH("fieldset", {
+    disabled: !pode || salvando,
+    style: Object.assign({}, agBloco(mobile), {
+      margin: 0
+    })
+  }, agH("legend", {
+    style: {
+      position: 'absolute',
+      width: 1,
+      height: 1,
+      overflow: 'hidden',
+      clip: 'rect(0 0 0 0)'
+    }
+  }, "Hor\xE1rio de atendimento da IA"), agH("div", null, agH("p", {
+    style: AG_SUB
+  }, "Hor\xE1rio de atendimento da IA"), agH("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      lineHeight: 1.5
+    }
+  }, "Quando a IA responde as mensagens que chegam. Fora desse hor\xE1rio, ela manda a resposta autom\xE1tica abaixo e a conversa espera a equipe.")), agH(AgChave, {
+    titulo: "Responder a qualquer hora",
+    desc: "A IA responde 24 horas, todos os dias.",
+    on: f.livre,
+    onChange: function onChange(v) {
+      return setF(Object.assign({}, f, {
+        livre: v
+      }));
+    }
+  }), !f.livre ? agH("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8
+    }
+  }, f.dias.map(function (d) {
+    var nome = AG_DIAS.find(function (x) {
+      return x[0] === d.dia;
+    })[1];
+    var ruim = d.on && (!d.ini || !d.fim || d.ini >= d.fim);
+    return agH("div", {
+      key: d.dia,
+      style: {
+        display: 'grid',
+        gridTemplateColumns: mobile ? '1fr' : '150px 1fr',
+        gap: mobile ? 6 : 12,
+        alignItems: 'center',
+        padding: '8px 12px',
+        borderRadius: 12,
+        background: d.on ? 'rgba(255,255,255,.8)' : 'transparent',
+        border: '1.5px solid ' + (ruim ? 'rgba(229,72,77,.5)' : 'rgba(214,226,242,.7)')
+      }
+    }, agH("label", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        fontSize: 14,
+        fontWeight: 500,
+        color: 'var(--text-strong)',
+        cursor: 'pointer'
+      }
+    }, agH("input", {
+      type: "checkbox",
+      checked: d.on,
+      onChange: function onChange(e) {
+        return setDia(d.dia, 'on', e.target.checked);
+      },
+      style: {
+        width: 18,
+        height: 18,
+        accentColor: '#1F5EFF'
+      }
+    }), nome), d.on ? agH("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap'
+      }
+    }, agH("input", {
+      type: "time",
+      step: 300,
+      value: d.ini,
+      "aria-label": nome + ': começa às',
+      onChange: function onChange(e) {
+        return setDia(d.dia, 'ini', e.target.value);
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none',
+        width: 120,
+        height: 38
+      })
+    }), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "at\xE9"), agH("input", {
+      type: "time",
+      step: 300,
+      value: d.fim,
+      "aria-label": nome + ': termina às',
+      onChange: function onChange(e) {
+        return setDia(d.dia, 'fim', e.target.value);
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none',
+        width: 120,
+        height: 38
+      })
+    }), ruim ? agH(AgErro, {
+      msg: "O fim precisa ser depois do in\xEDcio."
+    }) : null) : agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "A IA n\xE3o responde neste dia."));
+  }), agH("label", {
+    style: AG_LAB
+  }, agH("span", {
+    style: {
+      color: 'var(--text-strong)',
+      fontWeight: 500,
+      fontSize: 13.5
+    }
+  }, "Resposta fora do hor\xE1rio"), agH("textarea", {
+    value: f.msg,
+    maxLength: 500,
+    onChange: function onChange(e) {
+      return setF(Object.assign({}, f, {
+        msg: e.target.value
+      }));
+    },
+    style: AG_AREA
+  }), agH(AgContador, {
+    txt: f.msg,
+    max: 500
+  }), agH(AgErro, {
+    msg: erroMsg
+  }))) : null, pode ? agH("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap',
+      alignItems: 'center'
+    }
+  }, mudou ? agH("span", {
+    style: {
+      fontSize: 12.5,
+      color: '#8A5A00',
+      marginRight: 'auto'
+    }
+  }, "Este hor\xE1rio salva separado, neste bot\xE3o.") : null, agH(XButton, {
+    variant: "secondary",
+    disabled: !mudou || salvando,
+    onClick: function onClick() {
+      return setF(inicial);
+    }
+  }, "Desfazer"), agH(XButton, {
+    iconLeft: "check",
+    disabled: !mudou || salvando || !!erroDia || !!erroMsg,
+    onClick: salvar
+  }, salvando ? 'Salvando...' : 'Salvar horário da IA')) : null);
+}
+
+/* ---- Fuso horário da clínica (clinicas.fuso_horario) ---- */
+function AgFuso(_ref12) {
+  var fuso = _ref12.fuso,
+    setFuso = _ref12.setFuso,
+    pode = _ref12.pode,
+    mobile = _ref12.mobile;
+  var _s1 = React.useState(fuso),
+    v = _s1[0],
+    setV = _s1[1];
+  var _s2 = React.useState(false),
+    salvando = _s2[0],
+    setSalvando = _s2[1];
+  var _s3 = React.useState(0),
+    tique = _s3[1];
+  React.useEffect(function () {
+    setV(fuso);
+  }, [fuso]);
+  React.useEffect(function () {
+    var t = setInterval(function () {
+      return tique(function (x) {
+        return x + 1;
+      });
+    }, 30000);
+    return function () {
+      return clearInterval(t);
+    };
+  }, []);
+  var hora = '';
+  try {
+    hora = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: v,
+      hour: '2-digit',
+      minute: '2-digit',
+      weekday: 'long'
+    }).format(new Date());
+  } catch (e) {
+    hora = '';
+  }
+  var opcoes = AG_FUSOS.some(function (f) {
+    return f[0] === v;
+  }) ? AG_FUSOS : AG_FUSOS.concat([[v, v]]);
+  var salvar = function salvar() {
+    if (!SB_ON) {
+      setFuso(v);
+      avisoOk('Fuso horário salvo', 'Modo demonstração: nada foi gravado.');
+      return;
+    }
+    setSalvando(true);
+    DB.gravar(SB.from('clinicas').update({
+      fuso_horario: v
+    }).eq('id', CLI()).select().single(), 'Não foi possível salvar o fuso horário').then(function (r) {
+      setSalvando(false);
+      setFuso(r && r.fuso_horario || v);
+      if (CAT.v.clinica) catSet({
+        clinica: Object.assign({}, CAT.v.clinica, {
+          fuso_horario: r && r.fuso_horario || v
+        })
+      });
+      avisoOk('Fuso horário salvo', 'Horários e lembretes passam a usar esse fuso.');
+    }, function () {
+      setSalvando(false);
+      setV(fuso);
+    });
+  };
+  return agH("div", {
+    style: agBloco(mobile)
+  }, agH("div", null, agH("p", {
+    style: AG_SUB
+  }, "Fuso hor\xE1rio da cl\xEDnica"), agH("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      lineHeight: 1.5
+    }
+  }, "Todos os hor\xE1rios livres, lembretes e mensagens autom\xE1ticas s\xE3o calculados neste fuso.")), agH("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap',
+      alignItems: 'center'
+    }
+  }, agH("select", {
+    value: v,
+    disabled: !pode || salvando,
+    "aria-label": "Fuso hor\xE1rio da cl\xEDnica",
+    onChange: function onChange(e) {
+      return setV(e.target.value);
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: '1 1 260px'
+    })
+  }, opcoes.map(function (f) {
+    return agH("option", {
+      key: f[0],
+      value: f[0]
+    }, f[1]);
+  })), pode ? agH(XButton, {
+    iconLeft: "check",
+    disabled: v === fuso || salvando,
+    onClick: salvar
+  }, salvando ? 'Salvando...' : 'Salvar fuso') : null), hora ? agH("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)'
+    }
+  }, 'Agora na clínica: ' + hora) : null, !pode ? agH("span", {
+    style: {
+      fontSize: 12.5,
+      color: 'var(--text-muted)'
+    }
+  }, "S\xF3 quem tem acesso ao Cadastro muda o fuso.") : null);
+}
+
+/* ---- Conhecimento da clínica (renata_base_conhecimento) ---- */
+function AgConhecimento(_ref13) {
+  var base = _ref13.base,
+    setBase = _ref13.setBase,
+    pode = _ref13.pode,
+    mobile = _ref13.mobile,
+    setSujoBase = _ref13.setSujoBase;
+  var _s1 = React.useState(null),
+    ed = _s1[0],
+    setEd = _s1[1];
+  var _s2 = React.useState('Todas'),
+    filtro = _s2[0],
+    setFiltro = _s2[1];
+  var _s3 = React.useState(null),
+    excluir = _s3[0],
+    setExcluir = _s3[1];
+  var _s4 = React.useState(false),
+    salvando = _s4[0],
+    setSalvando = _s4[1];
+  var _s5 = React.useState(''),
+    erro = _s5[0],
+    setErro = _s5[1];
+  var refTitulo = React.useRef(null);
+  React.useEffect(function () {
+    setSujoBase(!!ed);
+  }, [ed]);
+  React.useEffect(function () {
+    if (ed && refTitulo.current) refTitulo.current.focus();
+  }, [ed && ed.id]);
+  var cats = AG_CATEGORIAS_BASE.concat(base.map(function (b) {
+    return b.categoria;
+  }).filter(function (c) {
+    return c && AG_CATEGORIAS_BASE.indexOf(c) < 0;
+  })).filter(function (c, i, l) {
+    return l.indexOf(c) === i;
+  });
+  var usadas = ['Todas'].concat(cats.filter(function (c) {
+    return base.some(function (b) {
+      return (b.categoria || 'Outro') === c;
+    });
+  }));
+  var lista = base.filter(function (b) {
+    return filtro === 'Todas' || (b.categoria || 'Outro') === filtro;
+  });
+  var novo = function novo(cat) {
+    setErro('');
+    setEd({
+      id: null,
+      titulo: '',
+      categoria: cat || 'Perguntas frequentes',
+      conteudo: '',
+      ativo: true
+    });
+  };
+  var salvar = function salvar() {
+    var t = ed.titulo.trim(),
+      c = ed.conteudo.trim();
+    if (!t) return setErro('Dê um título.');
+    if (t.length > 120) return setErro('Use no máximo 120 letras no título.');
+    if (!c) return setErro('Escreva o conteúdo.');
+    if (c.length > 4000) return setErro('Use no máximo 4.000 letras no conteúdo.');
+    var row = {
+      titulo: t,
+      categoria: ed.categoria || null,
+      conteudo: c,
+      ativo: !!ed.ativo
+    };
+    if (!SB_ON) {
+      setBase(function (l) {
+        return ed.id ? l.map(function (x) {
+          return x.id === ed.id ? Object.assign({}, x, row) : x;
+        }) : l.concat([Object.assign({
+          id: 'demo-k' + Date.now()
+        }, row)]);
+      });
+      setEd(null);
+      avisoOk('Conhecimento salvo', 'Modo demonstração: nada foi gravado.');
+      return;
+    }
+    setSalvando(true);
+    (ed.id ? DB.upd('renata_base_conhecimento', ed.id, row, 'Não foi possível salvar') : DB.ins('renata_base_conhecimento', row, 'Não foi possível salvar')).then(function (r) {
+      setSalvando(false);
+      setBase(function (l) {
+        return ed.id ? l.map(function (x) {
+          return x.id === ed.id ? r : x;
+        }) : l.concat([r]);
+      });
+      setEd(null);
+      avisoOk('Conhecimento salvo', 'A IA passa a usar essa informação.');
+    }, function () {
+      return setSalvando(false);
+    });
+  };
+  var alternar = function alternar(b) {
+    var v = !b.ativo;
+    setBase(function (l) {
+      return l.map(function (x) {
+        return x.id === b.id ? Object.assign({}, x, {
+          ativo: v
+        }) : x;
+      });
+    });
+    if (SB_ON) bg(DB.upd('renata_base_conhecimento', b.id, {
+      ativo: v
+    }, 'Não foi possível alterar'), function () {
+      return setBase(function (l) {
+        return l.map(function (x) {
+          return x.id === b.id ? Object.assign({}, x, {
+            ativo: !v
+          }) : x;
+        });
+      });
+    });
+  };
+  var apagar = function apagar(b) {
+    setExcluir(null);
+    var antes = base;
+    setBase(function (l) {
+      return l.filter(function (x) {
+        return x.id !== b.id;
+      });
+    });
+    if (SB_ON) bg(DB.del('renata_base_conhecimento', b.id, 'Não foi possível excluir'), function () {
+      return setBase(antes);
+    });
+    avisoOk('Item excluído', SB_ON ? b.titulo : 'Modo demonstração: nada foi gravado.');
+  };
+  var editor = ed ? agH("div", {
+    style: Object.assign({}, agBloco(mobile), {
+      border: '1.5px solid rgba(31,94,255,.35)'
+    })
+  }, agH("p", {
+    style: AG_SUB
+  }, ed.id ? 'Editar informação' : 'Nova informação'), agH("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1.4fr) minmax(0,1fr)',
+      gap: 12
+    }
+  }, agH("label", {
+    style: AG_LAB
+  }, "T\xEDtulo", agH("input", {
+    ref: refTitulo,
+    value: ed.titulo,
+    maxLength: 120,
+    placeholder: "Ex.: Tem estacionamento?",
+    onChange: function onChange(e) {
+      setEd(Object.assign({}, ed, {
+        titulo: e.target.value
+      }));
+      setErro('');
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: 'none',
+      width: '100%'
+    })
+  })), agH("label", {
+    style: AG_LAB
+  }, "Categoria", agH("select", {
+    value: ed.categoria || 'Outro',
+    onChange: function onChange(e) {
+      return setEd(Object.assign({}, ed, {
+        categoria: e.target.value
+      }));
+    },
+    style: Object.assign({}, AG_IA_INP, {
+      flex: 'none',
+      width: '100%'
+    })
+  }, cats.map(function (c) {
+    return agH("option", {
+      key: c,
+      value: c
+    }, c);
+  })))), agH("label", {
+    style: AG_LAB
+  }, "Conte\xFAdo aprovado", agH("textarea", {
+    value: ed.conteudo,
+    maxLength: 4000,
+    placeholder: "Escreva exatamente o que a IA pode responder.",
+    onChange: function onChange(e) {
+      setEd(Object.assign({}, ed, {
+        conteudo: e.target.value
+      }));
+      setErro('');
+    },
+    style: Object.assign({}, AG_AREA, {
+      minHeight: 120
+    })
+  }), agH(AgContador, {
+    txt: ed.conteudo,
+    max: 4000
+  })), agH(AgChave, {
+    titulo: "Ativo",
+    desc: "Desligado, a IA ignora esta informa\xE7\xE3o, mas ela continua guardada.",
+    on: ed.ativo,
+    onChange: function onChange(v) {
+      return setEd(Object.assign({}, ed, {
+        ativo: v
+      }));
+    }
+  }), agH(AgErro, {
+    msg: erro
+  }), agH("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      justifyContent: 'flex-end',
+      flexWrap: 'wrap'
+    }
+  }, agH(XButton, {
+    variant: "secondary",
+    disabled: salvando,
+    onClick: function onClick() {
+      setEd(null);
+      setErro('');
+    }
+  }, "Cancelar"), agH(XButton, {
+    iconLeft: "check",
+    disabled: salvando,
+    onClick: salvar
+  }, salvando ? 'Salvando...' : 'Salvar informação'))) : null;
+  return agH("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, agH(AgAviso, {
+    tipo: "info"
+  }, "Cada informa\xE7\xE3o salva na hora, com o bot\xE3o dela. Escreva textos curtos e aprovados pela cl\xEDnica: a IA usa isso para responder e n\xE3o inventa o que n\xE3o est\xE1 aqui."), pode && !ed ? agH("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      flexWrap: 'wrap',
+      alignItems: 'center'
+    }
+  }, agH(XButton, {
+    iconLeft: "plus",
+    onClick: function onClick() {
+      return novo(filtro !== 'Todas' ? filtro : null);
+    }
+  }, "Nova informa\xE7\xE3o"), agH("span", {
+    style: {
+      fontSize: 12.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Sugest\xF5es:"), AG_CATEGORIAS_BASE.slice(1, 7).filter(function (c) {
+    return !base.some(function (b) {
+      return b.categoria === c;
+    });
+  }).slice(0, 4).map(function (c) {
+    return agH("button", {
+      key: c,
+      type: "button",
+      onClick: function onClick() {
+        return novo(c);
+      },
+      style: Object.assign({}, agChip(false), {
+        minHeight: 32,
+        padding: '4px 12px',
+        fontSize: 13
+      })
+    }, '+ ' + c);
+  })) : null, !pode ? agH(AgAviso, {
+    tipo: "alerta",
+    icone: "lock"
+  }, "S\xF3 o dono ou a ger\xEAncia alteram o conhecimento da cl\xEDnica.") : null, editor && !ed.id ? editor : null, usadas.length > 2 ? agH("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      overflowX: 'auto',
+      paddingBottom: 2
+    }
+  }, usadas.map(function (c) {
+    return agH("button", {
+      key: c,
+      type: "button",
+      "aria-pressed": filtro === c,
+      onClick: function onClick() {
+        return setFiltro(c);
+      },
+      style: Object.assign({}, agChip(filtro === c), {
+        minHeight: 32,
+        padding: '4px 12px',
+        fontSize: 13,
+        flexShrink: 0
+      })
+    }, c);
+  })) : null, !base.length && !ed ? agH("div", {
+    style: Object.assign({}, agBloco(mobile), {
+      alignItems: 'center',
+      textAlign: 'center',
+      color: 'var(--text-muted)',
+      fontSize: 14
+    })
+  }, agH(RIcon, {
+    name: "book-open",
+    size: 28
+  }), "Ainda n\xE3o h\xE1 informa\xE7\xF5es. Comece pelo endere\xE7o, estacionamento, formas de pagamento e pol\xEDtica de cancelamento.") : null, lista.map(function (b) {
+    if (ed && ed.id === b.id) return agH(React.Fragment, {
+      key: b.id
+    }, editor);
+    return agH("div", {
+      key: b.id,
+      style: Object.assign({}, agBloco(mobile), {
+        gap: 8,
+        opacity: b.ativo ? 1 : 0.65
+      })
+    }, agH("div", {
+      style: {
+        display: 'flex',
+        gap: 10,
+        alignItems: 'flex-start',
+        flexWrap: 'wrap'
+      }
+    }, agH("div", {
+      style: {
+        flex: '1 1 200px',
+        minWidth: 0
+      }
+    }, agH("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#1F5EFF',
+        textTransform: 'uppercase',
+        letterSpacing: '.04em'
+      }
+    }, b.categoria || 'Outro'), agH("p", {
+      style: Object.assign({}, AG_SUB, {
+        marginTop: 2
+      })
+    }, b.titulo, b.ativo ? '' : ' (desligado)')), pode ? agH("div", {
+      style: {
+        display: 'flex',
+        gap: 4,
+        alignItems: 'center'
+      }
+    }, agH("button", {
+      type: "button",
+      style: Object.assign({}, agBtnLink, {
+        padding: '6px 8px'
+      }),
+      onClick: function onClick() {
+        return alternar(b);
+      }
+    }, b.ativo ? 'Desligar' : 'Ligar'), agH("button", {
+      type: "button",
+      "aria-label": 'Editar ' + b.titulo,
+      style: Object.assign({}, agBtnLink, {
+        padding: '6px 8px'
+      }),
+      onClick: function onClick() {
+        setErro('');
+        setEd({
+          id: b.id,
+          titulo: b.titulo,
+          categoria: b.categoria || 'Outro',
+          conteudo: b.conteudo,
+          ativo: b.ativo
+        });
+      }
+    }, agH(RIcon, {
+      name: "pencil",
+      size: 15
+    }), "Editar"), excluir === b.id ? agH("span", {
+      style: {
+        display: 'inline-flex',
+        gap: 6,
+        alignItems: 'center'
+      }
+    }, agH("button", {
+      type: "button",
+      style: Object.assign({}, agBtnLink, {
+        color: '#C2272D',
+        padding: '6px 8px'
+      }),
+      onClick: function onClick() {
+        return apagar(b);
+      }
+    }, "Confirmar exclus\xE3o"), agH("button", {
+      type: "button",
+      style: Object.assign({}, agBtnLink, {
+        color: 'var(--text-muted)',
+        padding: '6px 8px'
+      }),
+      onClick: function onClick() {
+        return setExcluir(null);
+      }
+    }, "Manter")) : agH("button", {
+      type: "button",
+      "aria-label": 'Excluir ' + b.titulo,
+      style: Object.assign({}, agBtnLink, {
+        color: '#C2272D',
+        padding: '6px 8px'
+      }),
+      onClick: function onClick() {
+        return setExcluir(b.id);
+      }
+    }, agH(RIcon, {
+      name: "trash-2",
+      size: 15
+    }), mobile ? null : 'Excluir')) : null), agH("p", {
+      style: {
+        margin: 0,
+        fontSize: 13.5,
+        lineHeight: 1.55,
+        color: 'var(--text-body)',
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere'
+      }
+    }, b.conteudo));
+  }));
+}
+
+/* ---- Follow-up: lista de mensagens com tempo amigável ---- */
+function AgFollowup(_ref14) {
+  var a = _ref14.a,
+    set = _ref14.set,
+    erros = _ref14.erros,
+    mobile = _ref14.mobile;
+  var _s1 = React.useState(function () {
+      return a.followup_atrasos_min.map(agUnidade);
+    }),
+    unid = _s1[0],
+    setUnid = _s1[1];
+  // mantém as unidades alinhadas quando a lista muda por fora (desfazer, carregar)
+  React.useEffect(function () {
+    if (unid.length !== a.followup_atrasos_min.length) setUnid(a.followup_atrasos_min.map(agUnidade));
+  }, [a.followup_atrasos_min.length]);
+  var at = a.followup_atrasos_min,
+    ms = a.followup_mensagens;
+  var mudar = function mudar(novosAt, novasMs, novasUn) {
+    var max = a.followup_max;
+    if (max === at.length && novosAt.length > at.length) max = novosAt.length;
+    if (max > novosAt.length) max = novosAt.length;
+    set('followup_atrasos_min', novosAt);
+    set('followup_mensagens', novasMs);
+    if (max !== a.followup_max) set('followup_max', max);
+    setUnid(novasUn);
+  };
+  var add = function add() {
+    if (at.length >= 10) return;
+    var ult = at.length ? Number(at[at.length - 1]) || 0 : 0;
+    var prox = ult ? ult < 1440 ? ult + 180 : ult + 1440 : 180;
+    mudar(at.concat([prox]), ms.concat(['']), unid.concat([agUnidade(prox)]));
+  };
+  var remover = function remover(i) {
+    mudar(at.filter(function (x, j) {
+      return j !== i;
+    }), ms.filter(function (x, j) {
+      return j !== i;
+    }), unid.filter(function (x, j) {
+      return j !== i;
+    }));
+  };
+  return agH("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, agH("div", null, agH("p", {
+    style: AG_SUB
+  }, "Mensagens e tempos"), agH("span", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      lineHeight: 1.5
+    }
+  }, "Cada tempo conta a partir da \xFAltima mensagem do lead. Os tempos precisam ser crescentes.")), at.map(function (m, i) {
+    var u = unid[i] || agUnidade(m);
+    var n = m ? Math.round(m / u * 100) / 100 : '';
+    var ruim = !(Number(m) > 0) || i > 0 && Number(m) <= Number(at[i - 1]);
+    var msgRuim = !String(ms[i] || '').trim();
+    return agH("div", {
+      key: i,
+      style: Object.assign({}, agBloco(mobile), {
+        gap: 10,
+        border: '1.5px solid ' + (ruim || msgRuim ? 'rgba(229,72,77,.45)' : 'rgba(255,255,255,.95)')
+      })
+    }, agH("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap'
+      }
+    }, agH("span", {
+      style: {
+        width: 26,
+        height: 26,
+        borderRadius: '50%',
+        background: i < a.followup_max ? 'rgba(31,94,255,.12)' : 'rgba(120,140,170,.15)',
+        color: i < a.followup_max ? '#1F5EFF' : 'var(--text-muted)',
+        fontSize: 13,
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }
+    }, i + 1), agH("span", {
+      style: {
+        fontSize: 14,
+        color: 'var(--text-strong)'
+      }
+    }, "Enviar depois de"), agH("input", {
+      type: "number",
+      min: 1,
+      step: 1,
+      value: n,
+      "aria-label": 'Mensagem ' + (i + 1) + ': tempo',
+      "aria-invalid": ruim ? 'true' : undefined,
+      onChange: function onChange(e) {
+        var v = e.target.value === '' ? 0 : Math.round(Number(e.target.value) * u);
+        set('followup_atrasos_min', at.map(function (x, j) {
+          return j === i ? v : x;
+        }));
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none',
+        width: 80,
+        height: 38,
+        borderColor: ruim ? 'rgba(229,72,77,.6)' : 'rgba(214,226,242,.95)'
+      })
+    }), agH("select", {
+      value: u,
+      "aria-label": 'Mensagem ' + (i + 1) + ': unidade',
+      onChange: function onChange(e) {
+        var nu = Number(e.target.value);
+        setUnid(unid.map(function (x, j) {
+          return j === i ? nu : x;
+        }));
+        set('followup_atrasos_min', at.map(function (x, j) {
+          return j === i ? Math.round((n || 1) * nu) : x;
+        }));
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none',
+        width: 110,
+        height: 38
+      })
+    }, AG_UNIDADES.map(function (x) {
+      return agH("option", {
+        key: x[0],
+        value: x[0]
+      }, x[1]);
+    })), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "sem resposta"), i >= a.followup_max ? agH("span", {
+      style: {
+        fontSize: 12,
+        color: '#8A5A00'
+      }
+    }, "(n\xE3o envia: passa do m\xE1ximo)") : null, agH("button", {
+      type: "button",
+      "aria-label": 'Remover mensagem ' + (i + 1),
+      onClick: function onClick() {
+        return remover(i);
+      },
+      style: Object.assign({}, agBtnLink, {
+        marginLeft: 'auto',
+        color: 'var(--text-muted)',
+        padding: 6
+      })
+    }, agH(RIcon, {
+      name: "trash-2",
+      size: 15
+    }))), agH("textarea", {
+      value: ms[i] || '',
+      maxLength: 500,
+      "aria-label": 'Mensagem ' + (i + 1) + ': texto',
+      placeholder: "Texto da mensagem",
+      onChange: function onChange(e) {
+        return set('followup_mensagens', ms.map(function (x, j) {
+          return j === i ? e.target.value : x;
+        }));
+      },
+      style: Object.assign({}, AG_AREA, {
+        minHeight: 60
+      })
+    }));
+  }), agH(AgErro, {
+    msg: erros.followup_atrasos_min
+  }), agH(AgErro, {
+    msg: erros.followup_mensagens
+  }), at.length < 10 ? agH("div", null, agH(XButton, {
+    iconLeft: "plus",
+    variant: "secondary",
+    onClick: add
+  }, "Adicionar mensagem")) : null);
+}
+
+/* ---- Tela principal ---- */
+function AgenteIATab(_ref15) {
+  var mobile = _ref15.mobile;
   var _st = React.useState(null),
     a = _st[0],
     setA = _st[1];
@@ -3951,303 +6130,1629 @@ function AgenteIATab(_ref2) {
     salvando = _st3[0],
     setSalvando = _st3[1];
   var _st4 = React.useState(''),
-    erro = _st4[0],
-    setErro = _st4[1];
+    erroCarga = _st4[0],
+    setErroCarga = _st4[1];
+  var _st5 = React.useState('status'),
+    sec = _st5[0],
+    setSec = _st5[1];
+  var _st6 = React.useState(false),
+    tentou = _st6[0],
+    setTentou = _st6[1];
+  var _st7 = React.useState([]),
+    procs = _st7[0],
+    setProcs = _st7[1];
+  var _st8 = React.useState([]),
+    profs = _st8[0],
+    setProfs = _st8[1];
+  var _st9 = React.useState([]),
+    links = _st9[0],
+    setLinks = _st9[1];
+  var _st10 = React.useState([]),
+    horIA = _st10[0],
+    setHorIA = _st10[1];
+  var _st11 = React.useState([]),
+    base = _st11[0],
+    setBase = _st11[1];
+  var _st12 = React.useState('America/Sao_Paulo'),
+    fuso = _st12[0],
+    setFuso = _st12[1];
+  var _st13 = React.useState({}),
+    sujoExtra = _st13[0],
+    setSujoExtra = _st13[1];
+  var _cat = useStore(CAT),
+    cat = _cat[0];
+  var _team = useStore(TEAM_STORE),
+    team = _team[0];
+  useStore(SESSAO);
+  var topo = React.useRef(null);
+  var perm = agPermissoes();
+  var marcaSujo = function marcaSujo(k) {
+    return function (v) {
+      setSujoExtra(function (o) {
+        if (!!o[k] === !!v) return o;
+        var n = Object.assign({}, o);
+        n[k] = !!v;
+        return n;
+      });
+    };
+  };
   React.useEffect(function () {
     if (!SB_ON) {
-      setA(Object.assign({}, AGENTE_PADRAO));
-      setSalvo(Object.assign({}, AGENTE_PADRAO));
+      // demonstração: dados locais a partir dos exemplos que as outras telas já usam
+      var v = agNormal(AGENTE_PADRAO);
+      setA(v);
+      setSalvo(v);
+      var fp = typeof FIN_PROCS !== 'undefined' ? FIN_PROCS : [];
+      var dur = typeof PROC_DUR !== 'undefined' ? PROC_DUR : {};
+      var ps = fp.map(function (p, i) {
+        return {
+          id: 'demo-p' + i,
+          nome: p.n,
+          valor: p.v,
+          duracao_padrao_minutos: dur[p.n] || 30,
+          ativo: true,
+          ia_preco_publico: p.cat !== 'Odontologia',
+          ia_agendavel: true,
+          ia_descricao: ''
+        };
+      });
+      var pf = (typeof PROF0 !== 'undefined' ? PROF0 : []).map(function (p) {
+        return {
+          id: 'demo-f' + p.id,
+          nome: p.nome,
+          procs: p.procs || []
+        };
+      });
+      var ls = [];
+      pf.forEach(function (f) {
+        f.procs.forEach(function (n) {
+          var p = ps.find(function (x) {
+            return x.nome === n;
+          });
+          if (p) ls.push({
+            id: 'demo-l' + f.id + p.id,
+            procedimento_id: p.id,
+            profissional_id: f.id
+          });
+        });
+      });
+      setProcs(ps);
+      setProfs(pf);
+      setLinks(ls);
+      setBase([{
+        id: 'demo-k1',
+        titulo: 'Onde fica a clínica?',
+        categoria: 'Endereço e como chegar',
+        conteudo: 'Rua das Flores, 120, sala 4, Centro. Ao lado da farmácia.',
+        ativo: true
+      }, {
+        id: 'demo-k2',
+        titulo: 'Quais formas de pagamento?',
+        categoria: 'Formas de pagamento',
+        conteudo: 'Pix, dinheiro e cartão de crédito em até 6 vezes sem juros.',
+        ativo: true
+      }, {
+        id: 'demo-k3',
+        titulo: 'Posso remarcar?',
+        categoria: 'Política de cancelamento',
+        conteudo: 'Pode remarcar sem custo avisando com pelo menos 24 horas de antecedência.',
+        ativo: true
+      }]);
       return;
     }
-    DB.ler(DB.sel('agente_ia').limit(1)).then(function (r) {
-      var v = Object.assign({}, AGENTE_PADRAO, r[0] || {});
-      v.pode_falar = v.pode_falar || [];
-      v.nao_pode_falar = v.nao_pode_falar || [];
+    var vivo = true;
+    var ou = function ou(prom, padrao) {
+      return prom.then(function (r) {
+        return r;
+      }, function () {
+        return padrao;
+      });
+    };
+    DB.ler(DB.sel('agente_ia').limit(1), 'Não foi possível carregar o agente').then(function (r) {
+      if (!vivo) return;
+      var v = agNormal(r[0]);
+      if (r[0]) v.id = r[0].id;
       setA(v);
       setSalvo(v);
     }, function () {
-      return setErro('Não foi possível carregar o agente.');
+      if (vivo) setErroCarga('Não foi possível carregar o agente.');
     });
+    ou(DB.ler(DB.sel('procedimentos', 'id,nome,valor,duracao_padrao_minutos,area,ativo,ia_preco_publico,ia_agendavel,ia_descricao').order('nome'), 'Não foi possível carregar os serviços'), []).then(function (r) {
+      if (vivo) setProcs(r);
+    });
+    ou(DB.ler(DB.sel('profissionais', 'id,nome,especialidade').order('ordem'), 'Não foi possível carregar os profissionais'), []).then(function (r) {
+      if (vivo) setProfs(r);
+    });
+    ou(DB.ler(DB.sel('profissionais_procedimentos', 'id,profissional_id,procedimento_id'), 'Não foi possível carregar os profissionais dos serviços'), []).then(function (r) {
+      if (vivo) setLinks(r);
+    });
+    ou(DB.ler(DB.sel('renata_horarios').order('dia_semana'), 'Não foi possível carregar o horário da IA'), []).then(function (r) {
+      if (vivo) setHorIA(r);
+    });
+    ou(DB.ler(DB.sel('renata_base_conhecimento').order('criado_em'), 'Não foi possível carregar o conhecimento'), []).then(function (r) {
+      if (vivo) setBase(r);
+    });
+    carregar('catalogos');
+    carregar('equipe');
+    carregar('clinica').then(function () {
+      if (vivo && CAT.v.clinica && CAT.v.clinica.fuso_horario) setFuso(CAT.v.clinica.fuso_horario);
+    });
+    return function () {
+      vivo = false;
+    };
   }, []);
-  if (!a) return /*#__PURE__*/React.createElement("div", {
+  var mudou = !!a && !!salvo && JSON.stringify(AG_CAMPOS.map(function (k) {
+    return a[k];
+  })) !== JSON.stringify(AG_CAMPOS.map(function (k) {
+    return salvo[k];
+  }));
+  var algoSujo = mudou || Object.keys(sujoExtra).some(function (k) {
+    return sujoExtra[k];
+  });
+  React.useEffect(function () {
+    if (!algoSujo) return;
+    var f = function f(e) {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', f);
+    return function () {
+      return window.removeEventListener('beforeunload', f);
+    };
+  }, [algoSujo]);
+  if (!a) return agH("div", {
+    role: erroCarga ? 'alert' : 'status',
     style: {
       padding: 30,
-      color: erro ? '#C2272D' : 'var(--text-muted)',
+      color: erroCarga ? '#C2272D' : 'var(--text-muted)',
       fontSize: 14
     }
-  }, erro || 'Carregando o agente...');
+  }, erroCarga || 'Carregando o agente...');
+  var etapas = SB_ON && cat.etapas && cat.etapas.length ? cat.etapas : AG_ETAPAS_DEMO;
+  var equipe = (team || []).map(function (m) {
+    return {
+      id: SB_ON ? m.usuarioId : m.usuarioId || 'demo-u' + m.id,
+      nome: m.nome,
+      funcao: m.funcao,
+      convite: SB_ON && !m.usuarioId
+    };
+  });
+  var erros = agValidar(a, etapas);
+  var errosSec = {};
+  Object.keys(erros).forEach(function (k) {
+    errosSec[AG_CAMPO_SECAO[k]] = true;
+  });
+  var sujoSec = {};
+  if (salvo) AG_CAMPOS.forEach(function (k) {
+    if (JSON.stringify(a[k]) !== JSON.stringify(salvo[k])) sujoSec[AG_CAMPO_SECAO[k]] = true;
+  });
+  var sujoAgente = Object.assign({}, sujoSec);
+  if (sujoExtra.servicos) sujoSec.servicos = true;
+  if (sujoExtra.horarios) sujoSec.horarios = true;
+  if (sujoExtra.conhecimento) sujoSec.conhecimento = true;
+  var nErros = Object.keys(erros).length;
+  var E = function E(k) {
+    return erros[k] && (tentou || sujoSec[AG_CAMPO_SECAO[k]]) ? erros[k] : '';
+  };
   var set = function set(k, v) {
     setA(function (o) {
       var n = Object.assign({}, o);
       n[k] = v;
       return n;
     });
-    setErro('');
   };
-  var mudou = JSON.stringify(a) !== JSON.stringify(salvo);
+  var irPara = function irPara(s) {
+    setSec(s);
+    if (mobile) setTimeout(function () {
+      var b = document.querySelector('[data-ag-chip="' + s + '"]');
+      if (b && b.scrollIntoView) b.scrollIntoView({
+        block: 'nearest',
+        inline: 'center',
+        behavior: 'smooth'
+      });
+    }, 30);
+    if (topo.current && topo.current.getBoundingClientRect().top < 0) topo.current.scrollIntoView({
+      block: 'start',
+      behavior: 'smooth'
+    });
+  };
   var salvar = function salvar() {
-    if (!a.nome.trim()) return setErro('Dê um nome ao agente.');
-    if (!a.resposta_proibida.trim()) return setErro('Escreva o que o agente responde quando o assunto é proibido.');
-    var patch = {
-      nome: a.nome.trim().slice(0, 60),
-      tom: a.tom,
-      apresentacao: a.apresentacao.trim().slice(0, 500),
-      pode_falar: a.pode_falar,
-      nao_pode_falar: a.nao_pode_falar,
-      regras: a.regras.trim().slice(0, 4000),
-      resposta_proibida: a.resposta_proibida.trim().slice(0, 500),
-      aplicar_assistente: a.aplicar_assistente,
-      aplicar_whatsapp: a.aplicar_whatsapp
-    };
+    setTentou(true);
+    if (nErros) {
+      var primeiro = AG_SECOES.find(function (s) {
+        return errosSec[s[0]];
+      });
+      if (primeiro) irPara(primeiro[0]);
+      avisoErro('Confira os campos destacados', {
+        message: nErros === 1 ? 'Há 1 campo para corrigir antes de salvar.' : 'Há ' + nErros + ' campos para corrigir antes de salvar.'
+      });
+      return;
+    }
+    var patch = {};
+    AG_CAMPOS.forEach(function (k) {
+      var v = a[k];
+      if (typeof v === 'string') v = v.trim();
+      patch[k] = v;
+    });
+    patch.sinal_valor = Number(a.sinal_valor) || 0;
+    ['antecedencia_min_horas', 'horizonte_dias', 'intervalo_entre_consultas_min', 'followup_max', 'transferencia_sla_min', 'retencao_conversas_dias'].forEach(function (k) {
+      patch[k] = Number(a[k]);
+    });
+    patch.followup_mensagens = a.followup_mensagens.map(function (m) {
+      return String(m).trim();
+    });
+    patch.followup_atrasos_min = a.followup_atrasos_min.map(Number);
+    patch.lembretes_offsets_min = a.lembretes_offsets_min.slice().sort(function (x, y) {
+      return y - x;
+    });
     if (!SB_ON) {
-      setSalvo(Object.assign({}, a, patch));
-      setA(Object.assign({}, a, patch));
+      var v = agNormal(Object.assign({}, a, patch, {
+        config_versao: (Number(a.config_versao) || 1) + 1
+      }));
+      setA(v);
+      setSalvo(v);
+      setTentou(false);
       avisoOk('Agente de IA salvo', 'Modo demonstração: nada foi gravado.');
       return;
     }
     setSalvando(true);
     (a.id ? DB.upd('agente_ia', a.id, patch, 'Não foi possível salvar o agente') : DB.ins('agente_ia', patch, 'Não foi possível salvar o agente')).then(function (r) {
-      var v = Object.assign({}, a, r || patch);
+      var v = agNormal(Object.assign({}, a, r || patch));
+      v.id = r && r.id || a.id;
       setA(v);
       setSalvo(v);
       setSalvando(false);
-      avisoOk('Agente de IA salvo', 'As novas regras valem já na próxima mensagem.');
+      setTentou(false);
+      avisoOk('Agente de IA salvo', 'Versão ' + v.config_versao + '. As novas regras valem já na próxima mensagem.');
     }, function () {
       return setSalvando(false);
     });
   };
-  var card = {
-    borderRadius: 24,
-    background: 'rgba(255,255,255,.55)',
-    border: '1.5px solid rgba(255,255,255,.95)',
-    boxShadow: '0 18px 40px -30px rgba(23,73,170,.45)',
-    padding: mobile ? 16 : 24,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16
+  var desfazer = function desfazer() {
+    setA(Object.assign({}, salvo));
+    setTentou(false);
   };
-  var lab = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 6,
-    fontSize: 13,
-    color: 'var(--text-muted)'
+  var bloco = agBloco(mobile);
+  var lab = AG_LAB;
+  var rot = function rot(t) {
+    return agH("span", {
+      style: {
+        color: 'var(--text-strong)',
+        fontWeight: 500,
+        fontSize: 13.5
+      }
+    }, t);
   };
-  var area = Object.assign({}, AG_IA_INP, {
-    height: 'auto',
-    minHeight: 76,
-    padding: '10px 12px',
-    resize: 'vertical',
-    lineHeight: 1.5,
-    width: '100%'
-  });
-  var chip = function chip(on) {
+  var grade2 = {
+    display: 'grid',
+    gridTemplateColumns: mobile ? '1fr' : 'repeat(2, minmax(0,1fr))',
+    gap: 12
+  };
+  var info = SECOES_INFO();
+  function SECOES_INFO() {
     return {
-      height: 38,
-      padding: '0 16px',
-      borderRadius: 999,
-      cursor: 'pointer',
-      fontFamily: 'inherit',
-      fontSize: 14,
-      fontWeight: on ? 600 : 500,
-      border: on ? '1.5px solid rgba(31,94,255,.55)' : '1.5px solid rgba(214,226,242,.95)',
-      background: on ? 'rgba(31,94,255,.1)' : '#fff',
-      color: on ? '#1F5EFF' : 'var(--text-strong)'
+      status: 'Liga e desliga o atendimento automático. Tudo aqui é conferido de novo antes de cada mensagem sair.',
+      identidade: 'Como a IA se apresenta e conversa: nome, saudação, jeito de falar e tamanho das respostas.',
+      assuntos: 'O que a IA pode e não pode falar com pacientes e com a equipe, e o que responder quando o assunto é proibido.',
+      servicos: 'Quais serviços a IA conhece, se pode dizer o preço, se pode marcar e quem faz cada um.',
+      agendamento: 'Até onde a IA vai na hora de marcar: consultar horários, criar a consulta e pedir sinal.',
+      horarios: 'Em que horário a IA responde e em que horário pode mandar mensagens por conta própria.',
+      crm: 'Para qual etapa do funil o lead vai em cada momento da conversa.',
+      followup: 'Mensagens que a IA manda quando o lead para de responder antes de agendar.',
+      lembretes: 'Avisos automáticos antes da consulta agendada.',
+      transferencia: 'Quando e para quem a IA passa a conversa para uma pessoa da equipe.',
+      conhecimento: 'Informações aprovadas que a IA usa para responder: endereço, estacionamento, pagamento, preparo e regras da clínica.',
+      privacidade: 'Como a IA cuida dos dados do paciente e respeita quem pede para não receber mais mensagens.',
+      previa: 'O texto de regras que a IA recebe, montado a partir do que está nesta tela (inclui o que ainda não foi salvo).'
     };
+  }
+  var secAtual = AG_SECOES.find(function (s) {
+    return s[0] === sec;
+  }) || AG_SECOES[0];
+  var marcaMenu = function marcaMenu(k) {
+    return errosSec[k] && (tentou || sujoSec[k]) ? agH("span", {
+      title: "Tem campo para corrigir",
+      "aria-label": "tem campo para corrigir",
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: '#E5484D',
+        flexShrink: 0
+      }
+    }) : sujoSec[k] ? agH("span", {
+      title: "Altera\xE7\xF5es n\xE3o salvas",
+      "aria-label": "altera\xE7\xF5es n\xE3o salvas",
+      style: {
+        width: 8,
+        height: 8,
+        borderRadius: '50%',
+        background: '#F5B400',
+        flexShrink: 0
+      }
+    }) : null;
   };
-  return /*#__PURE__*/React.createElement("div", {
+  var menu = mobile ? agH("nav", {
+    "aria-label": "Se\xE7\xF5es do Agente de IA",
     style: {
-      display: 'grid',
-      gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1.25fr) minmax(0,1fr)',
-      gap: mobile ? 14 : 22,
-      alignItems: 'start'
+      display: 'flex',
+      gap: 8,
+      overflowX: 'auto',
+      scrollbarWidth: 'none',
+      margin: '0 -16px',
+      padding: '2px 16px 4px'
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, AG_SECOES.map(function (s) {
+    var on = s[0] === sec;
+    return agH("button", {
+      key: s[0],
+      type: "button",
+      "data-ag-chip": s[0],
+      "aria-current": on ? 'page' : undefined,
+      onClick: function onClick() {
+        return irPara(s[0]);
+      },
+      style: {
+        flexShrink: 0,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        height: 36,
+        padding: '0 13px',
+        borderRadius: 999,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        fontSize: 13.5,
+        fontWeight: on ? 600 : 500,
+        whiteSpace: 'nowrap',
+        border: on ? '1.5px solid rgba(31,94,255,.45)' : '1.5px solid rgba(214,226,242,.9)',
+        background: on ? 'var(--gradient-blue, #1F5EFF)' : 'rgba(255,255,255,.75)',
+        color: on ? '#fff' : 'var(--text-strong)'
+      }
+    }, agH(RIcon, {
+      name: s[2],
+      size: 15
+    }), s[1], marcaMenu(s[0]));
+  })) : agH("nav", {
+    "aria-label": "Se\xE7\xF5es do Agente de IA",
+    style: Object.assign({}, glass, {
+      padding: '14px 10px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2,
+      position: 'sticky',
+      top: 24
+    })
+  }, AG_SECOES.map(function (s, i) {
+    var on = s[0] === sec;
+    return agH(React.Fragment, {
+      key: s[0]
+    }, s[0] === 'previa' ? agH("span", {
+      "aria-hidden": "true",
+      style: {
+        height: 1,
+        background: 'rgba(214,226,242,.9)',
+        margin: '6px 10px'
+      }
+    }) : null, agH("button", {
+      type: "button",
+      "aria-current": on ? 'page' : undefined,
+      onClick: function onClick() {
+        return irPara(s[0]);
+      },
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        height: 40,
+        padding: '0 12px',
+        borderRadius: 12,
+        border: 0,
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        fontSize: 14,
+        fontWeight: on ? 600 : 500,
+        textAlign: 'left',
+        background: on ? 'var(--gradient-blue, #1F5EFF)' : 'transparent',
+        color: on ? '#fff' : 'var(--text-strong)',
+        boxShadow: on ? '0 10px 20px -12px rgba(23,73,170,.7)' : 'none'
+      }
+    }, agH(RIcon, {
+      name: s[2],
+      size: 17
+    }), agH("span", {
+      style: {
+        flex: 1
+      }
+    }, s[1]), marcaMenu(s[0])));
+  }));
+
+  /* conteúdo de cada seção */
+  var conteudo;
+  if (sec === 'status') {
+    var nLemb = a.lembretes_ativos ? a.lembretes_offsets_min.length : 0;
+    var resumo = [[a.ia_ativa && !a.automacoes_pausadas, 'Atendimento automático no WhatsApp', a.automacoes_pausadas ? 'pausado' : a.ia_ativa ? a.modo_teste ? 'ligado em modo teste' : 'ligado' : 'desligado'], [a.followup_ativo && a.followup_max > 0, 'Follow-up de leads', a.followup_ativo ? Math.min(a.followup_max, a.followup_atrasos_min.length) + ' mensagens no máximo' : 'desligado'], [nLemb > 0, 'Lembretes de consulta', nLemb ? nLemb + (nLemb === 1 ? ' lembrete' : ' lembretes') : 'desligados'], [a.ia_cria_agendamento, 'IA marca consultas', a.ia_cria_agendamento ? (AG_SINAIS.find(function (s) {
+      return s[0] === a.politica_sinal;
+    }) || AG_SINAIS[0])[1].toLowerCase() : 'não, só a equipe'], [a.transferencia_usuarios.length > 0, 'Transferência para a equipe', a.transferencia_usuarios.length ? a.transferencia_usuarios.length + (a.transferencia_usuarios.length === 1 ? ' pessoa recebe' : ' pessoas recebem') : 'ninguém escolhido']];
+    conteudo = [agH(AgAviso, {
+      key: "wa",
+      tipo: "alerta",
+      icone: "plug"
+    }, agH("b", null, "O WhatsApp ainda n\xE3o est\xE1 ligado ao n8n."), " Tudo o que voc\xEA configurar aqui fica salvo e passa a valer assim que a integra\xE7\xE3o for ligada. Hoje, as regras de identidade e de assuntos j\xE1 valem para a Renata no sistema."), a.automacoes_pausadas ? agH(AgAviso, {
+      key: "pausa",
+      tipo: "perigo",
+      icone: "octagon-pause"
+    }, agH("b", null, "Todas as automa\xE7\xF5es est\xE3o pausadas."), " Nenhuma mensagem autom\xE1tica sai: respostas da IA, follow-ups e lembretes que ainda n\xE3o foram enviados ficam parados at\xE9 voc\xEA desligar a pausa e salvar.") : null, agH("div", {
+      key: "chaves",
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }
+    }, agH(AgChave, {
+      grande: true,
+      icone: mobile ? null : "message-circle",
+      titulo: "Atendimento autom\xE1tico no WhatsApp",
+      desc: a.ia_ativa ? 'Ligado: a IA responde os pacientes no WhatsApp seguindo estas regras.' : 'Desligado: só a equipe responde no WhatsApp.',
+      on: a.ia_ativa,
+      onChange: function onChange(v) {
+        return set('ia_ativa', v);
+      }
+    }), agH(AgChave, {
+      grande: true,
+      perigo: true,
+      icone: mobile ? null : "octagon-pause",
+      titulo: "Pausar todas as automa\xE7\xF5es",
+      desc: "Freio de emerg\xEAncia. Ligado, nada autom\xE1tico \xE9 enviado, nem o que j\xE1 estava agendado para sair.",
+      on: a.automacoes_pausadas,
+      onChange: function onChange(v) {
+        return set('automacoes_pausadas', v);
+      }
+    }), agH(AgChave, {
+      grande: true,
+      icone: mobile ? null : "flask-conical",
+      titulo: "Modo teste",
+      desc: "Use enquanto ajusta as regras: a IA funciona s\xF3 para testes da equipe e n\xE3o manda mensagens autom\xE1ticas para pacientes.",
+      on: a.modo_teste,
+      onChange: function onChange(v) {
+        return set('modo_teste', v);
+      }
+    })), agH("div", {
+      key: "onde",
+      style: bloco
+    }, agH("div", null, agH("p", {
+      style: AG_SUB
+    }, "Onde estas regras valem"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "Identidade, tom e assuntos podem valer para as duas IAs.")), agH(AgChave, {
+      titulo: "Renata no sistema (equipe)",
+      desc: "A assistente que a equipe usa dentro do Salute.",
+      on: a.aplicar_assistente,
+      onChange: function onChange(v) {
+        return set('aplicar_assistente', v);
+      }
+    }), agH(AgChave, {
+      titulo: "Atendimento no WhatsApp (pacientes)",
+      desc: "A IA que conversa com pacientes e leads.",
+      on: a.aplicar_whatsapp,
+      onChange: function onChange(v) {
+        return set('aplicar_whatsapp', v);
+      }
+    }), !a.aplicar_assistente && !a.aplicar_whatsapp ? agH(AgAviso, {
+      tipo: "alerta"
+    }, "As regras est\xE3o desligadas para as duas IAs.") : null), agH("div", {
+      key: "resumo",
+      style: bloco
+    }, agH("p", {
+      style: AG_SUB
+    }, "Resumo"), agH("ul", {
+      style: {
+        listStyle: 'none',
+        margin: 0,
+        padding: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8
+      }
+    }, resumo.map(function (r) {
+      return agH("li", {
+        key: r[1],
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontSize: 14,
+          color: 'var(--text-strong)',
+          flexWrap: 'wrap'
+        }
+      }, agH("span", {
+        "aria-hidden": "true",
+        style: {
+          width: 22,
+          height: 22,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: r[0] ? 'rgba(45,191,106,.14)' : 'rgba(120,140,170,.14)',
+          color: r[0] ? '#1E7A47' : 'var(--text-muted)'
+        }
+      }, agH(RIcon, {
+        name: r[0] ? 'check' : 'minus',
+        size: 13
+      })), agH("span", {
+        style: {
+          flex: '1 1 180px'
+        }
+      }, r[1]), agH("span", {
+        style: {
+          color: 'var(--text-muted)',
+          fontSize: 13.5
+        }
+      }, r[2]));
+    })), agH("button", {
+      type: "button",
+      style: agBtnLink,
+      onClick: function onClick() {
+        return irPara('horarios');
+      }
+    }, agH(RIcon, {
+      name: "clock",
+      size: 14
+    }), "Hor\xE1rio da IA e resposta fora do hor\xE1rio"))];
+  } else if (sec === 'identidade') {
+    conteudo = [agH("div", {
+      key: "nome",
+      style: grade2
+    }, agH("label", {
+      style: lab
+    }, rot('Nome do agente'), agH("input", {
+      value: a.nome,
+      maxLength: 60,
+      "aria-invalid": E('nome') ? 'true' : undefined,
+      onChange: function onChange(e) {
+        return set('nome', e.target.value);
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none'
+      })
+    }), agH(AgErro, {
+      msg: E('nome')
+    })), agH("label", {
+      style: lab
+    }, rot('Idioma das respostas'), agH("select", {
+      value: a.idioma,
+      onChange: function onChange(e) {
+        return set('idioma', e.target.value);
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none'
+      })
+    }, AG_IDIOMAS.map(function (x) {
+      return agH("option", {
+        key: x[0],
+        value: x[0]
+      }, x[1]);
+    })), agH("span", {
+      style: {
+        fontSize: 12.5
+      }
+    }, "Se o paciente escrever em outro idioma, a IA pode acompanhar."))), agH("label", {
+      key: "saud",
+      style: lab
+    }, rot('Saudação (primeira mensagem)'), agH("textarea", {
+      value: a.saudacao,
+      maxLength: 500,
+      onChange: function onChange(e) {
+        return set('saudacao', e.target.value);
+      },
+      style: AG_AREA
+    }), agH(AgContador, {
+      txt: a.saudacao,
+      max: 500
+    }), agH(AgErro, {
+      msg: E('saudacao')
+    })), agH("div", {
+      key: "tom",
+      style: lab
+    }, rot('Tom da conversa'), agH(AgOpcoes, {
+      rotulo: "Tom da conversa",
+      opcoes: AGENTE_TONS.map(function (t) {
+        return [t[0], t[1], 'Fala de um jeito ' + t[2] + '.'];
+      }),
+      valor: a.tom,
+      onChange: function onChange(v) {
+        return set('tom', v);
+      }
+    })), agH("div", {
+      key: "tam",
+      style: lab
+    }, rot('Tamanho das respostas'), agH(AgOpcoes, {
+      rotulo: "Tamanho das respostas",
+      opcoes: AG_TAMANHOS,
+      valor: a.tamanho_resposta,
+      onChange: function onChange(v) {
+        return set('tamanho_resposta', v);
+      }
+    })), agH("label", {
+      key: "apr",
+      style: lab
+    }, rot('Como se apresenta'), agH("textarea", {
+      value: a.apresentacao,
+      maxLength: 500,
+      onChange: function onChange(e) {
+        return set('apresentacao', e.target.value);
+      },
+      style: AG_AREA
+    }), agH(AgContador, {
+      txt: a.apresentacao,
+      max: 500
+    }), agH(AgErro, {
+      msg: E('apresentacao')
+    })), agH(AgChave, {
+      key: "assist",
+      titulo: "Dizer que \xE9 uma assistente virtual",
+      desc: a.apresentar_como_assistente ? 'A IA avisa logo no começo que é uma assistente virtual.' : 'A IA não abre dizendo, mas nunca nega que é uma IA se perguntarem.',
+      on: a.apresentar_como_assistente,
+      onChange: function onChange(v) {
+        return set('apresentar_como_assistente', v);
+      }
+    }), agH("div", {
+      key: "ex",
+      style: bloco
+    }, agH("span", {
+      style: {
+        fontSize: 12.5,
+        fontWeight: 600,
+        color: 'var(--text-muted)',
+        textTransform: 'uppercase',
+        letterSpacing: '.04em'
+      }
+    }, "Como o paciente v\xEA"), agH("div", {
+      style: {
+        alignSelf: 'flex-start',
+        maxWidth: 420,
+        padding: '10px 14px',
+        borderRadius: '4px 16px 16px 16px',
+        background: '#fff',
+        boxShadow: '0 6px 16px -12px rgba(23,73,170,.5)',
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: 'var(--text-strong)',
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere'
+      }
+    }, agH("b", {
+      style: {
+        display: 'block',
+        fontSize: 12.5,
+        color: '#1F5EFF',
+        marginBottom: 2
+      }
+    }, a.nome || 'Agente'), a.saudacao.trim() || 'Olá!'))];
+  } else if (sec === 'assuntos') {
+    conteudo = [agH("div", {
+      key: "pode",
+      style: bloco
+    }, agH(AgenteLista, {
+      titulo: "Pode falar sobre",
+      ajuda: "Assuntos que a IA pode tratar com liberdade.",
+      itens: a.pode_falar,
+      cor: "#2DBF6A",
+      icone: "circle-check",
+      exemplo: "Ex.: Promo\xE7\xF5es do m\xEAs",
+      onChange: function onChange(v) {
+        return set('pode_falar', v);
+      }
+    })), agH("div", {
+      key: "nao",
+      style: bloco
+    }, agH(AgenteLista, {
+      titulo: "N\xE3o pode falar sobre",
+      ajuda: "A IA nunca toca nesses assuntos, mesmo se o paciente insistir.",
+      itens: a.nao_pode_falar,
+      cor: "#E5484D",
+      icone: "ban",
+      exemplo: "Ex.: Valores de concorrentes",
+      onChange: function onChange(v) {
+        return set('nao_pode_falar', v);
+      }
+    }), agH("label", {
+      style: lab
+    }, rot('Quando perguntarem algo proibido, responder'), agH("textarea", {
+      value: a.resposta_proibida,
+      maxLength: 500,
+      onChange: function onChange(e) {
+        return set('resposta_proibida', e.target.value);
+      },
+      style: AG_AREA
+    }), agH(AgErro, {
+      msg: E('resposta_proibida')
+    }))), agH("div", {
+      key: "regras",
+      style: bloco
+    }, agH("label", {
+      style: lab
+    }, agH("b", {
+      style: {
+        fontSize: 15,
+        color: 'var(--text-strong)'
+      }
+    }, "Regras extras"), "Instru\xE7\xF5es livres, uma por linha. Ex.: \"Sempre ofere\xE7a a avalia\xE7\xE3o gratuita\" ou \"N\xE3o use g\xEDrias\".", agH("textarea", {
+      value: a.regras,
+      maxLength: 4000,
+      onChange: function onChange(e) {
+        return set('regras', e.target.value);
+      },
+      style: Object.assign({}, AG_AREA, {
+        minHeight: 110
+      })
+    }), agH(AgContador, {
+      txt: a.regras,
+      max: 4000
+    }), agH(AgErro, {
+      msg: E('regras')
+    })), agH(AgAviso, {
+      tipo: "info"
+    }, "As regras de seguran\xE7a do sistema (n\xE3o passar dados de outros pacientes, n\xE3o diagnosticar, n\xE3o inventar pre\xE7o) valem sempre, mesmo que algum texto aqui diga o contr\xE1rio."))];
+  } else if (sec === 'servicos') {
+    conteudo = [agH(AgServicos, {
+      key: "s",
+      procs: procs,
+      setProcs: setProcs,
+      profs: profs,
+      links: links,
+      setLinks: setLinks,
+      perm: perm,
+      mobile: mobile,
+      sujo: algoSujo,
+      setSujoServ: marcaSujo('servicos')
+    })];
+  } else if (sec === 'agendamento') {
+    var comValor = a.politica_sinal !== 'nenhum' && a.politica_sinal !== 'aprovacao_humana';
+    conteudo = [agH("div", {
+      key: "ch",
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }
+    }, agH(AgChave, {
+      titulo: "IA pode consultar hor\xE1rios livres",
+      desc: "A IA olha a agenda real (hor\xE1rios dos profissionais, bloqueios e consultas marcadas) e oferece s\xF3 hor\xE1rios livres.",
+      on: a.ia_consulta_horarios,
+      onChange: function onChange(v) {
+        return set('ia_consulta_horarios', v);
+      }
+    }), agH(AgChave, {
+      titulo: "IA pode criar o agendamento",
+      desc: a.ia_cria_agendamento ? 'A IA marca a consulta. O sistema confere de novo se o horário ainda está livre antes de confirmar.' : 'A IA só anota o pedido e passa para a equipe marcar.',
+      on: a.ia_cria_agendamento,
+      onChange: function onChange(v) {
+        return set('ia_cria_agendamento', v);
+      }
+    }), a.ia_cria_agendamento && !a.ia_consulta_horarios ? agH(AgAviso, {
+      tipo: "alerta"
+    }, "Sem consultar hor\xE1rios, a IA n\xE3o consegue oferecer op\xE7\xF5es ao paciente. Ligue as duas chaves para ela marcar sozinha.") : null), agH("div", {
+      key: "sinal",
+      style: bloco
+    }, agH("div", null, agH("p", {
+      style: AG_SUB
+    }, "Pol\xEDtica de sinal"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)',
+        lineHeight: 1.5
+      }
+    }, "Se a cl\xEDnica pede um valor adiantado para garantir a consulta. A IA nunca muda o valor nem dispensa o sinal por pedido do paciente.")), agH(AgOpcoes, {
+      rotulo: "Pol\xEDtica de sinal",
+      opcoes: AG_SINAIS,
+      valor: a.politica_sinal,
+      onChange: function onChange(v) {
+        return set('politica_sinal', v);
+      },
+      colunas: mobile ? '1fr' : 'repeat(auto-fill, minmax(230px, 1fr))'
+    }), comValor ? agH("div", {
+      style: Object.assign({}, grade2, {
+        alignItems: 'start'
+      })
+    }, agH("div", {
+      style: lab
+    }, rot('Tipo do sinal'), agH(AgOpcoes, {
+      rotulo: "Tipo do sinal",
+      opcoes: [['fixo', 'Valor fixo (R$)'], ['percentual', 'Porcentagem do serviço']],
+      valor: a.sinal_tipo,
+      onChange: function onChange(v) {
+        return set('sinal_tipo', v);
+      },
+      colunas: '1fr 1fr'
+    })), agH(AgNumero, {
+      rotulo: a.sinal_tipo === 'percentual' ? 'Porcentagem' : 'Valor do sinal',
+      valor: a.sinal_valor,
+      min: 0,
+      max: a.sinal_tipo === 'percentual' ? 100 : undefined,
+      passo: a.sinal_tipo === 'percentual' ? 1 : 0.01,
+      sufixo: a.sinal_tipo === 'percentual' ? '% do valor do serviço' : 'reais',
+      onChange: function onChange(v) {
+        return set('sinal_valor', v);
+      },
+      erro: E('sinal_valor')
+    })) : null, comValor ? agH(AgAviso, {
+      tipo: "alerta",
+      icone: "credit-card"
+    }, "Cobrar sinal precisa de um provedor de pagamento, que ainda n\xE3o est\xE1 ligado. At\xE9 l\xE1, a IA n\xE3o confirma consultas que dependem de pagamento: ela passa o pedido para a equipe. A IA nunca pede dados de cart\xE3o na conversa.") : null), agH("div", {
+      key: "lim",
+      style: Object.assign({}, bloco, {
+        display: 'grid',
+        gridTemplateColumns: mobile ? '1fr' : 'repeat(3, minmax(0,1fr))',
+        gap: 16
+      })
+    }, agH(AgNumero, {
+      rotulo: "Anteced\xEAncia m\xEDnima",
+      ajuda: "Hor\xE1rios mais perto do que isso n\xE3o s\xE3o oferecidos.",
+      valor: a.antecedencia_min_horas,
+      min: 0,
+      max: 720,
+      sufixo: "horas",
+      onChange: function onChange(v) {
+        return set('antecedencia_min_horas', v);
+      },
+      erro: E('antecedencia_min_horas')
+    }), agH(AgNumero, {
+      rotulo: "Agendar at\xE9",
+      ajuda: "Quantos dias para a frente a IA pode marcar.",
+      valor: a.horizonte_dias,
+      min: 1,
+      max: 365,
+      sufixo: "dias \xE0 frente",
+      onChange: function onChange(v) {
+        return set('horizonte_dias', v);
+      },
+      erro: E('horizonte_dias')
+    }), agH(AgNumero, {
+      rotulo: "Intervalo entre consultas",
+      ajuda: "Folga entre uma consulta e outra (limpeza, preparo).",
+      valor: a.intervalo_entre_consultas_min,
+      min: 0,
+      max: 240,
+      passo: 5,
+      sufixo: "minutos",
+      onChange: function onChange(v) {
+        return set('intervalo_entre_consultas_min', v);
+      },
+      erro: E('intervalo_entre_consultas_min')
+    }))];
+  } else if (sec === 'horarios') {
+    var hc = SB_ON ? (cat.horarios || []).slice().sort(function (x, y) {
+      return (x.dia_semana + 6) % 7 - (y.dia_semana + 6) % 7;
+    }) : [];
+    conteudo = [agH(AgFuso, {
+      key: "fuso",
+      fuso: fuso,
+      setFuso: setFuso,
+      pode: perm.cadastro,
+      mobile: mobile
+    }), agH("div", {
+      key: "jan",
+      style: bloco
+    }, agH("div", null, agH("p", {
+      style: AG_SUB
+    }, "Janela de mensagens autom\xE1ticas"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)',
+        lineHeight: 1.5
+      }
+    }, "Follow-ups e lembretes s\xF3 saem dentro deste hor\xE1rio. Se cair fora, a mensagem espera o pr\xF3ximo hor\xE1rio permitido.")), agH("div", {
+      style: {
+        display: 'flex',
+        gap: 12,
+        flexWrap: 'wrap'
+      }
+    }, agH(AgHora, {
+      rotulo: "Come\xE7a \xE0s",
+      disabled: !perm.gestao,
+      valor: a.janela_inicio,
+      onChange: function onChange(v) {
+        return set('janela_inicio', v);
+      },
+      erro: E('janela_fim')
+    }), agH(AgHora, {
+      rotulo: "Termina \xE0s",
+      disabled: !perm.gestao,
+      valor: a.janela_fim,
+      onChange: function onChange(v) {
+        return set('janela_fim', v);
+      },
+      erro: E('janela_fim')
+    })), agH(AgErro, {
+      msg: E('janela_fim')
+    }), agH("span", {
+      style: {
+        fontSize: 12.5,
+        color: 'var(--text-muted)'
+      }
+    }, "Salva com o bot\xE3o Salvar do rodap\xE9.")), agH(AgHorarioIA, {
+      key: "hia",
+      linhas: horIA,
+      setLinhas: setHorIA,
+      pode: perm.gestao,
+      mobile: mobile,
+      setSujoHor: marcaSujo('horarios')
+    }), agH("div", {
+      key: "cad",
+      style: bloco
+    }, agH("div", null, agH("p", {
+      style: AG_SUB
+    }, "Hor\xE1rios da cl\xEDnica e dos profissionais"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)',
+        lineHeight: 1.5
+      }
+    }, "A IA usa os mesmos hor\xE1rios do Cadastro para achar vagas. Para mudar, edite l\xE1.")), hc.length ? agH("div", {
+      style: {
+        display: 'grid',
+        gridTemplateColumns: mobile ? '1fr 1fr' : 'repeat(4, minmax(0,1fr))',
+        gap: 6
+      }
+    }, hc.map(function (h) {
+      var nome = (AG_DIAS.find(function (d) {
+        return d[0] === h.dia_semana;
+      }) || [0, ''])[1];
+      return agH("span", {
+        key: h.id || h.dia_semana,
+        style: {
+          fontSize: 13,
+          padding: '6px 10px',
+          borderRadius: 10,
+          background: 'rgba(255,255,255,.8)',
+          color: h.aberto ? 'var(--text-strong)' : 'var(--text-muted)'
+        }
+      }, agH("b", null, nome.slice(0, 3)), ' ', h.aberto ? agHM(h.hora_inicio) + ' às ' + agHM(h.hora_fim) : 'fechado');
+    })) : null, agH("div", {
+      style: {
+        display: 'flex',
+        gap: 18,
+        flexWrap: 'wrap'
+      }
+    }, agH("button", {
+      type: "button",
+      style: agBtnLink,
+      onClick: function onClick() {
+        return agIrCadastro('clinica', algoSujo);
+      }
+    }, agH(RIcon, {
+      name: "building-2",
+      size: 15
+    }), "Hor\xE1rio da cl\xEDnica"), agH("button", {
+      type: "button",
+      style: agBtnLink,
+      onClick: function onClick() {
+        return agIrCadastro('profissionais', algoSujo);
+      }
+    }, agH(RIcon, {
+      name: "stethoscope",
+      size: 15
+    }), "Profissionais")))];
+  } else if (sec === 'crm') {
+    conteudo = [agH(AgChave, {
+      key: "auto",
+      titulo: "Mover o lead no funil automaticamente",
+      desc: "A IA muda a etapa do lead conforme a conversa anda. Cada mudan\xE7a fica registrada com o motivo.",
+      on: a.crm_mover_automatico,
+      onChange: function onChange(v) {
+        return set('crm_mover_automatico', v);
+      }
+    }), agH("div", {
+      key: "mapa",
+      style: Object.assign({}, bloco, {
+        opacity: a.crm_mover_automatico ? 1 : 0.6
+      })
+    }, agH("div", null, agH("p", {
+      style: AG_SUB
+    }, "Para qual etapa vai"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)',
+        lineHeight: 1.5
+      }
+    }, "Escolha a etapa do seu funil para cada situa\xE7\xE3o. A IA nunca volta um lead que j\xE1 est\xE1 numa etapa mais avan\xE7ada.")), AG_CRM_SITUACOES.map(function (s) {
+      var val = a.crm_mapa[s[0]];
+      var existe = etapas.some(function (e) {
+        return e.chave === val;
+      });
+      return agH("label", {
+        key: s[0],
+        style: {
+          display: 'grid',
+          gridTemplateColumns: mobile ? '1fr' : 'minmax(0,1fr) 240px',
+          gap: mobile ? 6 : 14,
+          alignItems: 'center',
+          padding: '10px 0',
+          borderTop: '1px solid rgba(214,226,242,.8)'
+        }
+      }, agH("span", {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2
+        }
+      }, agH("span", {
+        style: {
+          fontSize: 14.5,
+          fontWeight: 600,
+          color: 'var(--text-strong)'
+        }
+      }, s[1]), agH("span", {
+        style: {
+          fontSize: 12.5,
+          color: 'var(--text-muted)'
+        }
+      }, s[2])), agH("select", {
+        value: existe ? val : '',
+        disabled: !a.crm_mover_automatico,
+        onChange: function onChange(e) {
+          var n = Object.assign({}, a.crm_mapa);
+          n[s[0]] = e.target.value;
+          set('crm_mapa', n);
+        },
+        style: Object.assign({}, AG_IA_INP, {
+          flex: 'none',
+          width: '100%',
+          borderColor: existe ? 'rgba(214,226,242,.95)' : 'rgba(229,72,77,.6)'
+        })
+      }, existe ? null : agH("option", {
+        value: ""
+      }, "Escolha uma etapa"), etapas.map(function (e) {
+        return agH("option", {
+          key: e.chave,
+          value: e.chave
+        }, e.nome);
+      })));
+    }), agH(AgErro, {
+      msg: tentou || sujoSec.crm ? erros.crm_mapa : ''
+    }))];
+  } else if (sec === 'followup') {
+    conteudo = [agH(AgChave, {
+      key: "on",
+      titulo: "Follow-up ligado",
+      desc: "Quando o lead para de responder antes de agendar, a IA manda as mensagens abaixo, uma de cada vez.",
+      on: a.followup_ativo,
+      onChange: function onChange(v) {
+        return set('followup_ativo', v);
+      }
+    }), a.followup_ativo ? agH("div", {
+      key: "cfg",
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14
+      }
+    }, agH("div", {
+      style: bloco
+    }, agH("label", {
+      style: lab
+    }, rot('Máximo de tentativas'), agH("select", {
+      value: a.followup_max,
+      onChange: function onChange(e) {
+        return set('followup_max', Number(e.target.value));
+      },
+      style: Object.assign({}, AG_IA_INP, {
+        flex: 'none',
+        width: 200
+      })
+    }, Array.from({
+      length: Math.max(a.followup_atrasos_min.length, a.followup_max) + 1
+    }, function (x, i) {
+      return agH("option", {
+        key: i,
+        value: i
+      }, i === 0 ? 'Nenhuma' : i + (i === 1 ? ' mensagem' : ' mensagens'));
+    })), agH("span", {
+      style: {
+        fontSize: 12.5
+      }
+    }, "Depois disso, a IA para de insistir."), agH(AgErro, {
+      msg: E('followup_max')
+    })), agH(AgChave, {
+      titulo: "Parar quando o lead responder",
+      desc: "Se o lead responder, as pr\xF3ximas mensagens s\xE3o canceladas e a conversa volta ao normal.",
+      on: a.followup_parar_ao_responder,
+      onChange: function onChange(v) {
+        return set('followup_parar_ao_responder', v);
+      }
+    }), agH(AgChave, {
+      titulo: "Parar se o lead agendar",
+      desc: "Quem j\xE1 marcou consulta n\xE3o recebe mais mensagens de follow-up.",
+      on: a.followup_parar_se_agendado,
+      onChange: function onChange(v) {
+        return set('followup_parar_se_agendado', v);
+      }
+    })), agH("div", {
+      style: bloco
+    }, agH(AgFollowup, {
+      a: a,
+      set: set,
+      erros: tentou || sujoSec.followup ? erros : {},
+      mobile: mobile
+    })), agH(AgAviso, {
+      tipo: "info"
+    }, "Regras que valem sempre: nada sai durante a pausa geral, fora da janela de mensagens, depois que algu\xE9m da equipe assumiu a conversa ou se o lead pediu para parar. Depois de 24 horas sem resposta do lead, o WhatsApp s\xF3 aceita modelos de mensagem aprovados pela Meta.")) : null];
+  } else if (sec === 'lembretes') {
+    var offs = a.lembretes_offsets_min;
+    conteudo = [agH(AgChave, {
+      key: "on",
+      titulo: "Lembretes de consulta ligados",
+      desc: "A chave geral. Desligada, nenhum lembrete \xE9 enviado.",
+      on: a.lembretes_ativos,
+      onChange: function onChange(v) {
+        return set('lembretes_ativos', v);
+      }
+    }), agH("div", {
+      key: "lista",
+      style: Object.assign({}, bloco, {
+        opacity: a.lembretes_ativos ? 1 : 0.6
+      })
+    }, agH("p", {
+      style: AG_SUB
+    }, "Quando enviar"), AG_LEMBRETES.map(function (l) {
+      var on = offs.indexOf(l[0]) >= 0;
+      return agH(AgChave, {
+        key: l[0],
+        titulo: l[1],
+        desc: l[2],
+        on: on,
+        onChange: function onChange(v) {
+          return set('lembretes_offsets_min', (v ? offs.concat([l[0]]) : offs.filter(function (x) {
+            return x !== l[0];
+          })).sort(function (x, y) {
+            return y - x;
+          }));
+        }
+      });
+    }), a.lembretes_ativos && !offs.length ? agH(AgAviso, {
+      tipo: "alerta"
+    }, "A chave geral est\xE1 ligada, mas nenhum lembrete foi escolhido.") : null), agH("div", {
+      key: "resp",
+      style: bloco
+    }, agH("p", {
+      style: AG_SUB
+    }, "O que o paciente pode fazer"), agH(AgChave, {
+      titulo: "Pedir confirma\xE7\xE3o",
+      desc: "O lembrete pede para o paciente confirmar que vem.",
+      on: a.lembrete_pedir_confirmacao,
+      onChange: function onChange(v) {
+        return set('lembrete_pedir_confirmacao', v);
+      }
+    }), agH(AgChave, {
+      titulo: "Permitir cancelar pela mensagem",
+      desc: "O paciente pode cancelar respondendo o lembrete. A IA confirma antes de cancelar.",
+      on: a.lembrete_permitir_cancelar,
+      onChange: function onChange(v) {
+        return set('lembrete_permitir_cancelar', v);
+      }
+    })), agH(AgAviso, {
+      key: "info",
+      tipo: "info"
+    }, "Se a consulta for remarcada, os lembretes antigos s\xE3o cancelados e novos s\xE3o criados. Consulta que j\xE1 passou n\xE3o recebe lembrete atrasado. Os lembretes n\xE3o levam dados de sa\xFAde.")];
+  } else if (sec === 'transferencia') {
+    var conhecidos = equipe.filter(function (m) {
+      return m.id;
+    });
+    var orfaos = a.transferencia_usuarios.filter(function (id) {
+      return !conhecidos.some(function (m) {
+        return m.id === id;
+      });
+    });
+    conteudo = [agH("div", {
+      key: "quem",
+      style: bloco
+    }, agH("div", null, agH("p", {
+      id: "ag-tr-quem",
+      style: AG_SUB
+    }, "Quem recebe"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)',
+        lineHeight: 1.5
+      }
+    }, "Essas pessoas s\xE3o avisadas quando a IA passa uma conversa. Quando isso acontece, a IA para de responder naquela conversa e n\xE3o manda follow-up.")), agH("div", {
+      role: "group",
+      "aria-labelledby": "ag-tr-quem",
+      style: {
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap'
+      }
+    }, conhecidos.map(function (m) {
+      var on = a.transferencia_usuarios.indexOf(m.id) >= 0;
+      return agH("button", {
+        key: m.id,
+        type: "button",
+        role: "checkbox",
+        "aria-checked": on,
+        onClick: function onClick() {
+          return set('transferencia_usuarios', on ? a.transferencia_usuarios.filter(function (x) {
+            return x !== m.id;
+          }) : a.transferencia_usuarios.concat([m.id]));
+        },
+        style: Object.assign({}, agChip(on), {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          minHeight: 44,
+          borderRadius: 14,
+          textAlign: 'left'
+        })
+      }, agH(RIcon, {
+        name: on ? 'square-check' : 'square',
+        size: 17
+      }), agH("span", {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          lineHeight: 1.25
+        }
+      }, agH("span", null, m.nome), m.funcao ? agH("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 400,
+          color: 'var(--text-muted)'
+        }
+      }, m.funcao) : null));
+    }), orfaos.map(function (id) {
+      return agH("button", {
+        key: id,
+        type: "button",
+        onClick: function onClick() {
+          return set('transferencia_usuarios', a.transferencia_usuarios.filter(function (x) {
+            return x !== id;
+          }));
+        },
+        style: Object.assign({}, agChip(false), {
+          color: '#8A5A00'
+        })
+      }, "Pessoa que saiu da equipe (remover)");
+    })), !conhecidos.length ? agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "Ningu\xE9m da equipe com acesso ao sistema ainda.") : null, equipe.some(function (m) {
+      return m.convite;
+    }) ? agH("span", {
+      style: {
+        fontSize: 12.5,
+        color: 'var(--text-muted)'
+      }
+    }, "Convites ainda n\xE3o aceitos n\xE3o aparecem aqui.") : null, !a.transferencia_usuarios.length ? agH(AgAviso, {
+      tipo: "alerta"
+    }, "Ningu\xE9m escolhido: as conversas transferidas ficam na fila de Mensagens sem aviso para uma pessoa.") : null), agH("div", {
+      key: "hor",
+      style: bloco
+    }, agH("div", null, agH("p", {
+      style: AG_SUB
+    }, "Hor\xE1rio da equipe"), agH("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, "Fora deste hor\xE1rio, a IA avisa o paciente que a equipe responde no pr\xF3ximo per\xEDodo.")), agH("div", {
+      style: {
+        display: 'flex',
+        gap: 12,
+        flexWrap: 'wrap'
+      }
+    }, agH(AgHora, {
+      rotulo: "Come\xE7a \xE0s",
+      valor: a.transferencia_inicio,
+      onChange: function onChange(v) {
+        return set('transferencia_inicio', v);
+      },
+      erro: E('transferencia_fim')
+    }), agH(AgHora, {
+      rotulo: "Termina \xE0s",
+      valor: a.transferencia_fim,
+      onChange: function onChange(v) {
+        return set('transferencia_fim', v);
+      },
+      erro: E('transferencia_fim')
+    })), agH(AgErro, {
+      msg: E('transferencia_fim')
+    }), agH(AgNumero, {
+      rotulo: "Tempo para a equipe responder",
+      ajuda: "Se ningu\xE9m assumir nesse tempo, quem recebe \xE9 avisado de novo.",
+      valor: a.transferencia_sla_min,
+      min: 1,
+      max: 1440,
+      sufixo: "minutos",
+      onChange: function onChange(v) {
+        return set('transferencia_sla_min', v);
+      },
+      erro: E('transferencia_sla_min')
+    })), agH("div", {
+      key: "cat",
+      style: bloco
+    }, agH(AgenteLista, {
+      titulo: "Quando passar para a equipe",
+      ajuda: "Assuntos que a IA sempre transfere. Pedido para falar com uma pessoa \xE9 sempre atendido.",
+      itens: a.transferencia_categorias,
+      cor: "#F2694A",
+      icone: "headset",
+      exemplo: "Ex.: Paciente com rea\xE7\xE3o depois do procedimento",
+      max: 30,
+      onChange: function onChange(v) {
+        return set('transferencia_categorias', v);
+      }
+    })), agH("div", {
+      key: "msg",
+      style: bloco
+    }, agH("label", {
+      style: lab
+    }, rot('Mensagem de transição'), "O que o paciente recebe quando a conversa passa para a equipe.", agH("textarea", {
+      value: a.transferencia_mensagem,
+      maxLength: 500,
+      onChange: function onChange(e) {
+        return set('transferencia_mensagem', e.target.value);
+      },
+      style: AG_AREA
+    }), agH(AgContador, {
+      txt: a.transferencia_mensagem,
+      max: 500
+    }), agH(AgErro, {
+      msg: E('transferencia_mensagem')
+    })))];
+  } else if (sec === 'conhecimento') {
+    conteudo = [agH(AgConhecimento, {
+      key: "k",
+      base: base,
+      setBase: setBase,
+      pode: perm.gestao,
+      mobile: mobile,
+      setSujoBase: marcaSujo('conhecimento')
+    })];
+  } else if (sec === 'privacidade') {
+    var anos = Number(a.retencao_conversas_dias) / 365;
+    conteudo = [agH(AgAviso, {
+      key: "lgpd",
+      tipo: "info",
+      icone: "scale"
+    }, "A LGPD (Lei Geral de Prote\xE7\xE3o de Dados) protege os dados das pessoas. Mensagens de sa\xFAde s\xE3o dados sens\xEDveis: a cl\xEDnica deve explicar para que usa os dados, guardar s\xF3 pelo tempo necess\xE1rio e parar de mandar mensagens quando a pessoa pedir."), agH("div", {
+      key: "txt",
+      style: bloco
+    }, agH("label", {
+      style: lab
+    }, rot('Aviso de privacidade'), "A IA mostra este texto quando for preciso, por exemplo, no primeiro contato ou se perguntarem sobre os dados.", agH("textarea", {
+      value: a.privacidade_texto,
+      maxLength: 1500,
+      onChange: function onChange(e) {
+        return set('privacidade_texto', e.target.value);
+      },
+      style: Object.assign({}, AG_AREA, {
+        minHeight: 100
+      })
+    }), agH(AgContador, {
+      txt: a.privacidade_texto,
+      max: 1500
+    }), agH(AgErro, {
+      msg: E('privacidade_texto')
+    })), agH(AgChave, {
+      titulo: "Pedir consentimento antes de continuar",
+      desc: "No primeiro contato, a IA pede que a pessoa concorde com o aviso antes de seguir a conversa. A resposta fica registrada.",
+      on: a.pedir_consentimento,
+      onChange: function onChange(v) {
+        return set('pedir_consentimento', v);
+      }
+    })), agH("div", {
+      key: "opt",
+      style: bloco
+    }, agH(AgenteLista, {
+      titulo: "Palavras para parar de receber mensagens",
+      ajuda: "Se a pessoa escrever uma dessas palavras, o sistema bloqueia novas mensagens autom\xE1ticas e de divulga\xE7\xE3o para ela. Isso n\xE3o depende da IA entender.",
+      itens: a.palavras_optout,
+      cor: "#E5484D",
+      icone: "bell-off",
+      exemplo: "Ex.: descadastrar",
+      max: 50,
+      maxLen: 60,
+      compacta: true,
+      onChange: function onChange(v) {
+        return set('palavras_optout', v);
+      }
+    })), agH("div", {
+      key: "ret",
+      style: bloco
+    }, agH(AgNumero, {
+      rotulo: "Guardar conversas por",
+      ajuda: agInt(a.retencao_conversas_dias) ? 'Cerca de ' + (anos >= 1 ? (Math.round(anos * 10) / 10).toLocaleString('pt-BR') + (anos < 2 ? ' ano' : ' anos') : Math.round(Number(a.retencao_conversas_dias) / 30) + ' meses') + '. Prazo para guardar as conversas da IA; a limpeza automática entra junto com a integração. O prontuário segue as regras dele.' : null,
+      valor: a.retencao_conversas_dias,
+      min: 30,
+      max: 3650,
+      sufixo: "dias",
+      onChange: function onChange(v) {
+        return set('retencao_conversas_dias', v);
+      },
+      erro: E('retencao_conversas_dias')
+    })), agH(AgAviso, {
+      key: "a3",
+      tipo: "alerta"
+    }, "As mensagens passam por servi\xE7os de IA de outras empresas para gerar as respostas. Evite pedir dados de sa\xFAde que n\xE3o sejam necess\xE1rios para o atendimento.")];
+  } else {
+    conteudo = [agH(AgAviso, {
+      key: "nota",
+      tipo: "info"
+    }, "Resumo do que a IA recebe. O texto final \xE9 montado pelo servidor e pode mudar um pouco a reda\xE7\xE3o. A Renata no sistema usa a primeira parte; a parte do WhatsApp vale quando a integra\xE7\xE3o estiver ligada. A pr\xE9via j\xE1 mostra o que ainda n\xE3o foi salvo."), agH("pre", {
+      key: "pre",
+      style: {
+        margin: 0,
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere',
+        fontFamily: 'inherit',
+        fontSize: 13,
+        lineHeight: 1.6,
+        color: 'var(--text-body)',
+        background: 'rgba(255,255,255,.75)',
+        border: '1.5px solid rgba(214,226,242,.9)',
+        borderRadius: 14,
+        padding: 16,
+        maxHeight: mobile ? 'none' : 560,
+        overflowY: 'auto'
+      }
+    }, agenteTexto(a, {
+      procs: procs
+    }))];
+  }
+
+  // rodapé fixo: estado da gravação do agente_ia
+  var rodape = agH("div", {
+    role: "region",
+    "aria-label": "Salvar altera\xE7\xF5es do agente",
+    style: {
+      // fica preso na base da tela só enquanto há algo para salvar; no celular, acima do menu de baixo
+      position: mudou ? 'sticky' : 'static',
+      bottom: mobile ? SB_ON ? 6 : 52 : 16,
+      marginTop: 4,
+      display: 'flex',
+      alignItems: 'center',
+      gap: mobile ? 8 : 12,
+      flexWrap: mobile ? 'nowrap' : 'wrap',
+      padding: mobile ? '8px 10px 8px 12px' : '12px 16px',
+      borderRadius: 18,
+      background: mudou ? 'rgba(255,250,235,.97)' : 'rgba(255,255,255,.94)',
+      border: '1.5px solid ' + (mudou ? 'rgba(245,180,0,.55)' : 'rgba(214,226,242,.95)'),
+      boxShadow: '0 14px 30px -18px rgba(23,73,170,.55)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)'
+    }
+  }, agH("div", {
+    role: "status",
+    "aria-live": "polite",
+    style: {
+      flex: mobile ? '1 1 auto' : '1 1 200px',
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2
+    }
+  }, agH("span", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: mobile ? 6 : 8,
+      fontSize: mobile ? 13.5 : 14,
+      whiteSpace: 'nowrap',
+      fontWeight: 600,
+      color: !perm.gestao ? 'var(--text-muted)' : mudou ? '#8A5A00' : '#1E7A47'
+    }
+  }, agH(RIcon, {
+    name: !perm.gestao ? 'lock' : mudou ? 'circle-dot' : 'circle-check',
+    size: 16
+ }), !perm.gestao ? 'Somente leitura' : mudou ? mobile ? 'Não salvo' : 'Alterações não salvas' : 'Tudo salvo'), agH("span", {
+    style: {
+      fontSize: 12.5,
+      color: 'var(--text-muted)',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: mobile ? 'nowrap' : 'normal'
+    }
+  }, mobile && mudou ? tentou && nErros ? nErros + (nErros === 1 ? ' campo para corrigir' : ' campos para corrigir') : 'Versão ' + (a.config_versao || 1) : !perm.gestao ? 'Só o dono ou a gerência alteram o agente.' : mudou ? (tentou && nErros ? nErros + (nErros === 1 ? ' campo para corrigir · ' : ' campos para corrigir · ') : '') + 'Em: ' + AG_SECOES.filter(function (s) {
+    return sujoAgente[s[0]];
+  }).map(function (s) {
+    return s[1];
+  }).join(', ') : 'Versão ' + (a.config_versao || 1) + (SB_ON ? '' : ' · demonstração'))), perm.gestao ? agH("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginLeft: 'auto',
+      flexShrink: 0
+    }
+  }, agH(XButton, {
+    variant: "secondary",
+    size: mobile ? 'sm' : 'md',
+    disabled: !mudou || salvando,
+    onClick: desfazer
+  }, "Desfazer"), agH(XButton, {
+    iconLeft: mobile ? undefined : "check",
+    size: mobile ? 'sm' : 'md',
+    disabled: !mudou || salvando,
+    onClick: salvar
+  }, salvando ? 'Salvando...' : 'Salvar')) : null);
+  var secaoPropria = sec === 'servicos' || sec === 'conhecimento';
+  return agH("div", {
+    ref: topo,
     style: {
       display: 'flex',
       flexDirection: 'column',
-      gap: mobile ? 14 : 22
+      gap: mobile ? 12 : 18,
+      scrollMarginTop: mobile ? 80 : 24
     }
-  }, /*#__PURE__*/React.createElement("section", {
-    style: card
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", {
-    style: {
-      fontSize: 19,
-      color: 'var(--text-strong)'
-    }
-  }, "Agente de IA"), /*#__PURE__*/React.createElement("p", {
-    style: {
-      margin: '4px 0 0',
-      fontSize: 14,
-      lineHeight: 1.5,
-      color: 'var(--text-muted)'
-    }
-  }, "Aqui voc\xEA define como toda IA da cl\xEDnica conversa: o nome, o tom, o que pode e o que n\xE3o pode falar. As regras valem para a Renata no sistema e para o atendimento no WhatsApp.")), /*#__PURE__*/React.createElement("div", {
+  }, !SB_ON ? agH(AgAviso, {
+    tipo: "alerta",
+    icone: "flask-conical"
+  }, agH("b", null, "Modo demonstra\xE7\xE3o:"), " voc\xEA pode mexer em tudo, mas nada \xE9 gravado.") : null, agH("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: mobile ? '1fr' : '1fr 1fr',
-      gap: 12
+      gridTemplateColumns: mobile ? 'minmax(0,1fr)' : '232px minmax(0,1fr)',
+      gap: mobile ? 12 : 22,
+      alignItems: 'start'
     }
-  }, /*#__PURE__*/React.createElement("label", {
-    style: lab
-  }, "Nome do agente", /*#__PURE__*/React.createElement("input", {
-    value: a.nome,
-    maxLength: 60,
-    onChange: function onChange(e) {
-      return set('nome', e.target.value);
-    },
-    style: Object.assign({}, AG_IA_INP, {
-      flex: 'none'
-    })
-  })), /*#__PURE__*/React.createElement("div", {
-    style: lab
-  }, "Tom da conversa", /*#__PURE__*/React.createElement("div", {
+  }, menu, agH("div", {
     style: {
       display: 'flex',
-      gap: 6,
-      flexWrap: 'wrap'
+      flexDirection: 'column',
+      gap: mobile ? 12 : 16,
+      minWidth: 0
     }
-  }, AGENTE_TONS.map(function (t) {
-    return /*#__PURE__*/React.createElement("button", {
-      key: t[0],
-      type: "button",
-      onClick: function onClick() {
-        return set('tom', t[0]);
-      },
-      style: chip(a.tom === t[0])
-    }, t[1]);
-  })))), /*#__PURE__*/React.createElement("label", {
-    style: lab
-  }, "Como se apresenta", /*#__PURE__*/React.createElement("textarea", {
-    value: a.apresentacao,
-    maxLength: 500,
-    onChange: function onChange(e) {
-      return set('apresentacao', e.target.value);
-    },
-    style: area
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
+  }, agH("section", {
+    "aria-labelledby": "ag-sec-titulo",
+    style: Object.assign({}, glass, {
+      padding: mobile ? 16 : 26,
       display: 'flex',
-      gap: 18,
-      flexWrap: 'wrap'
-    }
-  }, /*#__PURE__*/React.createElement(XSwitch, {
-    checked: a.aplicar_assistente,
-    onChange: function onChange(v) {
-      return set('aplicar_assistente', v);
-    },
-    label: "Renata no sistema (equipe)"
-  }), /*#__PURE__*/React.createElement(XSwitch, {
-    checked: a.aplicar_whatsapp,
-    onChange: function onChange(v) {
-      return set('aplicar_whatsapp', v);
-    },
-    label: "Atendimento no WhatsApp (pacientes)"
-  }))), /*#__PURE__*/React.createElement("section", {
-    style: card
-  }, /*#__PURE__*/React.createElement(AgenteLista, {
-    titulo: "Pode falar sobre",
-    ajuda: "Assuntos que a IA pode tratar com liberdade.",
-    itens: a.pode_falar,
-    cor: "#2DBF6A",
-    icone: "circle-check",
-    exemplo: "Ex.: Promo\xE7\xF5es do m\xEAs",
-    onChange: function onChange(v) {
-      return set('pode_falar', v);
-    }
-  })), /*#__PURE__*/React.createElement("section", {
-    style: card
-  }, /*#__PURE__*/React.createElement(AgenteLista, {
-    titulo: "N\xE3o pode falar sobre",
-    ajuda: "A IA nunca toca nesses assuntos, mesmo se o paciente insistir.",
-    itens: a.nao_pode_falar,
-    cor: "#E5484D",
-    icone: "ban",
-    exemplo: "Ex.: Valores de concorrentes",
-    onChange: function onChange(v) {
-      return set('nao_pode_falar', v);
-    }
-  }), /*#__PURE__*/React.createElement("label", {
-    style: lab
-  }, "Quando perguntarem algo proibido, responder", /*#__PURE__*/React.createElement("textarea", {
-    value: a.resposta_proibida,
-    maxLength: 500,
-    onChange: function onChange(e) {
-      return set('resposta_proibida', e.target.value);
-    },
-    style: area
-  }))), /*#__PURE__*/React.createElement("section", {
-    style: card
-  }, /*#__PURE__*/React.createElement("label", {
-    style: lab
-  }, /*#__PURE__*/React.createElement("b", {
-    style: {
-      fontSize: 15,
-      color: 'var(--text-strong)'
-    }
-  }, "Regras extras"), "Instru\xE7\xF5es livres, uma por linha. Ex.: \"Sempre ofere\xE7a a avalia\xE7\xE3o gratuita\" ou \"N\xE3o use g\xEDrias\".", /*#__PURE__*/React.createElement("textarea", {
-    value: a.regras,
-    maxLength: 4000,
-    onChange: function onChange(e) {
-      return set('regras', e.target.value);
-    },
-    style: Object.assign({}, area, {
-      minHeight: 110
+      flexDirection: 'column',
+      gap: mobile ? 14 : 18
     })
-  })))), /*#__PURE__*/React.createElement("section", {
-    style: Object.assign({}, card, {
-      position: mobile ? 'static' : 'sticky',
-      top: 16
-    })
-  }, /*#__PURE__*/React.createElement("b", {
+  }, agH(AgSecaoCab, {
+    icone: secAtual[2],
+    titulo: agH("span", {
+      id: "ag-sec-titulo"
+    }, secAtual[0] === 'previa' ? 'Como a IA vai receber' : secAtual[1]),
+    desc: info[secAtual[0]],
+    direita: secaoPropria ? agH("span", {
+      style: {
+        alignSelf: 'center',
+        fontSize: 12,
+        fontWeight: 600,
+        padding: '4px 10px',
+        borderRadius: 999,
+        background: 'rgba(31,94,255,.08)',
+        color: '#1F5EFF',
+        whiteSpace: 'nowrap'
+      }
+    }, "Salva item por item") : null
+  }), agH("fieldset", {
+    disabled: !perm.gestao && !secaoPropria && sec !== 'horarios',
     style: {
-      fontSize: 15,
-      color: 'var(--text-strong)'
-    }
-  }, "Como a IA vai receber"), /*#__PURE__*/React.createElement("pre", {
-    style: {
+      border: 0,
       margin: 0,
-      whiteSpace: 'pre-wrap',
-      fontFamily: 'inherit',
-      fontSize: 13,
-      lineHeight: 1.55,
-      color: 'var(--text-body)',
-      background: 'rgba(255,255,255,.7)',
-      borderRadius: 14,
-      padding: 14,
-      maxHeight: 360,
-      overflowY: 'auto'
-    }
-  }, agenteTexto(a)), !a.aplicar_assistente && !a.aplicar_whatsapp ? /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12.5,
-      color: '#9A6B00'
-    }
-  }, "As regras est\xE3o desligadas para as duas IAs.") : null, erro ? /*#__PURE__*/React.createElement("span", {
-    role: "alert",
-    style: {
-      fontSize: 13,
-      color: '#C2272D'
-    }
-  }, erro) : null, /*#__PURE__*/React.createElement("div", {
-    style: {
+      padding: 0,
+      minWidth: 0,
       display: 'flex',
-      gap: 10,
-      justifyContent: 'flex-end',
-      flexWrap: 'wrap'
+      flexDirection: 'column',
+      gap: 14
     }
-  }, /*#__PURE__*/React.createElement(XButton, {
-    variant: "secondary",
-    disabled: !mudou || salvando,
-    onClick: function onClick() {
-      setA(Object.assign({}, salvo));
-      setErro('');
+  }, agH("legend", {
+    style: {
+      position: 'absolute',
+      width: 1,
+      height: 1,
+      overflow: 'hidden',
+      clip: 'rect(0 0 0 0)'
     }
-  }, "Desfazer"), /*#__PURE__*/React.createElement(XButton, {
-    iconLeft: "check",
-    disabled: !mudou || salvando,
-    onClick: salvar
-  }, salvando ? 'Salvando...' : 'Salvar regras'))));
+  }, secAtual[1]), conteudo)), rodape)));
 }
 window.AgenteIATab = AgenteIATab;
 

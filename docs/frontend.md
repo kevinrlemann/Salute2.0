@@ -74,7 +74,7 @@ As rotas por endereço ligam quando `BASE_PATH` existe no `config.js` (hoje `""`
 |---|---|---|---|
 | `cadastro` | Cadastro | `CadastroTab` | Clínica, equipe e acessos, profissionais, procedimentos, modelos de anamnese, som |
 | `canais` | **Integrações** | `CanaisTab` | Antes "Canais". WhatsApp (oficial/não oficial). A chave interna continua `canais` (permissão `perfil.canais`) |
-| `agente` | **Agente de IA** | `AgenteIATab` (`1b7a2c45` L3942) | Nome, tom, apresentação, pode/não pode falar, resposta para assunto proibido, regras extras, prévia. Grava em `agente_ia` |
+| `agente` | **Agente de IA** | `AgenteIATab` (`1b7a2c45` L6121) | 13 seções: Status, Identidade e tom, Assuntos, Serviços, Agendamento, Horários, CRM, Follow-up, Lembretes, Transferência humana, Conhecimento, Privacidade, Prévia. Rodapé com Salvar/Desfazer e versão (`config_versao`). Grava em `agente_ia`, `procedimentos` (campos `ia_*`), `profissionais_procedimentos`, `renata_horarios`, `renata_base_conhecimento`. Contrato do banco em `docs/agente-ia.md` |
 | `flix` | Saluteflix | — | Conteúdo global |
 | `parcerias` | Parcerias | — | Inclui a Nexus (global, gravada no banco) |
 | `cert` | Certificações | `CertificacoesTab` | Certificações vêm do banco (`selos_certificacoes`); o logo, se não houver logo enviado, vem de `SELOS_LOGOS` (`c007` L31-37), que reaproveita as imagens embutidas no front |
@@ -131,7 +131,7 @@ Não há Redux nem Context. O estado fica em stores caseiros: `makeStore(valor)`
 | **Editar lançamento financeiro** | Lápis na `LancTable` (`d47643ae`) → `FinSvc.editar(kind, r, antes)` (`c006` L389); refaz a baixa só quando o status muda | confirmado |
 | **Funil de 5 etapas** | Novo Lead, Aguardando atendente, Agendado, Convertido, Perdido (banco + `25352dc7` L79 + `366b46a2` L2794); o painel mostra perdidos (`c009` L295, `25352dc7` L1410) | confirmado |
 | **Local da assinatura (anamnese)** | `navigator.geolocation` com status `ok/negado/indisponivel/tempo_esgotado` (`c00b` L89-108); exibido a partir de `local_assinatura` (`c00b` L870) | confirmado |
-| **Agente de IA** | `AgenteIATab` (`1b7a2c45` L3942), tabela `agente_ia` | confirmado |
+| **Agente de IA** | `AgenteIATab` (`1b7a2c45` L6121), tabela `agente_ia` | confirmado |
 | **Chave de IA = Groq** | `rnProvedorChave` sempre devolve `'groq'` (`c00a` L46-47); passo a passo do Groq na tela de conexões (`1b7a2c45` L4258, L4509) | confirmado |
 
 ## 5. Renata no front
