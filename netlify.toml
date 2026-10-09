@@ -8,3 +8,16 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# P0-05: cabeçalhos de segurança. A CSP limita para onde a página pode mandar dados (connect-src),
+# impede o site de ser aberto dentro de outro (frame-ancestors) e bloqueia plugins e <base>.
+# Scripts continuam com 'unsafe-inline' e blob: porque o pacote do Claude Design monta os scripts assim.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Permissions-Policy = "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://unpkg.com; style-src 'self' 'unsafe-inline' blob: https://fonts.googleapis.com; font-src 'self' data: blob: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://gbhsslyoybqjvjznlave.supabase.co; connect-src 'self' blob: data: https://gbhsslyoybqjvjznlave.supabase.co wss://gbhsslyoybqjvjznlave.supabase.co; frame-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"

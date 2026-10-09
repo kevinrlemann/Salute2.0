@@ -147,6 +147,10 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** M (código) + decisão jurídica/comercial fora do código.
 
 ### P0-05 — Site publicado sem CSP e sem cabeçalhos de segurança
+> ✅ **Feito em 2026-10-09 (no `netlify.toml`, vale quando publicar):** CSP com `connect-src` só para o site e o Supabase,
+> `frame-ancestors 'self'`, `object-src 'none'`, `base-uri`/`form-action 'self'`, X-Frame-Options, nosniff, Referrer-Policy, HSTS e
+> Permissions-Policy (câmera, microfone e GPS só no próprio site). Testado com a regra ligada: 0 bloqueios em todas as telas
+> (demonstração) e na tela de login real. Ainda permite `'unsafe-inline'`/`'unsafe-eval'` (exigência do pacote atual; ver P1-01). Não vale no artifact.
 - **Problema:** nem `netlify.toml` nem `deploy/netlify/netlify.toml` têm `[[headers]]`; não há `_headers` em `front/`;
   o template não tem CSP. Um `_headers` existe só na branch `versao31`.
 - **Evidência:** `netlify.toml` (raiz) [confirmado nesta leitura: só `[build]` e `[[redirects]]`];
