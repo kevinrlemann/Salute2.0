@@ -1593,7 +1593,7 @@ function PainelScreen(_ref14) {
     })
   }, /*#__PURE__*/React.createElement(CardTitle, {
     right: /*#__PURE__*/React.createElement(Legend, {
-      items: [['Consulta', '#1F5EFF'], ['Reunião', '#F2694A']]
+      items: [['Consulta', '#1F5EFF'], ['Reunião', '#F2694A'], ['Feriado', '#D93838']]
     })
   }, "Atividade mensal"), /*#__PURE__*/React.createElement("div", {
     style: {

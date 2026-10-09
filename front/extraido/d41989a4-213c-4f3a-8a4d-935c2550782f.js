@@ -293,7 +293,8 @@ function MonthGrid(_ref7) {
     var isBold = bold.includes(d);
     return /*#__PURE__*/React.createElement("div", {
       key: d,
-      title: isFeriado ? feriadoMap[d].nome : undefined,
+      title: isFeriado ? 'Feriado: ' + feriadoMap[d].nome + (feriadoMap[d].tipo === 'ponto_facultativo' ? ' (ponto facultativo)' : '') : undefined,
+      'aria-label': isFeriado ? d + ', feriado: ' + feriadoMap[d].nome : undefined,
       onClick: isFeriado && onDayClick ? function () {
         return onDayClick(d);
       } : undefined,
@@ -317,10 +318,10 @@ function MonthGrid(_ref7) {
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 18,
-        fontWeight: isToday || isBold || d > 7 ? 600 : 400,
-        color: isToday ? '#1F5EFF' : isFeriado ? '#E56D26' : d < 6 ? 'var(--text-muted)' : 'var(--text-strong)',
-        background: isToday ? '#fff' : isFeriado ? 'rgba(229,109,38,0.1)' : 'transparent',
-        boxShadow: isToday ? '0 4px 12px -6px rgba(23,73,170,.4)' : 'none'
+        fontWeight: isFeriado ? 700 : isToday || isBold || d > 7 ? 600 : 400,
+        color: isToday ? '#1F5EFF' : isFeriado ? '#fff' : d < 6 ? 'var(--text-muted)' : 'var(--text-strong)',
+        background: isToday ? '#fff' : isFeriado ? 'linear-gradient(160deg,#F2707A,#D93838)' : 'transparent',
+        boxShadow: isToday ? isFeriado ? '0 0 0 2.5px #D93838, 0 4px 12px -6px rgba(23,73,170,.4)' : '0 4px 12px -6px rgba(23,73,170,.4)' : isFeriado ? '0 6px 14px -6px rgba(217,56,56,.65)' : 'none'
       }
     }, d), isFeriado && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -331,7 +332,7 @@ function MonthGrid(_ref7) {
         width: 5,
         height: 5,
         borderRadius: '50%',
-        background: '#E56D26'
+        background: '#D93838'
       }
     }));
   }));
@@ -341,11 +342,12 @@ function FeriadoModal(_ref8) {
     onClose = _ref8.onClose;
   if (!feriado) return null;
   return /*#__PURE__*/React.createElement("div", {
+    "data-overlay": "1",
     onClick: onClose,
     style: {
       position: 'fixed',
       inset: 0,
-      zIndex: 900,
+      zIndex: Z.dialogo,
       background: 'rgba(15,23,42,0.35)',
       display: 'flex',
       alignItems: 'center',
@@ -413,7 +415,7 @@ function FeriadoModal(_ref8) {
       color: 'var(--text-muted)',
       paddingLeft: 56
     }
-  }, feriado.tipo === 'nacional' ? 'Feriado nacional' : feriado.tipo === 'estadual' ? 'Feriado estadual' : 'Feriado municipal'), /*#__PURE__*/React.createElement("div", {
+  }, feriado.tipo === 'nacional' ? 'Feriado nacional' : feriado.tipo === 'ponto_facultativo' ? 'Ponto facultativo nacional' : feriado.tipo === 'estadual' ? 'Feriado estadual' : feriado.tipo === 'municipal' ? 'Feriado municipal' : 'Feriado da clínica'), /*#__PURE__*/React.createElement("div", {
     style: {
       borderTop: '1.5px solid rgba(214,226,242,.6)',
       paddingTop: 16,

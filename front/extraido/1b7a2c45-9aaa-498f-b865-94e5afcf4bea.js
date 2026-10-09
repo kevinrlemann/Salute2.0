@@ -4251,6 +4251,94 @@ function AgenteIATab(_ref2) {
 }
 window.AgenteIATab = AgenteIATab;
 
+/* ---------- feriados no calendário do mês (agenda e painel) ---------- */
+// domingo de Páscoa (mesmo cálculo da função pascoa do banco)
+function pascoaJS(ano) {
+  var a = ano % 19,
+    b = Math.floor(ano / 100),
+    c = ano % 100,
+    d = Math.floor(b / 4),
+    e = b % 4,
+    f = Math.floor((b + 8) / 25),
+    g = Math.floor((b - f + 1) / 3),
+    h = (19 * a + b - d - g + 15) % 30,
+    i = Math.floor(c / 4),
+    k = c % 4,
+    l = (32 + 2 * e + 2 * i - h - k) % 7,
+    m = Math.floor((a + 11 * h + 22 * l) / 451),
+    n = h + l - 7 * m + 114;
+  return new Date(ano, Math.floor(n / 31) - 1, n % 31 + 1);
+}
+// nacionais calculados no navegador: usados na demonstração e enquanto o banco não responde
+function feriadosNacionaisJS(ano, mes) {
+  var p = pascoaJS(ano);
+  var mov = function mov(dias, nome, tipo) {
+    var x = new Date(p);
+    x.setDate(x.getDate() + dias);
+    return [x.getMonth() + 1, x.getDate(), nome, tipo];
+  };
+  return [[1, 1, 'Confraternização Universal', 'nacional'], [4, 21, 'Tiradentes', 'nacional'], [5, 1, 'Dia do Trabalho', 'nacional'], [9, 7, 'Independência do Brasil', 'nacional'], [10, 12, 'Nossa Senhora Aparecida', 'nacional'], [11, 2, 'Finados', 'nacional'], [11, 15, 'Proclamação da República', 'nacional'], [11, 20, 'Dia Nacional de Zumbi e da Consciência Negra', 'nacional'], [12, 25, 'Natal', 'nacional'], mov(-48, 'Carnaval', 'ponto_facultativo'), mov(-47, 'Carnaval', 'ponto_facultativo'), mov(-2, 'Sexta-feira Santa', 'nacional'), mov(60, 'Corpus Christi', 'ponto_facultativo')].filter(function (x) {
+    return x[0] === mes;
+  }).map(function (x) {
+    return {
+      dia: x[1],
+      nome: x[2],
+      tipo: x[3],
+      recorrente: true
+    };
+  });
+}
+var FERIADOS_CACHE = {};
+function MesComFeriados(_ref) {
+  var dia = _ref.dia;
+  var chave = isoOf(new Date(dia.getFullYear(), dia.getMonth(), 1));
+  var _st = React.useState(function () {
+      return FERIADOS_CACHE[chave] || feriadosNacionaisJS(dia.getFullYear(), dia.getMonth() + 1);
+    }),
+    lista = _st[0],
+    setLista = _st[1];
+  var _st2 = React.useState(null),
+    sel = _st2[0],
+    setSel = _st2[1];
+  React.useEffect(function () {
+    var vivo = true;
+    var base = FERIADOS_CACHE[chave] || feriadosNacionaisJS(dia.getFullYear(), dia.getMonth() + 1);
+    setLista(base);
+    if (SB_ON && !FERIADOS_CACHE[chave]) {
+      SB.rpc('feriados_do_mes', {
+        p_clinica: CLI(),
+        p_mes: chave
+      }).then(function (r) {
+        if (r.error || !Array.isArray(r.data)) return;
+        FERIADOS_CACHE[chave] = r.data;
+        if (vivo) setLista(r.data);
+      });
+    }
+    return function () {
+      vivo = false;
+    };
+  }, [chave]);
+  var mapa = {};
+  lista.forEach(function (f) {
+    mapa[f.dia] = f;
+  });
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(MonthGrid, Object.assign({
+    compact: true
+  }, mesGrade(dia), {
+    feriadoMap: mapa,
+    onDayClick: function onDayClick(d) {
+      return setSel(mapa[d] || null);
+    }
+  })), /*#__PURE__*/React.createElement(FeriadoModal, {
+    feriado: sel,
+    onClose: function onClose() {
+      return setSel(null);
+    }
+  }));
+}
+window.MesComFeriados = MesComFeriados;
+window.feriadosNacionaisJS = feriadosNacionaisJS;
+
 /* ---------- conexões da Renata: passo a passo do Groq ---------- */
 function RnPassoGroq(_ref) {
   var note = _ref.note,
@@ -10116,11 +10204,10 @@ function App() {
     banner: /*#__PURE__*/React.createElement(AvisoSuporte, {
       mobile: mobile
     }),
-    topExtra: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(VozBotao, {
+    // o comando de voz segue no atalho Ctrl + M e dentro da Renata; o botão do topo saiu a pedido do fundador
+    topExtra: /*#__PURE__*/React.createElement(RenataButton, {
       mobile: mobile
-    }), /*#__PURE__*/React.createElement(RenataButton, {
-      mobile: mobile
-    })),
+    }),
     title: abaBloq ? abaBloq.label : mobile ? r.mobileTitle || r.title : r.title,
     subtitle: abaBloq || mobile ? undefined : r.subtitle
   }, abaBloq || semNada ? /*#__PURE__*/React.createElement(SemAcesso, {
