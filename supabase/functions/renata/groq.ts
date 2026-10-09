@@ -20,6 +20,14 @@ const EXTRAS: Record<string, Record<string, unknown>> = {
 export const MAX_SISTEMA = 7000, MAX_DESC_FERRAMENTA = 200, MAX_DESC_CAMPO = 80, MAX_RESPOSTA = 1000;
 // espera máxima (segundos) quando os três modelos estão no limite por minuto
 export const MAX_ESPERA = 20;
+// só o código do erro do provedor vai para os registros (nada do conteúdo do pedido ou da resposta)
+export const codigoErro = (txt: string) => {
+  try {
+    const e = JSON.parse(txt);
+    const x = e && (e.error || e.detail || e);
+    return String((x && (x.code || x.type || x.status)) || 'sem_codigo').slice(0, 60);
+  } catch (_) { return 'sem_codigo'; }
+};
 const corta = (t: string, n: number) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
 type Bloco = { type?: string; text?: string; id?: string; name?: string; input?: unknown; tool_use_id?: string; content?: unknown };
@@ -122,7 +130,11 @@ export function eventosClaude(onFim: (tin: number, tout: number) => void | Promi
         if (dado === '[DONE]') { await encerrar(ctl); continue; }
         let c: Record<string, any>;
         try { c = JSON.parse(dado); } catch (_) { continue; }
-        if (c.error) { evento(ctl, { type: 'error', error: { type: 'api_error', message: String(c.error.message || '') } }); continue; }
+        if (c.error) {
+          console.warn(`[groq] erro no streaming (${codigoErro(JSON.stringify(c))})`);
+          evento(ctl, { type: 'error', error: { type: 'api_error', message: 'A IA interrompeu a resposta. Tente de novo.' } });
+          continue;
+        }
         if (!iniciou) { iniciou = true; evento(ctl, { type: 'message_start', message: { role: 'assistant', content: [], usage: { input_tokens: 0, output_tokens: 0 } } }); }
         // o Groq manda o consumo no último pedaço, em x_groq.usage (ou usage)
         const uso = c.usage || (c.x_groq && c.x_groq.usage);
@@ -193,7 +205,7 @@ export async function chamarGroq(key: string, corpo: Record<string, unknown>, mo
     if (r.ok) return r;
     if (r.status === 401 || r.status === 403) return r; // chave errada: não adianta trocar de modelo
     const txt = await r.text();
-    console.warn(`[groq] ${modelo} respondeu ${r.status}: ${txt.slice(0, 200)}`);
+    console.warn(`[groq] ${modelo} respondeu ${r.status} (${codigoErro(txt)})`);
     ultima = new Response(txt, { status: r.status, headers: r.headers });
     const seg = /try again in ([\d.]+)s/i.exec(txt);
     if (r.status === 429 && seg) espera = Math.min(espera, Number(seg[1]));

@@ -18,7 +18,7 @@
 // As regras do Agente de IA (tabela agente_ia) entram sempre no começo das instruções.
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { chamarGroq, eventosClaude, paraGroq } from './groq.ts';
+import { chamarGroq, codigoErro, eventosClaude, paraGroq } from './groq.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -37,7 +37,7 @@ const MAX_MENSAGENS = 100, MAX_FERRAMENTAS = 40, MAX_BYTES = 400_000;
 const erroVoz = async (r: Response, permissao: string) => {
   const txt = await r.text();
   const semPermissao = /missing_permissions|missing the permission/i.test(txt);
-  console.warn(`[elevenlabs] ${r.status}: ${txt.slice(0, 200)}`);
+  console.warn(`[elevenlabs] ${r.status} (${codigoErro(txt)})`);
   return json({ erro: semPermissao ? `A chave da ElevenLabs está sem a permissão "${permissao}". Crie outra chave com essa permissão ligada e salve nas Conexões da Renata.` : 'A ElevenLabs recusou o pedido.', status: r.status }, r.status);
 };
 
@@ -155,7 +155,15 @@ Deno.serve(async (req) => {
     const sistema = typeof regras === 'string' && regras ? regras + '\n\n' + sisFront : sisFront;
 
     const rg = await chamarGroq(ia.key, paraGroq({ system: sistema, messages: msgs as { role: string; content: unknown }[], tools: tools as { name: string }[] | undefined, max_tokens: maxTokens }));
-    if (!rg.ok || !rg.body) return new Response(await rg.text(), { status: rg.status, headers: { ...CORS, 'content-type': 'application/json' } });
+    if (!rg.ok || !rg.body) {
+      // o navegador recebe só o código e uma frase simples, nunca o texto cru do provedor
+      const cod = codigoErro(await rg.text().catch(() => ''));
+      const frase = rg.status === 401 || rg.status === 403 ? 'A chave da IA foi recusada. Confira nas Conexões da Renata.'
+        : rg.status === 429 ? 'A IA está no limite por minuto. Tente de novo em instantes.'
+        : rg.status === 413 ? 'Conversa grande demais. Comece uma conversa nova com a Renata.'
+        : 'A IA não respondeu agora. Tente de novo.';
+      return json({ erro: frase, codigo: cod }, rg.status);
+    }
     // traduz o streaming para o formato do Claude e soma o consumo no fim
     // (a mensagem é contada pelo servidor, não pelo que o navegador manda)
     const traduz = eventosClaude((tin, tout) => { consumo({ mensagens: nova ? 1 : 0, tin, tout }); });
