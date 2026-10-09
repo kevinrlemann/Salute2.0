@@ -184,6 +184,10 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** P.
 
 ### P0-07 — Envio público de documentos e RPCs públicas sem limite de tipo, tamanho e quantidade
+> ✅ **Parte feita em 2026-10-09:** `registrar_documento_link` só registra arquivo que existe no Storage, usa tamanho e tipo do
+> próprio Storage, não duplica e aceita até 30 arquivos por link; respostas de anamnese até 10 mil caracteres (rascunho já tinha
+> limite de 200 KB). Testado 6/6. **Falta (decisão do fundador):** lista de tipos aceitos no bucket `prontuario` (PDF, fotos, HEIC?) e
+> limite de envios brutos no Storage pela policy do link.
 - **Problema:** o bucket `prontuario` aceita qualquer tipo de arquivo (`allowed_mime_types = null`), até 50 MB, sem
   limite de quantidade por link; `registrar_documento_link` aceita nome/mime/tamanho livres e não confere se o arquivo
   existe; `responder_anamnese` não limita tamanho; `salvar_rascunho_anamnese` não limita número de chamadas.
