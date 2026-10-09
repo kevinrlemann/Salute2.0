@@ -4,6 +4,8 @@ Data: 2026-10-09 · Modo: somente leitura (nenhum arquivo do sistema foi alterad
 
 Material analisado: o pacote publicado como artifact no claude.ai (`index.html` + `config.js`), já decodificado em `scratchpad/bundle/` (template.html + 24 arquivos .js + 4 fontes .woff2).
 
+> **Atualização de 09/10:** o código fonte real do front foi localizado no ambiente em que o sistema é construído e agora está versionado em `front/fonte/`, com build reproduzível. Onde este documento diz que não existe projeto fonte, isso vale só para o que estava publicado no artifact. Complemento em `01-complemento-fonte-e-publicacao.md`.
+
 Legenda: **[confirmado]** = visto no código · **[inferido]** = conclusão provável a partir do código, mas não comprovada (precisa ser checada no banco/servidor/hospedagem).
 
 ---

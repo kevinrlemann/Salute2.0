@@ -372,6 +372,9 @@ var EquipeSvc = {
                 detectSessionInUrl: false,
                 flowType: 'implicit',
                 storageKey: 'salute02-convite'
+              },
+              global: {
+                fetch: sbFetch
               }
             });
             _context4.n = 3;

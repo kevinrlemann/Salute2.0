@@ -1,0 +1,7 @@
+# Código fonte e cópia decodificada ficam no repositório, não no site
+/fonte/*     /index.html  200!
+/extraido/*  /index.html  200!
+# Rota alternativa para o banco: o sistema usa sozinho quando a rede bloqueia o endereco do Supabase
+/sb/*  https://gbhsslyoybqjvjznlave.supabase.co/:splat  200
+# Qualquer outro endereco abre o sistema
+/*  /index.html  200

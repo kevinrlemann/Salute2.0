@@ -518,7 +518,7 @@ var lsSet = function lsSet(k, v) {
 
 /* ===== Módulos do sistema (fonte única: menu, abas e permissões) ===== */
 var GESTAO_AREAS = [['estoque', 'Estoque', 'package', 'Produtos, validade e consumo'], ['financeiro', 'Financeiro', 'wallet', 'Receitas, despesas e caixa']];
-var CONFIG_TABS = [['cadastro', 'Cadastro', 'clipboard-pen'], ['canais', 'Canais', 'radio-tower'], ['flix', 'Saluteflix', 'clapperboard'], ['parcerias', 'Parcerias', 'handshake'], ['cert', 'Certificações', 'award'], ['conta', 'Minha conta', 'user']];
+var CONFIG_TABS = [['cadastro', 'Cadastro', 'clipboard-pen'], ['canais', 'Canais', 'radio-tower'], ['agenteia', 'Agente IA', 'bot'], ['flix', 'Saluteflix', 'clapperboard'], ['parcerias', 'Parcerias', 'handshake'], ['cert', 'Certificações', 'award'], ['conta', 'Minha conta', 'user']];
 var SUBMODS = {
   gestao: GESTAO_AREAS,
   perfil: CONFIG_TABS

@@ -6,14 +6,16 @@ Leia `README.md`, `docs/supabase.md` e `docs/auditoria/` antes de qualquer alter
 
 - Banco/Auth/Storage/Edge Functions: **somente** o Supabase "Salute IA novo visual" (`gbhsslyoybqjvjznlave`).
 - "Salute CRM" (`pigfhkmtqyatuaudpgyy`) é legado: só leitura.
-- Front: `front/index.html` + `front/config.js`, publicados no artifact https://claude.ai/artifact/WtotK7P4yu9qhf9VWrAqhA. Toda edição do front entra primeiro neste repositório e só depois é republicada.
+- Front: `front/index.html` + `front/config.js`, publicados no Netlify `saluteia` (https://saluteia.site, pasta `front/` via `netlify.toml`) e como prévia no artifact https://claude.ai/artifact/WtotK7P4yu9qhf9VWrAqhA (a prévia não acessa o banco). Toda edição do front entra primeiro neste repositório e só depois é republicada.
 
 ## Front
 
+- Código fonte real: `front/fonte/` (leia `front/fonte/README.md` antes de mexer). `front/index.html` é gerado por `python3 front/fonte/build.py`; nunca edite o bundle à mão. Depois do build, rode o unbundle abaixo para atualizar `front/extraido/`.
+- O build aplica patches de texto em ordem fixa sobre a base `front/fonte/bk_v22/`; mudar a base quebra os patches seguintes.
 - Bundle único exportado do Claude Design: React 18.3.1 (build development), supabase-js 2.117.2, design system "SaluteProjetoDesigner".
 - `python3 -I tools/unbundle.py front/index.html front/extraido` decodifica os scripts para leitura. `front/extraido/` é cópia de leitura; o publicado é `front/index.html`.
 - Os módulos se comunicam por globais em `window`; a ordem dos `<script>` no template importa.
-- Acesso a dados passa por `SB`/`DB.*` (arquivo `5a1e7e02-…c001`), sempre filtrando `clinica_id`.
+- Acesso a dados passa por `SB`/`DB.*` (arquivo `5a1e7e02-…c001`, fonte `front/fonte/supa_base.jsx`), sempre filtrando `clinica_id`.
 
 ## Regras (do manual em `docs/manual/`)
 

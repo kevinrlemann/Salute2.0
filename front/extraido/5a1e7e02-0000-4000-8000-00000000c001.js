@@ -13,13 +13,13 @@ function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function _regenerator() { /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ var e, t, r = "function" == typeof Symbol ? Symbol : {}, n = r.iterator || "@@iterator", o = r.toStringTag || "@@toStringTag"; function i(r, n, o, i) { var c = n && n.prototype instanceof Generator ? n : Generator, u = Object.create(c.prototype); return _regeneratorDefine2(u, "_invoke", function (r, n, o) { var i, c, u, f = 0, p = o || [], y = !1, G = { p: 0, n: 0, v: e, a: d, f: d.bind(e, 4), d: function d(t, r) { return i = t, c = 0, u = e, G.n = r, a; } }; function d(r, n) { for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) { var o, i = p[t], d = G.p, l = i[2]; r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0)); } if (o || r > 1) return a; throw y = !0, n; } return function (o, p, l) { if (f > 1) throw TypeError("Generator is already running"); for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) { i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u); try { if (f = 2, i) { if (c || (o = "next"), t = i[o]) { if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object"); if (!t.done) return t; u = t.value, c < 2 && (c = 0); } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1); i = e; } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break; } catch (t) { i = e, c = 1, u = t; } finally { f = 1; } } return { value: t, done: y }; }; }(r, o, i), !0), u; } var a = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} t = Object.getPrototypeOf; var c = [][n] ? t(t([][n]())) : (_regeneratorDefine2(t = {}, n, function () { return this; }), t), u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c); function f(e) { return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, _regeneratorDefine2(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, _regeneratorDefine2(u, "constructor", GeneratorFunctionPrototype), _regeneratorDefine2(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", _regeneratorDefine2(GeneratorFunctionPrototype, o, "GeneratorFunction"), _regeneratorDefine2(u), _regeneratorDefine2(u, o, "Generator"), _regeneratorDefine2(u, n, function () { return this; }), _regeneratorDefine2(u, "toString", function () { return "[object Generator]"; }), (_regenerator = function _regenerator() { return { w: i, m: f }; })(); }
 function _regeneratorDefine2(e, r, n, t) { var i = Object.defineProperty; try { i({}, "", {}); } catch (e) { i = 0; } _regeneratorDefine2 = function _regeneratorDefine(e, r, n, t) { function o(r, n) { _regeneratorDefine2(e, r, function (e) { return this._invoke(r, n, e); }); } r ? i ? i(e, r, { value: n, enumerable: !t, configurable: !t, writable: !t }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2)); }, _regeneratorDefine2(e, r, n, t); }
-function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
 function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
 /* =====================================================================
    SUPABASE: conexão única do sistema (Salute 02)
    A URL e a chave pública (anon) vêm do arquivo config.js, gerado a partir
@@ -45,6 +45,114 @@ var SB_KEY_ERRADA = function () {
     return false;
   }
 }();
+/* ---------- Rota alternativa para o banco ----------
+   Alguns provedores, antivírus e filtros de rede bloqueiam o endereço *.supabase.co.
+   Quando isso acontece, o sistema passa a falar com o banco pelo próprio domínio do site
+   (SUPABASE_PROXY no config.js, ex.: "/sb"), que repassa cada chamada ao Supabase.
+   Só troca de rota depois de confirmar que o endereço direto não responde e que a rota do
+   site responde. Sem SUPABASE_PROXY no config.js, nada muda. Downloads de arquivos (fotos e
+   documentos) e o tempo real continuam sempre no endereço direto. */
+var SB_PROXY = function () {
+  var p = String((window.SALUTE_CONFIG || {}).SUPABASE_PROXY || '').trim().replace(/\/+$/, '');
+  if (!p) return '';
+  return /^https?:\/\//i.test(p) ? p : location.origin + (p.charAt(0) === '/' ? p : '/' + p);
+}();
+var SB_VIA = 'direto';
+var SB_TESTE = null;
+var sbResponde = function sbResponde(base) {
+  return new Promise(function (ok) {
+    var t = setTimeout(function () {
+      return ok(false);
+    }, 6000);
+    fetch(base + '/auth/v1/health', {
+      headers: {
+        apikey: SB_CFG.key
+      },
+      cache: 'no-store'
+    }).then(function (r) {
+      clearTimeout(t);
+      ok(r.ok);
+    }, function () {
+      clearTimeout(t);
+      ok(false);
+    });
+  });
+};
+function sbTestaRota() {
+  if (!SB_TESTE) {
+    SB_TESTE = sbResponde(SB_CFG.url).then(function (direto) {
+      return direto ? false : sbResponde(SB_PROXY);
+    }).then(function (usarSite) {
+      SB_TESTE = null;
+      if (usarSite) {
+        SB_VIA = 'site';
+        console.warn('[supabase] o endereço direto do banco está bloqueado nesta rede; usando a rota do próprio site');
+      }
+      return usarSite;
+    });
+  }
+  return SB_TESTE;
+}
+function sbFetch(_x, _x2) {
+  return _sbFetch.apply(this, arguments);
+}
+function _sbFetch() {
+  _sbFetch = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee17(input, init) {
+    var u, metodo, doBanco, arquivo, peloSite, _t5;
+    return _regenerator().w(function (_context17) {
+      while (1) switch (_context17.p = _context17.n) {
+        case 0:
+          u = typeof input === 'string' ? input : input instanceof URL ? input.href : String(input && input.url || '');
+          metodo = String(init && init.method || input && input.method || 'GET').toUpperCase();
+          doBanco = !!(SB_PROXY && SB_CFG.url && u.indexOf(SB_CFG.url + '/') === 0); // download de arquivo nunca passa pela rota do site: assim não fica em nenhum cache intermediário
+          arquivo = (metodo === 'GET' || metodo === 'HEAD') && u.indexOf('/storage/v1/object/') > 0;
+          peloSite = function peloSite() {
+            var nu = SB_PROXY + u.slice(SB_CFG.url.length);
+            return fetch(typeof input === 'string' || input instanceof URL ? nu : new Request(nu, input), init);
+          };
+          if (!(!doBanco || arquivo)) {
+            _context17.n = 1;
+            break;
+          }
+          return _context17.a(2, fetch(input, init));
+        case 1:
+          if (!(SB_VIA === 'site')) {
+            _context17.n = 2;
+            break;
+          }
+          return _context17.a(2, peloSite());
+        case 2:
+          _context17.p = 2;
+          _context17.n = 3;
+          return fetch(input, init);
+        case 3:
+          return _context17.a(2, _context17.v);
+        case 4:
+          _context17.p = 4;
+          _t5 = _context17.v;
+          if (!(_t5 && _t5.name === 'AbortError')) {
+            _context17.n = 5;
+            break;
+          }
+          throw _t5;
+        case 5:
+          _context17.n = 6;
+          return sbTestaRota();
+        case 6:
+          if (!_context17.v) {
+            _context17.n = 7;
+            break;
+          }
+          return _context17.a(2, peloSite());
+        case 7:
+          throw _t5;
+        case 8:
+          return _context17.a(2);
+      }
+    }, _callee17, null, [[2, 4]]);
+  }));
+  return _sbFetch.apply(this, arguments);
+}
 var SB = function () {
   try {
     if (!SB_CFG.url || !SB_CFG.key || SB_KEY_ERRADA || !window.supabase || !window.supabase.createClient) return null;
@@ -53,6 +161,9 @@ var SB = function () {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
+      },
+      global: {
+        fetch: sbFetch
       }
     });
   } catch (e) {
@@ -998,26 +1109,26 @@ function carregarPreferencias() {
   return _carregarPreferencias.apply(this, arguments);
 }
 function _carregarPreferencias() {
-  _carregarPreferencias = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee17() {
+  _carregarPreferencias = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee18() {
     var r, p;
-    return _regenerator().w(function (_context17) {
-      while (1) switch (_context17.n) {
+    return _regenerator().w(function (_context18) {
+      while (1) switch (_context18.n) {
         case 0:
-          _context17.n = 1;
+          _context18.n = 1;
           return DB.ler(SB.from('preferencias_usuario').select('*').eq('clinica_id', CLI()).eq('usuario_id', UID()).is('excluido_em', null).limit(1));
         case 1:
-          r = _context17.v;
+          r = _context18.v;
           p = r[0];
           if (p) {
-            _context17.n = 3;
+            _context18.n = 3;
             break;
           }
-          _context17.n = 2;
+          _context18.n = 2;
           return DB.ins('preferencias_usuario', {
             usuario_id: UID()
           }, 'Não foi possível criar as preferências');
         case 2:
-          p = _context17.v;
+          p = _context18.v;
         case 3:
           PREF.v = p;
           PREF.subs.forEach(function (f) {
@@ -1033,9 +1144,9 @@ function _carregarPreferencias() {
             return f();
           });
         case 4:
-          return _context17.a(2);
+          return _context18.a(2);
       }
-    }, _callee17);
+    }, _callee18);
   }));
   return _carregarPreferencias.apply(this, arguments);
 }
@@ -1086,50 +1197,50 @@ function carregarContexto0() {
   return _carregarContexto.apply(this, arguments);
 } // troca de clínica: avisa na hora qual clínica está abrindo e recarrega com os dados dela
 function _carregarContexto() {
-  _carregarContexto = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee18() {
-    var _yield$SB$rpc4, data, error, perfil, clinicas, r, de, admin, suporte, salva, clinica, _t5;
-    return _regenerator().w(function (_context18) {
-      while (1) switch (_context18.p = _context18.n) {
+  _carregarContexto = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19() {
+    var _yield$SB$rpc4, data, error, perfil, clinicas, r, de, admin, suporte, salva, clinica, _t6;
+    return _regenerator().w(function (_context19) {
+      while (1) switch (_context19.p = _context19.n) {
         case 0:
-          _context18.p = 0;
-          _context18.n = 1;
+          _context19.p = 0;
+          _context19.n = 1;
           return SB.rpc('meu_contexto');
         case 1:
-          _yield$SB$rpc4 = _context18.v;
+          _yield$SB$rpc4 = _context19.v;
           data = _yield$SB$rpc4.data;
           error = _yield$SB$rpc4.error;
           if (!error) {
-            _context18.n = 2;
+            _context19.n = 2;
             break;
           }
           throw error;
         case 2:
           perfil = data.perfil, clinicas = data.clinicas || [];
           if (perfil) {
-            _context18.n = 3;
+            _context19.n = 3;
             break;
           }
           setSessao({
             estado: 'login'
           });
-          return _context18.a(2);
+          return _context19.a(2);
         case 3:
           if (!(!clinicas.length && !data.admin)) {
-            _context18.n = 6;
+            _context19.n = 6;
             break;
           }
-          _context18.n = 4;
+          _context19.n = 4;
           return SB.rpc('concluir_cadastro');
         case 4:
-          r = _context18.v;
+          r = _context19.v;
           if (!(!r.error && r.data)) {
-            _context18.n = 6;
+            _context19.n = 6;
             break;
           }
-          _context18.n = 5;
+          _context19.n = 5;
           return SB.rpc('meu_contexto');
         case 5:
-          de = _context18.v;
+          de = _context19.v;
           if (!de.error && de.data) {
             data = de.data;
             perfil = data.perfil;
@@ -1148,7 +1259,7 @@ function _carregarContexto() {
           if (!perfil.termos_aceitos_em) SB.rpc('aceitar_termos').then(function () {}, function () {});
           // equipe da Salute sem clínica aberta: lista de todas as clínicas (Painel Master)
           if (!(admin && !suporte)) {
-            _context18.n = 7;
+            _context19.n = 7;
             break;
           }
           setSessao({
@@ -1159,10 +1270,10 @@ function _carregarContexto() {
             suporte: null,
             clinica: null
           });
-          return _context18.a(2);
+          return _context19.a(2);
         case 7:
           if (!(!clinicas.length && data.bloqueado)) {
-            _context18.n = 8;
+            _context19.n = 8;
             break;
           }
           setSessao({
@@ -1172,10 +1283,10 @@ function _carregarContexto() {
             admin: admin,
             suporte: suporte
           });
-          return _context18.a(2);
+          return _context19.a(2);
         case 8:
           if (clinicas.length) {
-            _context18.n = 9;
+            _context19.n = 9;
             break;
           }
           setSessao({
@@ -1185,7 +1296,7 @@ function _carregarContexto() {
             admin: admin,
             suporte: suporte
           });
-          return _context18.a(2);
+          return _context19.a(2);
         case 9:
           salva = function () {
             try {
@@ -1215,7 +1326,7 @@ function _carregarContexto() {
             admin: admin,
             suporte: suporte
           });
-          _context18.n = 10;
+          _context19.n = 10;
           return carregarPreferencias();
         case 10:
           setSessao({
@@ -1230,31 +1341,31 @@ function _carregarContexto() {
           } : {
             ultimo_acesso_em: agoraIso()
           }).eq('id', perfil.id).then(function () {});
-          _context18.n = 12;
+          _context19.n = 12;
           break;
         case 11:
-          _context18.p = 11;
-          _t5 = _context18.v;
+          _context19.p = 11;
+          _t6 = _context19.v;
           setSessao({
             estado: 'erro',
-            erro: MSG_ERRO(_t5)
+            erro: MSG_ERRO(_t6)
           });
         case 12:
-          return _context18.a(2);
+          return _context19.a(2);
       }
-    }, _callee18, null, [[0, 11]]);
+    }, _callee19, null, [[0, 11]]);
   }));
   return _carregarContexto.apply(this, arguments);
 }
 var TROCA = makeStore(null);
-function trocarClinica(_x) {
+function trocarClinica(_x3) {
   return _trocarClinica.apply(this, arguments);
 } // suporte da Salute: entra em uma clínica (fica registrado para a clínica) e volta para a lista
 function _trocarClinica() {
-  _trocarClinica = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19(id) {
-    var c, _t6;
-    return _regenerator().w(function (_context19) {
-      while (1) switch (_context19.p = _context19.n) {
+  _trocarClinica = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20(id) {
+    var c, _t7;
+    return _regenerator().w(function (_context20) {
+      while (1) switch (_context20.p = _context20.n) {
         case 0:
           c = (SESSAO.v.clinicas || []).find(function (x) {
             return x.id === id;
@@ -1268,45 +1379,45 @@ function _trocarClinica() {
           try {
             localStorage.setItem('salute02:clinica', id);
           } catch (e) {}
-          _context19.p = 1;
-          _context19.n = 2;
+          _context20.p = 1;
+          _context20.n = 2;
           return SB.from('perfis_usuario').update({
             clinica_ativa_id: id
           }).eq('id', UID());
         case 2:
-          _context19.n = 4;
+          _context20.n = 4;
           break;
         case 3:
-          _context19.p = 3;
-          _t6 = _context19.v;
+          _context20.p = 3;
+          _t7 = _context20.v;
         case 4:
           location.reload();
         case 5:
-          return _context19.a(2);
+          return _context20.a(2);
       }
-    }, _callee19, null, [[1, 3]]);
+    }, _callee20, null, [[1, 3]]);
   }));
   return _trocarClinica.apply(this, arguments);
 }
-function suporteEntrar(_x2, _x3) {
+function suporteEntrar(_x4, _x5) {
   return _suporteEntrar.apply(this, arguments);
 }
 function _suporteEntrar() {
-  _suporteEntrar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20(id, motivo) {
+  _suporteEntrar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21(id, motivo) {
     var _yield$SB$rpc5, error;
-    return _regenerator().w(function (_context20) {
-      while (1) switch (_context20.n) {
+    return _regenerator().w(function (_context21) {
+      while (1) switch (_context21.n) {
         case 0:
-          _context20.n = 1;
+          _context21.n = 1;
           return SB.rpc('admin_entrar_clinica', {
             p_clinica: id,
             p_motivo: motivo || null
           });
         case 1:
-          _yield$SB$rpc5 = _context20.v;
+          _yield$SB$rpc5 = _context21.v;
           error = _yield$SB$rpc5.error;
           if (!error) {
-            _context20.n = 2;
+            _context21.n = 2;
             break;
           }
           throw error;
@@ -1316,9 +1427,9 @@ function _suporteEntrar() {
           } catch (e) {}
           location.reload();
         case 3:
-          return _context20.a(2);
+          return _context21.a(2);
       }
-    }, _callee20);
+    }, _callee21);
   }));
   return _suporteEntrar.apply(this, arguments);
 }
@@ -1326,29 +1437,29 @@ function suporteVoltar() {
   return _suporteVoltar.apply(this, arguments);
 }
 function _suporteVoltar() {
-  _suporteVoltar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee21() {
-    var _t7;
-    return _regenerator().w(function (_context21) {
-      while (1) switch (_context21.p = _context21.n) {
+  _suporteVoltar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee22() {
+    var _t8;
+    return _regenerator().w(function (_context22) {
+      while (1) switch (_context22.p = _context22.n) {
         case 0:
-          _context21.p = 0;
-          _context21.n = 1;
+          _context22.p = 0;
+          _context22.n = 1;
           return SB.rpc('admin_sair_clinica');
         case 1:
-          _context21.n = 3;
+          _context22.n = 3;
           break;
         case 2:
-          _context21.p = 2;
-          _t7 = _context21.v;
+          _context22.p = 2;
+          _t8 = _context22.v;
         case 3:
           try {
             localStorage.removeItem('salute02:clinica');
           } catch (e) {}
           location.reload();
         case 4:
-          return _context21.a(2);
+          return _context22.a(2);
       }
-    }, _callee21, null, [[0, 2]]);
+    }, _callee22, null, [[0, 2]]);
   }));
   return _suporteVoltar.apply(this, arguments);
 }
@@ -1356,50 +1467,50 @@ function sair() {
   return _sair.apply(this, arguments);
 } // quem entrou pelo link do convite ainda não tem senha: pede para criar antes de abrir o sistema
 function _sair() {
-  _sair = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee22() {
-    var _t8, _t9;
-    return _regenerator().w(function (_context22) {
-      while (1) switch (_context22.p = _context22.n) {
+  _sair = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee23() {
+    var _t9, _t0;
+    return _regenerator().w(function (_context23) {
+      while (1) switch (_context23.p = _context23.n) {
         case 0:
           if (SB_ON) {
-            _context22.n = 1;
+            _context23.n = 1;
             break;
           }
           avisoOk('Modo demonstração', 'Sem Supabase conectado não há login. Nada foi alterado.');
-          return _context22.a(2);
+          return _context23.a(2);
         case 1:
-          _context22.p = 1;
+          _context23.p = 1;
           if (!SESSAO.v.suporte) {
-            _context22.n = 2;
+            _context23.n = 2;
             break;
           }
-          _context22.n = 2;
+          _context23.n = 2;
           return SB.rpc('admin_sair_clinica');
         case 2:
-          _context22.n = 4;
+          _context23.n = 4;
           break;
         case 3:
-          _context22.p = 3;
-          _t8 = _context22.v;
+          _context23.p = 3;
+          _t9 = _context23.v;
         case 4:
-          _context22.p = 4;
-          _context22.n = 5;
+          _context23.p = 4;
+          _context23.n = 5;
           return SB.auth.signOut();
         case 5:
-          _context22.n = 7;
+          _context23.n = 7;
           break;
         case 6:
-          _context22.p = 6;
-          _t9 = _context22.v;
+          _context23.p = 6;
+          _t0 = _context23.v;
         case 7:
           try {
             localStorage.removeItem('salute02:clinica');
           } catch (e) {}
           if (ROTAS_URL) location.replace(urlApp('login'));else location.reload();
         case 8:
-          return _context22.a(2);
+          return _context23.a(2);
       }
-    }, _callee22, null, [[4, 6], [1, 3]]);
+    }, _callee23, null, [[4, 6], [1, 3]]);
   }));
   return _sair.apply(this, arguments);
 }
@@ -1768,7 +1879,7 @@ function TelaAcesso() {
         }
       }, _callee9, null, [[1, 3, 4, 5]]);
     }));
-    return function run(_x4) {
+    return function run(_x6) {
       return _ref10.apply(this, arguments);
     };
   }();
@@ -2648,7 +2759,7 @@ function PainelMaster() {
         }
       }, _callee14, null, [[2, 4]]);
     }));
-    return function abrir(_x5) {
+    return function abrir(_x7) {
       return _ref20.apply(this, arguments);
     };
   }();
@@ -3129,6 +3240,9 @@ function LoginsClinica(_ref23) {
                 detectSessionInUrl: false,
                 flowType: 'implicit',
                 storageKey: 'salute02-convite'
+              },
+              global: {
+                fetch: sbFetch
               }
             });
             nomes = String(m.nome || '').trim().split(/\s+/);
@@ -3212,7 +3326,7 @@ function LoginsClinica(_ref23) {
         }
       }, _callee15, null, [[2, 14]]);
     }));
-    return function acao(_x6, _x7) {
+    return function acao(_x8, _x9) {
       return _ref25.apply(this, arguments);
     };
   }();

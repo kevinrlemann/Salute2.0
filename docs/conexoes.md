@@ -6,7 +6,7 @@ Verificado em 2026-10-09.
 |---|---|---|
 | Supabase "Salute IA novo visual" (`gbhsslyoybqjvjznlave`) | ✅ conectado | Banco em uso pelo front. ~115 tabelas em `public`, todas com RLS ligado. 1 edge function (`renata`, exige login). |
 | Supabase "Salute CRM" (`pigfhkmtqyatuaudpgyy`) | ✅ conectado | Projeto antigo. 24 edge functions, todas com `verify_jwt=false`. |
-| Netlify `saluteia` | ⚠️ conectado | Sem repositório ligado; não confirmado se publica o mesmo build do artifact. |
+| Netlify `saluteia` | ⚠️ conectado | Sem repositório ligado ainda. No ar está o envio manual de 06/10, anterior ao artifact atual. `netlify.toml` já prepara a publicação da pasta `front/` a partir da `main`. A rede do ambiente de nuvem bloqueia o Netlify, então publicar daqui só funciona pelo GitHub. |
 | GitHub `kevinrlemann/Salute2.0` | ✅ | Este repositório. `sicred` e `sicred02` estão vazios. |
 | Artifact "Salute IA" (claude.ai) | ✅ | `index.html` + `config.js`. Viewers do link compartilhado veem uma versão fixada anterior. |
 | rtk | ✅ instalado na sessão | Instalação permanente: `setup/environment-setup.sh`. |

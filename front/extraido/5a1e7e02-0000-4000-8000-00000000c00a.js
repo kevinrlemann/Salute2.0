@@ -59,7 +59,7 @@ function _rnFn() {
           data = _yield$SB$auth$getSes.data;
           tok = data && data.session ? data.session.access_token : SB_CFG.key;
           form = typeof FormData !== 'undefined' && body instanceof FormData;
-          return _context6.a(2, fetch(SB_CFG.url + '/functions/v1/renata', {
+          return _context6.a(2, sbFetch(SB_CFG.url + '/functions/v1/renata', {
             method: 'POST',
             signal: signal,
             headers: _objectSpread({

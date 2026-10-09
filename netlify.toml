@@ -1,0 +1,5 @@
+# Publicação no Netlify (projeto saluteia): sem build no servidor.
+# O front já sai pronto em front/index.html (gerado por python3 front/fonte/build.py).
+[build]
+  publish = "front"
+  command = ""
