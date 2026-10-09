@@ -695,12 +695,17 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 ## Novo (2026-10-09)
 
 ### P0-12 — Duas implementações do Agente de IA no mesmo banco
+> **Atualização 2026-10-09 (manhã):** a outra sessão refez a camada como `n8n_*` em cima das tabelas oficiais
+> (`agente_ia`, `tarefas_automacao`, `envios_pendentes`...) e declarou a `ia_*` desativada. Ainda ligados: gatilhos
+> `tg_agendamentos_ia_*`, `tg_conversas_ia_*`, `tg_mensagens_ia_humana` e o cron `ia-manutencao` (1/min). Testes 38/38
+> passam com eles e não há lembrete duplicado (a config `ia_*` está desligada). Falta só a limpeza, com autorização. [confirmado]
 - **Problema:** além das tabelas `agente_ia`/`tarefas_automacao`/`envios_pendentes` (desta sessão, com testes), outra sessão
   aplicou `ia_agente_01a..04` (`ia_automacao_config`, `ia_jobs`, `ia_outbox`, ...), fora do repositório. [confirmado]
 - **Risco:** lembretes e follow-ups em dobro quando o n8n for ligado; configuração em dois lugares. [inferido]
 - **Ação:** o fundador escolhe uma; a outra é desativada por migration versionada antes de construir o n8n.
 
 ### P0-13 — Funções `ia_*` abertas para qualquer pessoa (urgente)
+> ✅ **Resolvido em 2026-10-09** pela outra sessão: nenhuma das 74 funções `ia_*`/`n8n_*` é executável por anon ou authenticated. [confirmado]
 - **Problema:** as funções `ia_*` da segunda implementação são `SECURITY DEFINER`, executáveis por `anon` e `authenticated`
   e não checam a clínica de quem chama. Com a chave pública do site dá para, por exemplo: marcar consulta como paga
   (`ia_confirmar_pagamento`), injetar mensagem falsa em qualquer clínica (`ia_ingerir_evento` com provedor `teste`), mover
