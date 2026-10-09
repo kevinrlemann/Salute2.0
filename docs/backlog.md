@@ -439,8 +439,11 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 ### P1-12 — Brechas restantes de RLS e funções (achados baixos ainda abertos)
 > ✅ **Parte feita em 2026-10-09:** B5 (nenhuma função de gatilho executável por anon/authenticated; `search_path` em
 > `set_ia_config_atualizado_em`) e S8 (feriados: leitura para membros ativos, gravação só gestão; testado dono/estranho).
-> **Falta:** B6 (`usuarios_clinicas`/convites), S9 (`clinicas`), S11 (bucket `conteudos`), S12 (saldo do estoque): mexem em telas
-> que hoje funcionam e precisam de teste com cada papel.
+> ✅ **Resto feito (tarde), migration `travas_clinica_equipe_estoque`:** S9 (só admin muda ativo/exclusão/slug da clínica), B6 (UPDATE
+> direto não troca usuário, não vira dono, não aceita convite), S12 (movimentação lançada não muda quantidade/tipo/produto nem é
+> apagada; corrigir com ajuste). Testado como dono: telas normais passam, alterações perigosas recusadas. **S11 aceito por desenho:**
+> o bucket `conteudos` é o conteúdo global da Salute (Saluteflix), feito para todo usuário logado. **Ainda aberto:** `convidar_membro`
+> liga sem aceite quem já tem conta (decisão de produto).
 - **Problema:** **B6** — a policy de UPDATE `usuarios_clinicas_editar` deixa o gestor trocar `usuario_id`/`status_convite`
   e ligar qualquer usuário; `convidar_membro` liga sem aceite quem já tem conta. **S8** — `feriados` com papel `public`
   e sem checar `ativo` (agora a agenda e o painel usam feriados: `feriados_do_mes`, commit `46363ee`). **S9** — quem tem
