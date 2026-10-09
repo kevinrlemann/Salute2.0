@@ -2131,10 +2131,19 @@ var __rnTok = 0;
 var RN_VOZ_OFF = false;
 function rnVozFalhou(e) {
   var m = /ElevenLabs (\d+)/.exec(String(e && e.message || ''));
-  if (!m || ['401', '403', '412'].indexOf(m[1]) < 0 || RN_VOZ_OFF) return;
+  if (!m || ['401', '402', '403', '412'].indexOf(m[1]) < 0 || RN_VOZ_OFF) return;
   RN_VOZ_OFF = true;
   try {
-    avisoErro('Voz oficial indisponível', 'A chave da ElevenLabs está sem a permissão Text to Speech. A Renata vai falar com a voz do aparelho até você salvar uma chave nova nas Conexões da Renata.');
+    avisoErro('Voz oficial indisponível', m[1] === '402' ? 'A ElevenLabs pediu plano pago para gerar a voz. A Renata vai falar com a voz do aparelho até o plano ser ajustado.' : 'A chave da ElevenLabs está sem a permissão Text to Speech. A Renata vai falar com a voz do aparelho até você salvar uma chave nova nas Conexões da Renata.');
+  } catch (x) {}
+}
+// a voz escolhida é da biblioteca da comunidade (exige plano pago): o servidor falou com a voz padrão
+var RN_VOZ_RESERVA_AVISADA = false;
+function rnAvisoVozReserva(r) {
+  try {
+    if (RN_VOZ_RESERVA_AVISADA || !r || !r.headers || r.headers.get('x-salute-voz') !== 'reserva') return;
+    RN_VOZ_RESERVA_AVISADA = true;
+    avisoErro('Usando a voz padrão', 'A voz escolhida é da biblioteca da ElevenLabs e só funciona no plano pago. Enquanto isso, a Renata fala com a voz padrão Sarah.');
   } catch (x) {}
 }
 function rnUnlockAudio() {
@@ -2257,6 +2266,7 @@ function _rnSpeak() {
           }
           throw new Error('ElevenLabs ' + r.status);
         case 7:
+          rnAvisoVozReserva(r);
           _t8 = URL;
           _context25.n = 8;
           return r.blob();

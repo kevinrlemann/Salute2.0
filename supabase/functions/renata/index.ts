@@ -24,7 +24,10 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'x-salute-voz',
 };
+// voz padrão da ElevenLabs (premade "Sarah"), liberada no plano grátis: entra quando a voz escolhida exige plano pago
+const VOZ_RESERVA = 'EXAVITQu4vr4xnSDxMaL';
 const json = (obj: unknown, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 
 // o front ainda manda o nome do modelo do Claude; serve só para validar o pedido (o Groq usa os seus)
@@ -37,8 +40,10 @@ const MAX_MENSAGENS = 100, MAX_FERRAMENTAS = 40, MAX_BYTES = 400_000;
 const erroVoz = async (r: Response, permissao: string) => {
   const txt = await r.text();
   const semPermissao = /missing_permissions|missing the permission/i.test(txt);
+  const pago = r.status === 402 || /paid_plan_required/i.test(txt);
   console.warn(`[elevenlabs] ${r.status} (${codigoErro(txt)})`);
-  return json({ erro: semPermissao ? `A chave da ElevenLabs está sem a permissão "${permissao}". Crie outra chave com essa permissão ligada e salve nas Conexões da Renata.` : 'A ElevenLabs recusou o pedido.', status: r.status }, r.status);
+  return json({ erro: semPermissao ? `A chave da ElevenLabs está sem a permissão "${permissao}". Crie outra chave com essa permissão ligada e salve nas Conexões da Renata.`
+    : pago ? 'A ElevenLabs pede plano pago para este uso. Assine um plano ou use uma voz padrão.' : 'A ElevenLabs recusou o pedido.', status: r.status }, r.status);
 };
 
 // uma pergunta nova da pessoa (não conta as voltas de resultado de ferramenta)
@@ -178,14 +183,22 @@ Deno.serve(async (req) => {
     const texto = String(corpo.texto || '').slice(0, 1600);
     const voz = String(corpo.voice_id || v.voice_id || 'RGymW84CSmfVugnA5tvA');
     const modelo = String(corpo.modelo || v.modelo || 'eleven_flash_v2_5');
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voz)}?output_format=mp3_44100_128`, {
+    const falar = (id: string) => fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(id)}?output_format=mp3_44100_128`, {
       method: 'POST', headers: { 'xi-api-key': key, 'content-type': 'application/json', accept: 'audio/mpeg' },
       body: JSON.stringify({ text: texto, model_id: modelo, ...(/v2_5/.test(modelo) ? { language_code: 'pt' } : {}),
         voice_settings: { stability: Number(v.estabilidade ?? 0.45), similarity_boost: Number(v.similaridade ?? 0.8), style: Number(v.estilo ?? 0.2) } }),
     });
+    let r = await falar(voz);
+    let usada = 'escolhida';
+    // voz da biblioteca da comunidade no plano grátis: a ElevenLabs pede plano pago (402); fala com a voz padrão
+    if (r.status === 402 && voz !== VOZ_RESERVA) {
+      console.warn(`[elevenlabs] 402 (${codigoErro(await r.text())}): usando a voz reserva`);
+      r = await falar(VOZ_RESERVA);
+      usada = 'reserva';
+    }
     if (!r.ok || !r.body) return erroVoz(r, 'Text to Speech');
     await consumo({ chars: texto.length });
-    return new Response(r.body, { headers: { ...CORS, 'content-type': 'audio/mpeg' } });
+    return new Response(r.body, { headers: { ...CORS, 'content-type': 'audio/mpeg', 'x-salute-voz': usada } });
   }
 
   if (acao === 'transcrever' && form) {
