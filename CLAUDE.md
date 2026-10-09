@@ -24,6 +24,11 @@ Leia `README.md`, `docs/supabase.md` e `docs/auditoria/` antes de qualquer alter
 - Cada mudança: branch → plano → menor alteração → validação → diff → commit → PR → publicação com aprovação.
 - Marque afirmações em docs como "confirmado", "inferido" ou "não confirmado".
 
+## Forma de trabalho com o fundador
+
+- Executar o manual prompt a prompt; só avançar para o próximo bloco depois do "ok" dele.
+- Ao finalizar cada bloco, enviar um diagnóstico curto: ✅ para o que foi feito e ❌ para o que não foi feito (com o motivo e o que falta).
+
 ## Ferramentas
 
 `setup/environment-setup.sh` instala rtk e OmniRoute (`http://localhost:20128`). Detalhes e domínios bloqueados em `docs/conexoes.md`.
