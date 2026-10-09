@@ -186,8 +186,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 ### P0-07 — Envio público de documentos e RPCs públicas sem limite de tipo, tamanho e quantidade
 > ✅ **Parte feita em 2026-10-09:** `registrar_documento_link` só registra arquivo que existe no Storage, usa tamanho e tipo do
 > próprio Storage, não duplica e aceita até 30 arquivos por link; respostas de anamnese até 10 mil caracteres (rascunho já tinha
-> limite de 200 KB). Testado 6/6. **Falta (decisão do fundador):** lista de tipos aceitos no bucket `prontuario` (PDF, fotos, HEIC?) e
-> limite de envios brutos no Storage pela policy do link.
+> limite de 200 KB). Testado 6/6. ✅ **Concluído (tarde):** pelo link só entram PDF, JPG, PNG, HEIC/HEIF, WEBP e GIF (SVG/HTML/EXE recusados,
+> testado como anon) e no máximo 40 arquivos brutos por link (`link_documentos_envio_permitido`); a tela avisa "Tipo não aceito".
 - **Problema:** o bucket `prontuario` aceita qualquer tipo de arquivo (`allowed_mime_types = null`), até 50 MB, sem
   limite de quantidade por link; `registrar_documento_link` aceita nome/mime/tamanho livres e não confere se o arquivo
   existe; `responder_anamnese` não limita tamanho; `salvar_rascunho_anamnese` não limita número de chamadas.
@@ -207,6 +207,8 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Esforço:** M.
 
 ### P0-08 — `pg_net` (HTTP saindo do banco) ainda executável por anon/authenticated
+> **Decisão técnica 2026-10-09 (tarde):** manter o `pg_net`. Ele é o meio de o banco acordar o n8n (`ia_despertar`, usado pela camada
+> `n8n_*` e pelo cron). Só service_role chama `ia_despertar`; as URLs ficam em `ia_plataforma_config` (sem acesso de usuário). Risco aceito.
 > **Conferido em 2026-10-09:** o schema `net` e as funções são do `supabase_admin`; o usuário das migrations não consegue revogar.
 > Única função `public` que usa `net.http_*`: `ia_despertar` (outra implementação, só service_role). Caminho de ataque hoje: nenhum
 > confirmado. Correção: desligar a extensão no painel (Database › Extensions) **depois** de decidir o P0-12, ou pedir ao suporte.
@@ -719,6 +721,9 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 ## Novo (2026-10-09)
 
 ### P0-12 — Duas implementações do Agente de IA no mesmo banco
+> ✅ **Resolvido (conferido em 2026-10-09, tarde):** os gatilhos `ia_*` de agenda, conversas e mensagens estão vazios (só `return`).
+> A camada ativa é a `n8n_*` sobre as tabelas oficiais; ela reaproveita funções auxiliares `ia_*` (`ia_despertar`, `ia_notificar_equipe`,
+> `ia_param`, `ia_tel_*`) e o cron `ia-manutencao`, que acorda o n8n olhando `tarefas_automacao`/`envios_pendentes`. **Não apagar essas peças.**
 > **Atualização 2026-10-09 (manhã):** a outra sessão refez a camada como `n8n_*` em cima das tabelas oficiais
 > (`agente_ia`, `tarefas_automacao`, `envios_pendentes`...) e declarou a `ia_*` desativada. Ainda ligados: gatilhos
 > `tg_agendamentos_ia_*`, `tg_conversas_ia_*`, `tg_mensagens_ia_humana` e o cron `ia-manutencao` (1/min). Testes 38/38

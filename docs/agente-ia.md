@@ -69,3 +69,10 @@ gatilhos em `conversas` e `mensagens`). Ela resolve o mesmo documento com outros
 - **Risco de segurança aberto:** as funções `ia_*` podem ser chamadas sem login e sem checar a clínica. Ver `docs/backlog.md` P0-13. [confirmado]
 - Corrigido nesta sessão: `contato_optout` deixou de ser chamável direto por usuário (migration `contato_optout_interno`).
 
+## Situação em 2026-10-09 (tarde) [confirmado]
+
+- A segunda implementação foi absorvida: a camada `n8n_*` (outra sessão) roda sobre as tabelas deste documento.
+- Gatilhos antigos `ia_*` em `agendamentos`, `conversas` e `mensagens` estão vazios. Tabelas `ia_jobs`/`ia_outbox`/`ia_handoffs` não são mais alimentadas.
+- Peças `ia_*` ainda usadas (não apagar): `ia_despertar` (chama o n8n via `pg_net`), `ia_manutencao` (cron `ia-manutencao`, 1/min),
+  `ia_notificar_equipe`, `ia_param`, `ia_tel_normalizar`, `ia_tel_variantes`, `ia_agendamento_do_contato`, `ia_resolver_*`.
+

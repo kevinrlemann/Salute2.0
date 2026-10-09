@@ -2249,7 +2249,18 @@ function PaginaEnvioDocs(_ref13) {
       return _regenerator().w(function (_context1) {
         while (1) switch (_context1.n) {
           case 0:
-            arr = Array.from(fs || []);
+            arr = Array.from(fs || []).filter(function (f) {
+              // o banco só aceita PDF e fotos pelo link (P0-07); avisa já na tela
+              if (/\.(pdf|jpe?g|png|heic|heif|webp|gif)$/i.test(f.name || '')) return true;
+              setEnviados(function (l) {
+                return [].concat(_toConsumableArray(l), [{
+                  nome: f.name,
+                  ok: false,
+                  motivo: 'Tipo não aceito. Envie PDF ou foto.'
+                }]);
+              });
+              return false;
+            });
             if (arr.length) {
               _context1.n = 1;
               break;
@@ -2419,7 +2430,7 @@ function PaginaEnvioDocs(_ref13) {
   }), /*#__PURE__*/React.createElement("input", {
     ref: arqRef,
     type: "file",
-    accept: "image/*,.pdf",
+    accept: "image/jpeg,image/png,image/heic,image/heif,image/webp,image/gif,.heic,.heif,.pdf",
     multiple: true,
     style: {
       display: 'none'
@@ -2500,7 +2511,7 @@ function PaginaEnvioDocs(_ref13) {
     }, /*#__PURE__*/React.createElement(OIcon, {
       name: x.ok ? 'check' : 'x',
       size: 14
-    }), x.ok ? 'Enviado' : 'Falhou'));
+    }), x.ok ? 'Enviado' : x.motivo || 'Falhou'));
   })) : null);
 }
 
