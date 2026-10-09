@@ -19,7 +19,7 @@ const EXTRAS: Record<string, Record<string, unknown>> = {
 // O resumo da clínica é cortado nesse tamanho; o resto a Renata consulta pelas ferramentas.
 export const MAX_SISTEMA = 7000, MAX_DESC_FERRAMENTA = 200, MAX_DESC_CAMPO = 80, MAX_RESPOSTA = 1000;
 // espera máxima (segundos) quando os três modelos estão no limite por minuto
-export const MAX_ESPERA = 20;
+export const MAX_ESPERA = 4;
 // só o código do erro do provedor vai para os registros (nada do conteúdo do pedido ou da resposta)
 export const codigoErro = (txt: string) => {
   try {

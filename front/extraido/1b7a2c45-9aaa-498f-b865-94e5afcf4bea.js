@@ -2355,6 +2355,95 @@ function _rnSpeak() {
   }));
   return _rnSpeak.apply(this, arguments);
 }
+/* ---------- fala em partes (voz oficial pelo servidor) ----------
+   A primeira frase vai sozinha para a ElevenLabs e começa a tocar logo; enquanto ela toca,
+   a próxima parte já está sendo gerada. Assim a Renata começa a responder em cerca de 1 segundo
+   em vez de esperar o áudio da resposta inteira. Se a voz oficial falhar, usa a voz do aparelho. */
+function rnPartesFala(t) {
+  var frases = t.match(/[^.!?…]+[.!?…]*\s*/g) || [t];
+  var partes = [],
+    cur = '';
+  frases.forEach(function (f) {
+    var lim = partes.length ? 360 : 140;
+    if (cur && (cur + f).length > lim) {
+      partes.push(cur.trim());
+      cur = f;
+    } else cur += f;
+  });
+  if (cur.trim()) partes.push(cur.trim());
+  return partes.length ? partes : [t];
+}
+var _rnSpeakInteiro = rnSpeak;
+rnSpeak = function rnSpeak(text, onEnd) {
+  var cfg = RN_VOICE.v;
+  if (!(SB_ON && cfg.key && cfg.voiceId && RN_PLAYER && !RN_VOZ_OFF)) return _rnSpeakInteiro(text, onEnd);
+  rnStopSpeak();
+  var tok = __rnTok,
+    ended = false;
+  var done = function done() {
+    if (ended || tok !== __rnTok) return;
+    ended = true;
+    onEnd && onEnd();
+  };
+  var t = rnSpeech(text).slice(0, 1600);
+  if (!t) {
+    done();
+    return Promise.resolve('none');
+  }
+  var partes = rnPartesFala(t),
+    pedidos = [],
+    tocou = false;
+  var buscar = function buscar(i) {
+    if (i >= partes.length) return null;
+    if (!pedidos[i]) pedidos[i] = rnFn({
+      acao: 'voz',
+      texto: partes[i],
+      voice_id: cfg.voiceId,
+      modelo: cfg.model || 'eleven_flash_v2_5'
+    }).then(function (r) {
+      if (!r.ok) throw new Error('ElevenLabs ' + r.status);
+      rnAvisoVozReserva(r);
+      return r.blob();
+    });
+    return pedidos[i];
+  };
+  var tocar = function tocar(i) {
+    if (tok !== __rnTok) return Promise.resolve('eleven');
+    if (i >= partes.length) {
+      done();
+      return Promise.resolve('eleven');
+    }
+    return buscar(i).then(function (b) {
+      var prox = buscar(i + 1);
+      prox && prox["catch"](function () {});
+      if (tok !== __rnTok) return 'eleven';
+      tocou = true;
+      return new Promise(function (ok) {
+        var url = URL.createObjectURL(b);
+        RN_PLAYER.onended = function () {
+          URL.revokeObjectURL(url);
+          ok();
+        };
+        RN_PLAYER.onerror = function () {
+          ok();
+        };
+        RN_PLAYER.src = url;
+        var pp = RN_PLAYER.play();
+        pp && pp["catch"](function () {
+          ok();
+        });
+      }).then(function () {
+        return tocar(i + 1);
+      });
+    });
+  };
+  return tocar(0)["catch"](function (e) {
+    rnVozFalhou(e);
+    if (tok !== __rnTok) return 'eleven';
+    // falhou antes de tocar: fala tudo com a voz do aparelho; no meio: segue o resto com ela
+    return _rnSpeakInteiro(tocou ? partes.slice(pedidos.length - 1).join(' ') : text, onEnd);
+  });
+};
 var RN_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 var RN_IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
 var RN_BARGE = !!RN_SR && !RN_IS_MOBILE && /Chrome|Edg\//.test(navigator.userAgent);

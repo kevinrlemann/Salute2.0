@@ -28,6 +28,8 @@ const CORS = {
 };
 // voz padrão da ElevenLabs (premade "Sarah"), liberada no plano grátis: entra quando a voz escolhida exige plano pago
 const VOZ_RESERVA = 'EXAVITQu4vr4xnSDxMaL';
+// vozes que a ElevenLabs recusou por plano (402): pula direto para a reserva por 30 minutos (economiza uma ida e volta por fala)
+const VOZ_PAGA = new Map<string, number>();
 const json = (obj: unknown, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 
 // o front ainda manda o nome do modelo do Claude; serve só para validar o pedido (o Groq usa os seus)
@@ -188,11 +190,13 @@ Deno.serve(async (req) => {
       body: JSON.stringify({ text: texto, model_id: modelo, ...(/v2_5/.test(modelo) ? { language_code: 'pt' } : {}),
         voice_settings: { stability: Number(v.estabilidade ?? 0.45), similarity_boost: Number(v.similaridade ?? 0.8), style: Number(v.estilo ?? 0.2) } }),
     });
-    let r = await falar(voz);
-    let usada = 'escolhida';
+    const recusada = (VOZ_PAGA.get(voz) || 0) > Date.now() - 30 * 60_000;
+    let r = await falar(recusada ? VOZ_RESERVA : voz);
+    let usada = recusada ? 'reserva' : 'escolhida';
     // voz da biblioteca da comunidade no plano grátis: a ElevenLabs pede plano pago (402); fala com a voz padrão
-    if (r.status === 402 && voz !== VOZ_RESERVA) {
+    if (r.status === 402 && !recusada && voz !== VOZ_RESERVA) {
       console.warn(`[elevenlabs] 402 (${codigoErro(await r.text())}): usando a voz reserva`);
+      VOZ_PAGA.set(voz, Date.now());
       r = await falar(VOZ_RESERVA);
       usada = 'reserva';
     }
