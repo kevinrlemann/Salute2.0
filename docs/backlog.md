@@ -239,7 +239,7 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 ### P0-10 — WhatsApp mostra "enviado" sem enviar (e a Renata diz "Enviei")
 > ✅ **Feito em 2026-10-09 (parte honesta):** pendente aparece com relógio "Aguardando envio" e falha com "Não enviada" (`TICK`/`WaTicks`);
 > a Renata diz que a mensagem ficou aguardando envio e mostra o link da anamnese para copiar; "Conectar WhatsApp" grava
-> `conectando` e avisa que o envio automático ainda não está ligado. Falta: esconder o QR de desenho (`FakeQR`, arquivo minificado `d476`).
+> `conectando` e avisa que o envio automático ainda não está ligado. QR de desenho trocado por aviso "integração em construção" (`d476`).
 - **Classificação:** P0 para a **parte honesta da tela** (pequena e urgente: a clínica toma decisões achando que o
   paciente recebeu). A integração real é P2-01 a P2-04.
 - **Problema:** mensagens só são gravadas como `pendente`; o mapa `TICK` exibe `pendente` **e `falhou`** como "enviado";
