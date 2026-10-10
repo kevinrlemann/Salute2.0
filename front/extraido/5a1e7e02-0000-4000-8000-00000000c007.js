@@ -1264,11 +1264,20 @@ function WaNaoOficial(props) {
   var _e = React.useState(''), erro = _e[0], setErro = _e[1];
   var _s = React.useState(''), situacao = _s[0], setSituacao = _s[1];
   var timer = React.useRef(null);
+  var _kp = React.useState(''), chaveP = _kp[0], setChaveP = _kp[1];
+  var _mp = React.useState(''), msgP = _mp[0], setMsgP = _mp[1];
+  var admin = typeof SESSAO !== 'undefined' && !!(SESSAO.v && SESSAO.v.admin);
   var parar = function () { if (timer.current) { clearInterval(timer.current); timer.current = null; } };
+  var guardarPadrao = function () {
+    setMsgP('');
+    DB.rpc('salvar_segredo', { p_clinica: null, p_provedor: 'whatsapp_nao_oficial', p_segredo: chaveP.trim() }, 'Não foi possível guardar a chave padrão').then(function () {
+      setChaveP(''); setMsgP('Chave padrão guardada. As clínicas já podem conectar o WhatsApp.');
+    }, function (e) { setMsgP(e && e.message ? e.message : 'Não foi possível guardar a chave padrão.'); });
+  };
   React.useEffect(function () { return parar; }, []);
   var campo = function (k) { return function (e) { var n = Object.assign({}, f); n[k] = e.target.value; setF(n); }; };
   var zapi = f.prov === 'zapi';
-  var completo = f.inst.trim() && f.chave.trim() && (zapi || /^https:\/\/\S+/i.test(f.url.trim()));
+  var completo = zapi ? (f.inst.trim() && f.chave.trim()) : true;
   var conectou = function () {
     parar(); setQr(null); setSituacao('');
     return waRecarregar().then(function () {
@@ -1318,11 +1327,17 @@ function WaNaoOficial(props) {
     h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, zapi
       ? "Você encontra o ID e o token da instância no painel da Z-API. O Client-Token fica em Segurança, na sua conta."
       : "Use o endereço e a chave (apikey) do seu servidor Evolution. A instância é criada sozinha se ainda não existir."),
-    h("div", { style: grade },
+    admin ? h("div", { style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 16, border: '1.5px dashed #C9D6EE' } },
+      h("b", { style: { fontSize: 14 } }, "Chave padrão da Evolution (só a equipe da Salute)"),
+      h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Guarde a chave uma única vez. Todas as clínicas usam essa chave e só precisam ler o QR Code."),
+      h(I, { label: "Chave da API (apikey)", type: "password", value: chaveP, onChange: function (e) { setChaveP(e.target.value); } }),
+      h("div", null, h(Btn, { iconLeft: "save", disabled: !chaveP.trim(), onClick: guardarPadrao }, "Guardar chave padrão")),
+      msgP ? h("span", { style: { fontSize: 13, color: 'var(--text-muted)' } }, msgP) : null) : null,
+    zapi ? h("div", { style: grade },
       zapi ? null : h(I, { label: "Endereço do servidor", iconLeft: "globe", placeholder: "https://evolution.suaempresa.com", value: f.url, onChange: campo('url') }),
       h(I, { label: zapi ? "ID da instância" : "Nome da instância", value: f.inst, onChange: campo('inst') }),
       h(I, { label: zapi ? "Token da instância" : "Chave da API (apikey)", type: "password", value: f.chave, onChange: campo('chave') }),
-      zapi ? h(I, { label: "Client-Token (opcional)", type: "password", value: f.cliente, onChange: campo('cliente') }) : null),
+      zapi ? h(I, { label: "Client-Token (opcional)", type: "password", value: f.cliente, onChange: campo('cliente') }) : null) : null,
     h("div", { style: { display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' } },
       h("div", { style: { padding: 10, borderRadius: 18, background: '#fff', boxShadow: '0 10px 24px -14px rgba(23,73,170,.5)' } },
         qr ? h("img", { src: qr, alt: "QR Code do WhatsApp", width: 170, height: 170, style: { display: 'block', width: 170, height: 170, borderRadius: 12 } })

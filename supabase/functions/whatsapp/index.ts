@@ -151,12 +151,20 @@ async function gestao(req: Request) {
     .eq('id', id).single();
   if (!inst || inst.tipo_api !== 'nao_oficial') return json({ erro: 'Esta conexão não é da API não oficial.' }, 400);
   const prov = provedorDe(inst.provedor_nao_oficial as string);
-  const api = String(inst.api_url || '');
-  if (!/^https:\/\/[^\s/]+/i.test(api)) return json({ erro: 'Informe o endereço do provedor começando com https://' }, 400);
-  if (prov === 'evolution' && !inst.nome_instancia) return json({ erro: 'Informe o nome da instância.' }, 400);
+  // Evolution: sem endereço próprio, a clínica usa o servidor padrão da Salute e uma instância com nome automático
+  let api = String(inst.api_url || '');
+  let nome = String(inst.nome_instancia || '');
+  if (prov === 'evolution' && !api) {
+    const { data: cfg } = await adm.from('ia_plataforma_config').select('valor').eq('chave', 'evolution_url').maybeSingle();
+    api = String(cfg?.valor || '').replace(/\/+$/, '');
+    nome = nome || `salute-${String(inst.clinica_id).slice(0, 8)}`;
+    if (api) await adm.from('instancias_whatsapp').update({ api_url: api, nome_instancia: nome }).eq('id', inst.id);
+  }
+  if (!/^https:\/\/[^\s/]+/i.test(api)) return json({ erro: 'O servidor do WhatsApp ainda não foi configurado pela equipe da Salute.' }, 400);
+  if (prov === 'evolution' && !nome) return json({ erro: 'Informe o nome da instância.' }, 400);
   const { data: seg } = await adm.rpc('ler_segredo', { p_clinica: inst.clinica_id, p_provedor: 'whatsapp_nao_oficial' });
-  if (!seg) return json({ erro: prov === 'zapi' ? 'Informe o token da instância.' : 'Informe a chave da API.' }, 400);
-  const i: Inst = { api_url: api, nome_instancia: inst.nome_instancia as string };
+  if (!seg) return json({ erro: prov === 'zapi' ? 'Informe o token da instância.' : 'A chave do WhatsApp ainda não foi configurada pela equipe da Salute.' }, 400);
+  const i: Inst = { api_url: api, nome_instancia: nome };
 
   if (acao === 'desconectar') {
     await chamar(pedidoDesconectar(prov, i, seg as string));
