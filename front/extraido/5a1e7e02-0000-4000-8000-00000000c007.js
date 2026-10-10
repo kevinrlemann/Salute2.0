@@ -1320,6 +1320,19 @@ function WaNaoOficial(props) {
   };
   var grade = { display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 };
   var I = window.OInput, Btn = window.OBtn, B = window.B || 'b';
+  // clínica: tela simples, só conectar. Os detalhes técnicos ficam só para a equipe da Salute.
+  if (!admin) return h("div", { style: { display: 'flex', flexDirection: 'column', gap: 18, padding: 22, borderRadius: 20, background: 'rgba(255,255,255,.7)', border: '1.5px solid rgba(255,255,255,.95)', alignItems: 'flex-start' } },
+    h("b", { style: { fontSize: 17 } }, "Conectar o WhatsApp da clínica"),
+    h("span", { style: { fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Assim as conversas dos pacientes chegam aqui no sistema, e a equipe responde por aqui."),
+    qr ? h("img", { src: qr, alt: "QR Code do WhatsApp", width: 210, height: 210, style: { display: 'block', width: 210, height: 210, borderRadius: 14, background: '#fff', padding: 10, boxSizing: 'border-box' } }) : null,
+    qr ? h("ol", { style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, color: 'var(--text-body)' } },
+      h("li", null, "No celular da clínica, abra o WhatsApp."),
+      h("li", null, "Toque em Aparelhos conectados e depois em Conectar aparelho."),
+      h("li", null, "Aponte a câmera para este código.")) : null,
+    situacao ? h("span", { style: { fontSize: 13, color: 'var(--text-muted)' } }, situacao) : null,
+    erro ? h("div", { role: "alert", style: { fontSize: 13, color: '#C2353A', lineHeight: 1.5 } }, erro) : null,
+    h(Btn, { iconLeft: qr ? "refresh-cw" : "qr-code", loading: busy, disabled: !completo, onClick: gerar }, qr ? "Gerar novo código" : "Conectar WhatsApp"));
+
   return h("div", { style: { display: 'flex', flexDirection: 'column', gap: 16, padding: 18, borderRadius: 20, background: 'rgba(255,255,255,.7)', border: '1.5px solid rgba(255,255,255,.95)' } },
     h("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
       h("span", { style: { fontSize: 13, color: 'var(--text-muted)', marginRight: 4 } }, "Provedor:"),
