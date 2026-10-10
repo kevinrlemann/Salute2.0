@@ -40,3 +40,18 @@ Itens que só você consegue fazer (painéis, contas, pagamentos ou decisões). 
 - [ ] LGPD: aceitar formalmente os fornecedores (Groq, ElevenLabs, provedor de WhatsApp) e o texto de privacidade.
 - [ ] Quer uma coluna "Finalizado" separada de "Convertido" no CRM? (Hoje "atendimento finalizado" vai para Convertido.)
 - [ ] Aceite de convite de equipe (fluxo de convite por e-mail).
+
+## 7. Infraestrutura: n8n e WhatsApp (decisão de 2026-10-10)
+Caminho escolhido: **Oracle Cloud (grátis) com n8n próprio e Evolution API na mesma máquina.**
+- [ ] Criar conta na Oracle Cloud (cadastro com cartão, sem cobrança no plano Always Free).
+- [ ] Criar máquina Ampere grátis em São Paulo (ou a região mais próxima com vaga).
+- [ ] Instalar n8n próprio (versão Community, gratuita) e migrar os 10 fluxos WF00 a WF09.
+- [ ] Instalar Evolution API e conectar o número da clínica piloto (QR Code).
+- [ ] Configurar backup diário e alerta de queda (o WF00 já avisa a fila parada).
+- [ ] Testar conversa de ponta a ponta e desligar o modo teste da Lemann.
+
+Mapa de atualização (não fazer agora):
+- [ ] **Atualizar para n8n pago (Cloud)** se a Oracle der problema recorrente ou antes de cobrar clientes pagantes. Custo aproximado de €20 a €50 por mês (conferir no site). Vantagem: menos manutenção e suporte. Desvantagem: limite de execuções por plano.
+- [ ] Alternativa intermediária: VPS pago (Hostinger KVM 2, cerca de R$ 40 a 60 por mês) antes dos primeiros clientes pagantes.
+
+Motivo do n8n Cloud atual ter parado (inferido, não confirmado): limite do plano ou teste vencido. Confirmar em Settings › Usage and plan.
