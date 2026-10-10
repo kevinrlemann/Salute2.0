@@ -23,7 +23,7 @@ Itens que só você consegue fazer (painéis, contas, pagamentos ou decisões). 
 
 ## 4. Supabase (painel)
 - [ ] Authentication › Sign In / Providers › ligar "Confirm email".
-- [ ] Authentication › Password security › ligar "Leaked password protection".
+- [ ] (Futuro, exige plano pago) Authentication › Sign In / Providers › Email › "Prevent use of leaked passwords".
 - [ ] Authentication › URL Configuration › Site URL `https://saluteia.site`.
 - [ ] Database › Backups: confirmar backup diário (plano Pro para PITR).
 
