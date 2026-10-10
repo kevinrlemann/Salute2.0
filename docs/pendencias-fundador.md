@@ -22,6 +22,8 @@ Itens que só você consegue fazer (painéis, contas, pagamentos ou decisões). 
 - [ ] ElevenLabs pago se quiser voz brasileira na Renata.
 
 ## 4. Supabase (painel)
+- [x] Site URL, Redirect URL e "Confirm email" (feito em 2026-10-10).
+- [ ] Clínica nova agora espera a sua aprovação: Painel Master › filtro "Aguardando aprovação" › Aprovar ou Recusar.
 - [ ] Authentication › Sign In / Providers › ligar "Confirm email".
 - [ ] (Futuro, exige plano pago) Authentication › Sign In / Providers › Email › "Prevent use of leaked passwords".
 - [ ] Authentication › URL Configuration › Site URL `https://saluteia.site`.

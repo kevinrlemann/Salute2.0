@@ -78,6 +78,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Funil: Novo Lead, Aguardando atendente, Agendado, Convertido e Perdido (no painel, Perdido fica fora da conversão).
 - Renata: lançamento financeiro e movimentação de estoque só saem com TODOS os campos ditos pela pessoa (`rnFaltaFin`, `rnFaltaEst`), perguntando UM dado por vez (`rnPerguntaFalta`, regras em `RENATA_RULES`).
 - Renata em voz: voz única Sarah (`RN_VOZ_OFICIAL`, plano grátis da ElevenLabs), espera `RN_SILENCIO_MS` (2,2 s) de silêncio antes de responder e mantém a pergunta da pessoa na tela até terminar de falar.
+- Clínica nova cadastrada pelo site nasce aguardando aprovação (`clinicas.aprovada_em` nulo): o dono entra, mas
+  `minhas_clinicas`/`clinicas_gestao`/`clinicas_permitidas` a ignoram até o administrador master aprovar no Painel Master
+  (`admin_aprovar_clinica`). Clínica criada pela equipe da Salute já nasce aprovada (2026-10-10).
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.
 - Feriados: os nacionais são calculados (`feriados_nacionais`) e somados aos da clínica (`feriados_do_mes`).
 - Limite mensal da Renata quando a clínica usa a chave da Salute (`renata_limite_mes`, padrão 300).

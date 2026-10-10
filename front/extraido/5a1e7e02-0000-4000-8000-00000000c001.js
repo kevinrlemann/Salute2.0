@@ -1174,6 +1174,18 @@ function _carregarContexto() {
           });
           return _context18.a(2);
         case 7:
+          // clínica cadastrada pelo site espera a aprovação do administrador master
+          if (!clinicas.length && Array.isArray(data.aguardando) && data.aguardando.length) {
+            setSessao({
+              estado: 'aguardando',
+              perfil: perfil,
+              clinicas: clinicas,
+              aguardando: data.aguardando,
+              admin: admin,
+              suporte: suporte
+            });
+            return _context18.a(2);
+          }
           if (!(!clinicas.length && data.bloqueado)) {
             _context18.n = 8;
             break;
@@ -2045,7 +2057,7 @@ function TelaAcesso() {
               });
             });
             setMsg({
-              t: 'Cadastro feito! Enviamos um email de confirmação para ' + email + '. Abra o link para ativar a conta e depois entre aqui com o seu email e senha.'
+              t: 'Cadastro feito! Enviamos um email de confirmação para ' + email + '. Abra o link para ativar a conta. Depois, a equipe da Salute confere os dados e libera o acesso da clínica.'
             });
           case 6:
             return _context12.a(2);
@@ -2579,9 +2591,12 @@ var ST_CLINICA = {
   em_atraso: ['Em atraso', '#C2410C', 'rgba(242,105,74,.12)'],
   cancelada: ['Cancelada', '#6B7A93', 'rgba(138,151,174,.14)'],
   sem: ['Sem plano', '#6B7A93', 'rgba(138,151,174,.14)'],
+  aguardando: ['Aguardando', '#B45309', 'rgba(245,180,0,.16)'],
+  recusada: ['Recusada', '#B42318', 'rgba(242,74,74,.12)'],
   inativa: ['Inativa', '#6B7A93', 'rgba(138,151,174,.14)']
 };
 var stClinica = function stClinica(c) {
+  if (!c.aprovada_em) return c.recusada_em ? 'recusada' : 'aguardando';
   return c.ativo === false ? 'inativa' : ST_CLINICA[c.assinatura] ? c.assinatura : 'sem';
 };
 var semAcento = function semAcento(t) {
@@ -2632,6 +2647,28 @@ function PainelMaster() {
     });
   };
   React.useEffect(buscar, []);
+  // aprovar ou recusar o cadastro de uma clínica nova (só o administrador master; a trava está no banco)
+  var _React$useStateAp = React.useState(null),
+    _React$useStateAp2 = _slicedToArray(_React$useStateAp, 2),
+    decidindo = _React$useStateAp2[0],
+    setDecidindo = _React$useStateAp2[1];
+  var decidir = function decidir(c, aprovar) {
+    if (decidindo) return;
+    if (!aprovar && !window.confirm('Recusar o cadastro de ' + c.nome + '? O dono continua sem acesso até você aprovar.')) return;
+    setDecidindo(c.id);
+    SB.rpc('admin_aprovar_clinica', {
+      p_clinica: c.id,
+      p_aprovar: aprovar
+    }).then(function (_ref) {
+      var error = _ref.error;
+      setDecidindo(null);
+      if (error) {
+        setErro(MSG_ERRO(error));
+        return;
+      }
+      buscar();
+    });
+  };
   var abrir = /*#__PURE__*/function () {
     var _ref20 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee14(c) {
       var _t2;
@@ -2681,7 +2718,7 @@ function PainelMaster() {
       return stClinica(c) === k;
     }).length;
   };
-  var chips = [['todas', 'Todas', (lista || []).length], ['ativa', 'Ativas', conta('ativa')], ['teste', 'Em teste', conta('teste')], ['em_atraso', 'Em atraso', conta('em_atraso')], ['cancelada', 'Canceladas', conta('cancelada')]].filter(function (x) {
+  var chips = [['todas', 'Todas', (lista || []).length], ['aguardando', 'Aguardando aprova\xE7\xE3o', conta('aguardando')], ['ativa', 'Ativas', conta('ativa')], ['teste', 'Em teste', conta('teste')], ['em_atraso', 'Em atraso', conta('em_atraso')], ['cancelada', 'Canceladas', conta('cancelada')], ['recusada', 'Recusadas', conta('recusada')]].filter(function (x) {
     return x[0] === 'todas' || x[2];
   });
   var nomeEu = [s.perfil && s.perfil.nome, s.perfil && s.perfil.sobrenome].filter(Boolean).join(' ') || s.perfil && s.perfil.email || '';
@@ -2865,7 +2902,9 @@ function PainelMaster() {
       style: {
         display: 'flex',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 4,
+        paddingBottom: mobile && ['aguardando', 'recusada'].includes(stClinica(c)) ? 8 : 0,
         borderTop: i ? '1px solid rgba(214,226,242,.7)' : 0
       }
     }, /*#__PURE__*/React.createElement("button", {
@@ -2877,7 +2916,7 @@ function PainelMaster() {
       title: 'Entrar na ' + c.nome + ' como suporte',
       style: {
         flex: 1,
-        minWidth: 0,
+        minWidth: mobile ? 'calc(100% - 52px)' : 0,
         display: 'flex',
         alignItems: 'center',
         gap: 12,
@@ -2987,7 +3026,42 @@ function PainelMaster() {
     }) : /*#__PURE__*/React.createElement(SIcon, {
       name: "chevron-right",
       size: 17
-    }))), /*#__PURE__*/React.createElement("button", {
+    }))), ['aguardando', 'recusada'].includes(stClinica(c)) ? [['aprovar', 'check', 'Aprovar', '#1E8E4E', 'rgba(45,191,106,.12)', true], ['recusar', 'x', 'Recusar', '#B42318', 'rgba(242,74,74,.1)', false]].filter(function (b) {
+      return b[5] || stClinica(c) === 'aguardando';
+    }).map(function (b) {
+      return /*#__PURE__*/React.createElement("button", {
+        key: b[0],
+        type: "button",
+        onClick: function onClick() {
+          return decidir(c, b[5]);
+        },
+        disabled: !!decidindo,
+        "aria-label": b[2] + ' ' + c.nome,
+        title: b[2] + ' cadastro',
+        style: {
+          flexShrink: 0,
+          height: 40,
+          padding: '0 12px',
+          flex: mobile ? '1 1 40%' : '0 0 auto',
+          order: mobile ? 2 : 0,
+          borderRadius: 999,
+          border: 0,
+          background: b[4],
+          color: b[3],
+          fontFamily: 'inherit',
+          fontSize: 13,
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          cursor: decidindo ? 'default' : 'pointer'
+        }
+      }, /*#__PURE__*/React.createElement(SIcon, {
+        name: decidindo === c.id ? 'loader-circle' : b[1],
+        size: 16
+      }), b[2]);
+    }) : null, /*#__PURE__*/React.createElement("button", {
       type: "button",
       onClick: function onClick() {
         return setLogins(c);
@@ -4268,7 +4342,7 @@ function PortaSupabase(_ref31) {
   // fora do sistema o endereço mostra a tela de entrar (guardando a tela pedida) ou o Painel Master
   React.useEffect(function () {
     if (!ROTAS_URL || !SB_ON) return;
-    var fora = s.recuperar || ['login', 'sem-clinica', 'bloqueado'].includes(s.estado);
+    var fora = s.recuperar || ['login', 'sem-clinica', 'bloqueado', 'aguardando'].includes(s.estado);
     if (s.estado === 'master') {
       trocarUrl('master');
       return;
@@ -4347,6 +4421,49 @@ function PortaSupabase(_ref31) {
       }, "Sair")),
       style: {
         maxWidth: 440
+      }
+    }));
+  }
+  if (s.estado === 'aguardando') {
+    var _window$SaluteProjetoA = window.SaluteProjetoDesigner_8b4683,
+      _AEmpty = _window$SaluteProjetoA.EmptyState,
+      _ABtn = _window$SaluteProjetoA.Button;
+    var recusada = (s.aguardando || []).every(function (c) {
+      return c.recusada;
+    });
+    var nomeAg = (s.aguardando || [])[0] && s.aguardando[0].nome || 'sua cl\xEDnica';
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        fontFamily: 'var(--font-sans)'
+      }
+    }, /*#__PURE__*/React.createElement(_AEmpty, {
+      icon: recusada ? "circle-x" : "hourglass",
+      title: recusada ? "Cadastro n\xE3o aprovado" : "Cadastro em an\xE1lise",
+      description: recusada ? 'O cadastro de ' + nomeAg + ' n\xE3o foi aprovado pela equipe da Salute. Fale com o suporte da Salute para saber mais.' : 'Recebemos o cadastro de ' + nomeAg + '. A equipe da Salute vai conferir os dados e liberar o acesso. Depois da aprova\xE7\xE3o \xE9 s\xF3 entrar de novo com o seu email e senha.',
+      action: /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          gap: 8,
+          flexWrap: 'wrap',
+          justifyContent: 'center'
+        }
+      }, recusada ? null : /*#__PURE__*/React.createElement(_ABtn, {
+        iconLeft: "refresh-cw",
+        onClick: function onClick() {
+          return carregarContexto();
+        }
+      }, "J\xE1 foi aprovado? Verificar"), /*#__PURE__*/React.createElement(_ABtn, {
+        variant: "secondary",
+        iconLeft: "log-out",
+        onClick: sair
+      }, "Sair")),
+      style: {
+        maxWidth: 460
       }
     }));
   }
