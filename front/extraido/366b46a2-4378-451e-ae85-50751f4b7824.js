@@ -4377,12 +4377,24 @@ function MensagensWA(_ref10) {
       return carregar('mensagens', true);
     }
   });
+  // no celular, a conversa abre em tela cheia (como o WhatsApp): cobre o topo e o menu de baixo
+  if (mobile && cur) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: typeof Z !== 'undefined' ? Z.telaCheia : 300,
+      background: WA.bg,
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%'
+    }
+  }, thread), fichaEl);
   if (mobile) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       height: 'calc(100vh - 190px)',
       minHeight: 520
     })
-  }, cur ? thread : list), fichaEl);
+  }, list), fichaEl);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       display: 'grid',
