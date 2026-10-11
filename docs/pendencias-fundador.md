@@ -55,3 +55,39 @@ Mapa de atualização (não fazer agora):
 - [ ] Alternativa intermediária: VPS pago (Hostinger KVM 2, cerca de R$ 40 a 60 por mês) antes dos primeiros clientes pagantes.
 
 Motivo do n8n Cloud atual ter parado (inferido, não confirmado): limite do plano ou teste vencido. Confirmar em Settings › Usage and plan.
+
+## 8. WhatsApp: chave da API não oficial 01 e plano para a conexão não cair (2026-10-11)
+
+**Regra:** a chave nunca é mostrada em conversa, documento ou tela. Ela fica só no cofre do Supabase
+(`salvar_segredo`, pela tela Integrações da equipe) e no arquivo de configuração do servidor. Quem a colou no chat
+deve trocá-la (ver passo 1).
+
+**Situação medida no banco (2026-10-11):**
+- Clínica Lemann (`salute-83050867`): conectada desde 10/10 às 20:49, recebendo mensagens.
+- Outra clínica (`salute-7e4e374a`): parada em "conectando" desde 00:56 de hoje. Causa não confirmada: pode ser chave
+  recusada pelo servidor (o sistema responde "O provedor recusou a chave") ou QR Code não lido.
+
+**Plano**
+
+1. ✅/❌ **Trocar a chave** (fundador, no terminal do Hostinger): gerar chave nova no servidor, atualizar o arquivo
+   `/opt/evolution/compose.yaml` (variável de autenticação), reiniciar o contêiner e salvar a chave nova na tela
+   Integrações › "Chave padrão da API não oficial 01".
+2. ❌ **Conferir o servidor** (sem mostrar a chave na tela): `https://evolution.saluteia.site` deve responder com
+   a mensagem de boas-vindas. Depois, consultar as instâncias com a chave nova, guardando só o resultado (OK ou erro).
+3. ❌ **Recriar a instância parada** (`salute-7e4e374a`): tela Integrações › desconectar › conectar, e ler o QR Code de novo.
+4. ❌ **Guardar a chave em lugar seguro**: gerenciador de senhas do fundador, nunca em chat, e-mail ou código.
+5. ❌ **Alerta de queda**: a cada 15 min, consultar o estado das instâncias; se uma instância conectada cair, avisar a
+   equipe. Hoje não existe esse alerta. Opção grátis: agendamento do próprio Supabase (pg_cron) chamando a função
+   `whatsapp` com ação `estado`.
+6. ❌ **Runbook curto** para a equipe: "não conecta" → (a) ver mensagem da tela; (b) "recusou a chave" → passo 1;
+   (c) "não respondeu" → servidor (passo 2); (d) QR expirado → gerar de novo.
+
+**Não confirmado:** se o servidor da Evolution continua rodando no Hostinger e se a chave foi alterada. Só dá para
+confirmar no terminal do servidor (passos 1 e 2).
+
+## 9. Fase 1 da Renata: base de conhecimento e memória (rascunho)
+
+Rascunho em `docs/planejamento/fase1-rag-memoria.sql`: tabelas de documentos, trechos com vetor, memória do paciente,
+histórico e log de busca, com RLS e função de busca por clínica. **Não aplicado no banco.** Antes de aplicar, decidir:
+(a) tipo do identificador da clínica (o rascunho usa `uuid`, igual ao resto do banco); (b) se a Renata vai usar
+embeddings da OpenAI (custo) ou um modelo grátis; (c) política de leitura para o front.
