@@ -84,7 +84,8 @@ var FOTO_PEDIDA = {};
 var convTela = function convTela(c) {
   return {
     id: c.id,
-    n: c.nome_contato || c.paciente && c.paciente.nome || BR.telTela(c.telefone),
+    // ordem: nome salvo (paciente, depois lead), nome do WhatsApp, e por último sem identificação
+    n: c.paciente && c.paciente.nome || c.lead && c.lead.nome || c.nome_contato || 'Sem identificação',
     foto: c.foto_contato_path ? FOTO_URL[c.foto_contato_path] || null : null,
     m: c.ultima_mensagem_previa || '',
     t: horaLista(c.ultima_mensagem_em),
@@ -153,7 +154,7 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         return carregar('catalogos');
       case 1:
         _context.n = 2;
-        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
+        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), lead:leads(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
           ascending: false,
           nullsFirst: false
         }).limit(1000)), DB.ler(DB.sel('canais_equipe', 'id,nome,tipo,funcao,criado_em,participantes:participantes_canal(usuario_id,ultima_leitura_em,excluido_em)').order('criado_em'))["catch"](function () {
