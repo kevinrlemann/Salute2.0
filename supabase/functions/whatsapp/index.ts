@@ -178,6 +178,16 @@ async function guardarAnuncio(clinicaId: unknown, conversaId: string, a: NonNull
   }
 }
 
+// guarda os nomes dos campos do contexto (sem conteúdo) na conversa, para a revisão do anúncio
+async function guardarDiagnostico(conversaId: string, campos: string) {
+  try {
+    await adm.from('conversas').update({ diagnostico_anuncio: { campos, recebido_em: new Date().toISOString() } })
+      .eq('id', conversaId).is('origem_anuncio', null);
+  } catch (e) {
+    console.warn('[whatsapp] diagnóstico', (e as Error).name);
+  }
+}
+
 // ---------- 1) webhook do provedor ----------
 async function webhook(req: Request, id: string, token: string) {
   const tam = Number(req.headers.get('content-length') || 0);
@@ -195,7 +205,7 @@ async function webhook(req: Request, id: string, token: string) {
   const midias: Promise<void>[] = [];
   for (const ev of eventos) {
     if ('conexao' in ev) { await gravarConexao(inst, ev.conexao, ev.numero); continue; }
-    const { midia, anuncio, ...evento } = ev;
+    const { midia, anuncio, campos_contexto, ...evento } = ev;
     const { data, error } = await adm.rpc('n8n_ingerir_evento', { p_provedor: prov, p_instancia_ref: inst.id, p_evento: evento, p_token: token });
     if (error) { console.warn('[whatsapp] ingestão falhou', error.code); continue; }
     const res = (data || {}) as { ok?: boolean; mensagem_id?: string; conversa_id?: string };
@@ -203,6 +213,8 @@ async function webhook(req: Request, id: string, token: string) {
     if (res.ok && midia && res.mensagem_id && res.conversa_id) midias.push(guardarMidia(inst, prov, ev, res.mensagem_id, res.conversa_id));
     // veio de um anúncio (click-to-WhatsApp): guarda os dados do anúncio na conversa e ajusta a origem do lead
     if (res.ok && anuncio && res.conversa_id && !ev.de_mim) midias.push(guardarAnuncio(inst.clinica_id, res.conversa_id, anuncio));
+    // contexto sem anúncio: guarda só os nomes dos campos na conversa, para conferir o formato
+    if (res.ok && campos_contexto && res.conversa_id && !ev.de_mim) midias.push(guardarDiagnostico(res.conversa_id, campos_contexto));
     // contato que escreveu: busca a foto de perfil (uma vez por conversa)
     if (res.ok && res.conversa_id && ev.tipo === 'mensagem' && !ev.de_mim && ev.telefone) midias.push(guardarFoto(inst, res.conversa_id, ev.telefone).then(() => undefined));
   }

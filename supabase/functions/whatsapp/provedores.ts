@@ -20,6 +20,8 @@ export type Evento = {
   midia?: { url?: string; mime?: string; nome?: string };
   // anúncio de onde veio a conversa (click-to-WhatsApp); não vai para o banco, a função guarda na conversa
   anuncio?: { titulo?: string; corpo?: string; url?: string; ctwa_clid?: string };
+  // quando a mensagem traz contexto mas não traz anúncio: só os nomes dos campos (nunca o conteúdo)
+  campos_contexto?: string;
 };
 
 // mudança de conexão do aparelho (QR lido, celular desconectado)
@@ -83,12 +85,19 @@ const anuncioEvolution = (d: Obj): Evento['anuncio'] => {
       };
     }
   }
-  // só os nomes dos campos (nunca o conteúdo), para conferir o formato real nos registros
-  if (cis.length && avisosContexto < 5) {
-    avisosContexto++;
-    console.info('[whatsapp] contexto sem anúncio; campos:', cis.map((c) => Object.keys(c).join(',')).join(' | '));
-  }
   return undefined;
+};
+
+// nomes dos campos do contexto (sem conteúdo): para conferir o formato real quando não vier anúncio
+const camposContexto = (d: Obj): string | undefined => {
+  const nomes: string[] = [];
+  for (const v of Object.values(o(d.message))) {
+    const ci = o(o(v).contextInfo);
+    if (Object.keys(ci).length) nomes.push(Object.keys(ci).join(','));
+  }
+  const topo = o(d.contextInfo);
+  if (Object.keys(topo).length) nomes.push(Object.keys(topo).join(','));
+  return nomes.length ? nomes.join(' | ').slice(0, 300) : undefined;
 };
 
 const STATUS_EVOLUTION: Record<string, string> = {
@@ -115,6 +124,7 @@ export function lerEvolution(corpo: Obj): Array<Evento | Conexao> {
         tipo: 'mensagem', id_externo: id, telefone: tel, nome: s(d.pushName) || undefined,
         texto, tipo_msg: tipo, de_mim: k.fromMe === true, timestamp: Number(d.messageTimestamp) || undefined,
         midia: midiaEvolution(o(d.message)), anuncio: anuncioEvolution(d),
+        campos_contexto: anuncioEvolution(d) ? undefined : camposContexto(d),
       });
     } else if (ev === 'messages.update') {
       const id = s(d.keyId) || s(o(d.key).id) || s(d.messageId);
