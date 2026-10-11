@@ -1025,7 +1025,8 @@ var WA_STICKERS = [['🙏', 'Obrigada!', '#E7F0FF'], ['✅', 'Agendado!', '#E6F8
   return {
     id: 'st' + i,
     url: waSticker(e, t, c),
-    label: t
+    label: t,
+    emoji: e
   };
 });
 var waBars = function waBars(seed) {
@@ -1517,7 +1518,13 @@ function WaMsg(_ref0) {
     style: {
       whiteSpace: 'pre-wrap'
     }
-  }, m.text) : null, !sticker && !(m.kind === 'image' && !m.text) ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+  }, m.text, m.edited ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: WA.sub,
+      marginLeft: 6
+    }
+  }, "editada") : null) : null, !sticker && !(m.kind === 'image' && !m.text) ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
     style: {
       display: 'inline-block',
       width: !m.kind || m.kind === 'text' || m.deleted ? out ? 64 : 46 : 0
@@ -1627,7 +1634,7 @@ function WaMenu(_ref11) {
         padding: 0
       }
     }, r);
-  })), item('reply', 'Responder', 'reply'), m.kind === 'text' || !m.kind ? item('copy', 'Copiar', 'copy') : null, m.kind === 'image' || m.kind === 'file' || m.kind === 'audio' || m.kind === 'video' ? item('download', 'Baixar', 'download') : null, item('trash-2', out ? 'Apagar para todos' : 'Apagar para mim', 'delete'));
+  })), item('reply', 'Responder', 'reply'), m.kind === 'text' || !m.kind ? item('copy', 'Copiar', 'copy') : null, m.kind === 'image' || m.kind === 'file' || m.kind === 'audio' || m.kind === 'video' ? item('download', 'Baixar', 'download') : null, m.kind === 'sticker' && m.url && !m.figId && SB_ON ? item('bookmark-plus', 'Salvar figurinha', 'savesticker') : null, item('trash-2', out ? 'Apagar para todos' : 'Apagar para mim', 'delete'));
 }
 /* câmera do computador: abre a webcam e tira a foto, como no WhatsApp Web */
 function WaCamera(_ref) {
@@ -1916,6 +1923,13 @@ function WaChat(_ref13) {
             react: null
           }) : x;
         });
+      });
+    }
+    if (act === 'savesticker') {
+      MsgSvc.salvarFigurinha(m).then(function () {
+        setNote('Figurinha salva. Ela já aparece no painel de figurinhas.');
+      }, function (e) {
+        setNote(e && e.message ? e.message : 'Não foi possível salvar a figurinha.');
       });
     }
     if (act === 'download' && m.url) {
@@ -2405,7 +2419,7 @@ function WaChat(_ref13) {
       gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))',
       gap: 8
     }
-  }, WA_STICKERS.map(function (s) {
+  }, (window.figurinhasClinica ? window.figurinhasClinica() : []).concat(WA_STICKERS).map(function (s) {
     return /*#__PURE__*/React.createElement("button", {
       key: s.id,
       type: "button",
@@ -2414,7 +2428,9 @@ function WaChat(_ref13) {
         send({
           kind: 'sticker',
           url: s.url,
-          label: s.label
+          label: s.label,
+          emoji: s.emoji,
+          figId: s.figId
         });
         setPanel(null);
       },
@@ -4139,13 +4155,31 @@ function MensagensWA(_ref10) {
     disabled: isTeam,
     onClick: function onClick() {
       if (SB_ON) {
+        // paciente já carregado: a ficha abre na hora; só espera o banco quando precisa criar ou vincular
+        var pronto = cur.pacId ? PAC.find(function (x) {
+          return x.dbId === cur.pacId;
+        }) : cur.tel ? PAC.find(function (x) {
+          return BR.tel(x.tel) === cur.tel;
+        }) : null;
+        if (pronto) setFicha({
+          p: pronto,
+          key: keyOf(cur),
+          name: cur.n
+        });
         MsgSvc.pacienteDaConversa(cur).then(function (p) {
-          return setFicha({
-            p: p,
-            key: keyOf(cur),
-            name: cur.n
+          if (!p) return;
+          setFicha(function (f) {
+            return f && f.key === keyOf(cur) && f.p === pronto ? _objectSpread(_objectSpread({}, f), {}, {
+              p: p
+            }) : f || {
+              p: p,
+              key: keyOf(cur),
+              name: cur.n
+            };
           });
-        })["catch"](function () {});
+        })["catch"](function (e) {
+          if (!pronto) avisoErro('Não foi possível abrir a ficha', e);
+        });
         return;
       }
       setFicha({

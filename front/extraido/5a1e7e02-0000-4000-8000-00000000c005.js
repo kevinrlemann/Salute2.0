@@ -72,10 +72,53 @@ var TICK = {
 var ehUuid = function ehUuid(x) {
   return typeof x === 'string' && /^[0-9a-f-]{36}$/.test(x);
 };
+// figurinha com imagem (salva do WhatsApp) usa link assinado; as padrão são desenhadas com emoji
+var FIG_URL = {};
 var figurinhaUrl = function figurinhaUrl(f) {
-  return f ? waSticker(f.emoji || '✨', f.rotulo || '', f.cor_fundo || '#E7F0FF') : null;
+  if (!f) return null;
+  if (f.imagem_path) return FIG_URL[f.imagem_path] || null;
+  return waSticker(f.emoji || '✨', f.rotulo || '', f.cor_fundo || '#E7F0FF');
 };
 var FIGS = [];
+function assinarFigurinhas(figs) {
+  var paths = (figs || []).filter(function (f) {
+    return f.imagem_path && !FIG_URL[f.imagem_path];
+  }).map(function (f) {
+    return f.imagem_path;
+  });
+  if (!paths.length || !SB_ON) return Promise.resolve();
+  return SB.storage.from('mensagens').createSignedUrls(paths, 3600).then(function (r) {
+    (r.data || []).forEach(function (u) {
+      if (u.signedUrl) FIG_URL[u.path] = u.signedUrl;
+    });
+  })["catch"](function () {});
+}
+// figurinhas da clínica prontas para o painel de envio
+window.figurinhasClinica = function () {
+  return FIGS.filter(function (f) {
+    return f.imagem_path && FIG_URL[f.imagem_path];
+  }).map(function (f) {
+    return { id: f.id, figId: f.id, url: FIG_URL[f.imagem_path], label: f.rotulo || 'Figurinha' };
+  });
+};
+// chamada à função "whatsapp" com o login da pessoa (foto do contato, salvar figurinha)
+function chamarWa(corpo) {
+  return SB.auth.getSession().then(function (r) {
+    var tok = r && r.data && r.data.session ? r.data.session.access_token : SB_CFG.key;
+    return fetch(SB_CFG.url + '/functions/v1/whatsapp', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tok, apikey: SB_CFG.key, 'content-type': 'application/json' },
+      body: JSON.stringify(corpo)
+    });
+  }).then(function (r) {
+    return r.json()["catch"](function () {
+      return {};
+    }).then(function (j) {
+      if (!r.ok || j.erro) throw new Error(j.erro || 'Não foi possível falar com o servidor do WhatsApp.');
+      return j;
+    });
+  });
+}
 
 /* ---------- Listas de conversas ---------- */
 // foto de perfil já assinada (bucket privado), por caminho guardado na conversa
@@ -159,7 +202,7 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
           nullsFirst: false
         }).limit(1000)), DB.ler(DB.sel('canais_equipe', 'id,nome,tipo,funcao,criado_em,participantes:participantes_canal(usuario_id,ultima_leitura_em,excluido_em)').order('criado_em'))["catch"](function () {
           return [];
-        }), DB.ler(SB.from('figurinhas').select('id,rotulo,emoji,cor_fundo,ordem,clinica_id').is('excluido_em', null).order('ordem'))["catch"](function () {
+        }), DB.ler(SB.from('figurinhas').select('id,rotulo,emoji,cor_fundo,imagem_path,ordem,clinica_id').is('excluido_em', null).order('ordem'))["catch"](function () {
           return [];
         })]);
       case 2:
@@ -169,6 +212,7 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         canais = _yield$Promise$all2[1];
         figs = _yield$Promise$all2[2];
         FIGS = figs;
+        assinarFigurinhas(figs);
         convs.forEach(function (c) {
           MSG_CONV[c.id] = c;
         });
@@ -312,7 +356,10 @@ function _msgTela() {
               s: TICK[r.status_entrega] || 'sent',
               kind: kind,
               text: kind === 'text' ? r.texto : r.legenda || r.texto || undefined,
-              url: kind === 'sticker' ? figurinhaUrl(fig) : an ? urls[an.arquivo_path] : undefined,
+              // figurinha: da biblioteca (com ou sem imagem) ou a recebida pelo WhatsApp (anexo)
+              url: kind === 'sticker' ? fig ? figurinhaUrl(fig) : an ? urls[an.arquivo_path] : undefined : an ? urls[an.arquivo_path] : undefined,
+              figId: fig ? fig.id : undefined,
+              edited: !!r.editada_em,
               name: an ? an.nome_arquivo : undefined,
               size: an ? Number(an.tamanho_bytes || 0) : undefined,
               dur: an ? Number(an.duracao_segundos || 0) : undefined,
@@ -344,7 +391,7 @@ function _msgTela() {
   }));
   return _msgTela.apply(this, arguments);
 }
-var SEL_MSG = 'id,direcao,tipo,texto,legenda,enviada_em,enviada_por_ia,status_entrega,resposta_a_mensagem_id,figurinha_id,apagada,apagada_para,apagada_por,anexos:anexos_mensagem(arquivo_path,nome_arquivo,mime_type,tamanho_bytes,duracao_segundos,excluido_em),reacoes:reacoes_mensagem(emoji,usuario_id,criado_em,excluido_em)';
+var SEL_MSG = 'id,direcao,tipo,texto,legenda,editada_em,enviada_em,enviada_por_ia,status_entrega,resposta_a_mensagem_id,figurinha_id,apagada,apagada_para,apagada_por,anexos:anexos_mensagem(arquivo_path,nome_arquivo,mime_type,tamanho_bytes,duracao_segundos,excluido_em),reacoes:reacoes_mensagem(emoji,usuario_id,criado_em,excluido_em)';
 var SEL_MSG_EQ = 'id,canal_id,autor_usuario_id,autor_nome,tipo,texto,legenda,enviada_em,resposta_a_mensagem_id,figurinha_id,apagada,apagada_para,anexos:anexos_mensagem(arquivo_path,nome_arquivo,mime_type,tamanho_bytes,duracao_segundos,excluido_em),reacoes:reacoes_mensagem(emoji,usuario_id,criado_em,excluido_em)';
 function carregarChat(_x4) {
   return _carregarChat.apply(this, arguments);
@@ -593,7 +640,7 @@ var MsgSvc = {
   },
   enviar: function enviar(chave, msg, contato) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3() {
-      var local, _String$split, _String$split2, tipo, id, p, nova, fig, base, blob, file, path, _t;
+      var local, _String$split, _String$split2, tipo, id, p, nova, fig, figImg, base, blob, file, path, _t;
       return _regenerator().w(function (_context3) {
         while (1) switch (_context3.p = _context3.n) {
           case 0:
@@ -626,64 +673,74 @@ var MsgSvc = {
             avisar(CHAT_STORE);
             chave = nova;
           case 3:
-            fig = msg.kind === 'sticker' ? FIGS.find(function (f) {
+            fig = msg.kind === 'sticker' ? msg.figId ? FIGS.find(function (f) {
+              return f.id === msg.figId;
+            }) : FIGS.find(function (f) {
               return f.rotulo === msg.label;
             }) : null;
+            figImg = !!(fig && fig.imagem_path);
+            // figurinha sem imagem (as padrão, com emoji) sai como texto no WhatsApp
             base = {
               id: local.id,
-              tipo: KIND_DB[msg.kind || 'text'] || 'texto',
-              texto: msg.kind === 'text' || !msg.kind ? msg.text : null,
-              legenda: msg.kind !== 'text' && msg.text ? msg.text : null,
+              tipo: msg.kind === 'sticker' && !figImg ? 'texto' : KIND_DB[msg.kind || 'text'] || 'texto',
+              texto: msg.kind === 'text' || !msg.kind ? msg.text : msg.kind === 'sticker' && !figImg ? ((msg.emoji || '') + ' ' + (msg.label || '')).trim() : null,
+              legenda: msg.kind !== 'text' && msg.kind !== 'sticker' && msg.text ? msg.text : null,
               resposta_a_mensagem_id: msg.reply && ehUuid(msg.reply.id) ? msg.reply.id : null,
-              figurinha_id: fig ? fig.id : null
+              figurinha_id: figImg ? fig.id : null
             };
-            if (!(tipo === 'eq')) {
-              _context3.n = 5;
+            // o arquivo sobe antes da mensagem entrar na fila, para o envio já encontrar o anexo
+            if (!(msg.url && /^blob:/.test(msg.url) && msg.kind !== 'sticker')) {
+              _context3.n = 8;
               break;
             }
             _context3.n = 4;
+            return fetch(msg.url);
+          case 4:
+            _context3.n = 5;
+            return _context3.v.blob();
+          case 5:
+            blob = _context3.v;
+            file = new File([blob], msg.name || 'arquivo', {
+              type: blob.type || 'application/octet-stream'
+            });
+            _context3.n = 6;
+            return ARQ.enviar('mensagens', (tipo === 'eq' ? 'equipe/' : 'conversas/') + id, file);
+          case 6:
+            path = _context3.v;
+          case 8:
+            if (!(tipo === 'eq')) {
+              _context3.n = 10;
+              break;
+            }
+            _context3.n = 9;
             return DB.ins('mensagens_equipe', _objectSpread(_objectSpread({}, base), {}, {
               canal_id: id,
               autor_nome: quemSou()
             }), 'Mensagem não enviada');
-          case 4:
-            _context3.n = 6;
+          case 9:
+            _context3.n = 11;
             break;
-          case 5:
-            _context3.n = 6;
+          case 10:
+            _context3.n = 11;
             return DB.ins('mensagens', _objectSpread(_objectSpread({}, base), {}, {
               conversa_id: id,
               direcao: 'enviada',
               enviada_por_ia: false,
               status_entrega: 'pendente'
             }), 'Mensagem não enviada');
-          case 6:
-            if (!(msg.url && /^blob:/.test(msg.url) && msg.kind !== 'sticker')) {
-              _context3.n = 10;
+          case 11:
+            if (!path) {
+              _context3.n = 13;
               break;
             }
-            _context3.n = 7;
-            return fetch(msg.url);
-          case 7:
-            _context3.n = 8;
-            return _context3.v.blob();
-          case 8:
-            blob = _context3.v;
-            file = new File([blob], msg.name || 'arquivo', {
-              type: blob.type || 'application/octet-stream'
-            });
-            _context3.n = 9;
-            return ARQ.enviar('mensagens', (tipo === 'eq' ? 'equipe/' : 'conversas/') + id, file);
-          case 9:
-            path = _context3.v;
-            _context3.n = 10;
+            _context3.n = 13;
             return DB.ins('anexos_mensagem', _defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty(_defineProperty({}, tipo === 'eq' ? 'mensagem_equipe_id' : 'mensagem_id', local.id), "arquivo_path", path), "nome_arquivo", msg.name || file.name), "mime_type", file.type), "tamanho_bytes", file.size), "duracao_segundos", msg.dur || null), 'Não foi possível enviar o arquivo');
-          case 10:
+          case 13:
             if (!(tipo === 'eq')) {
-              _context3.n = 11;
+              _context3.n = 14;
               break;
             }
-            _context3.n = 11;
+            _context3.n = 14;
             return SB.from('participantes_canal').upsert({
               clinica_id: CLI(),
               canal_id: id,
@@ -693,22 +750,35 @@ var MsgSvc = {
               onConflict: 'canal_id,usuario_id',
               ignoreDuplicates: false
             });
-          case 11:
-            _context3.n = 13;
+          case 14:
+            _context3.n = 21;
             break;
-          case 12:
-            _context3.p = 12;
+          case 20:
+            _context3.p = 20;
             _t = _context3.v;
             chatSet(chave, function (l) {
               return l.filter(function (x) {
                 return x.id !== local.id;
               });
             });
-          case 13:
+          case 21:
             return _context3.a(2);
         }
-      }, _callee3, null, [[1, 12]]);
+      }, _callee3, null, [[1, 20]]);
     }))();
+  },
+  // figurinha recebida pelo WhatsApp vira figurinha da clínica, para reenviar depois
+  salvarFigurinha: function salvarFigurinha(m) {
+    if (!SB_ON || !ehUuid(m.id)) return Promise.reject(new Error('Disponível só com o WhatsApp conectado.'));
+    return chamarWa({ acao: 'figurinha', mensagem_id: m.id, rotulo: m.label || 'Figurinha' }).then(function (j) {
+      if (j.figurinha) {
+        FIGS = FIGS.concat([j.figurinha]);
+        return assinarFigurinhas(FIGS).then(function () {
+          return j.figurinha;
+        });
+      }
+      return null;
+    });
   },
   enviarTextoPaciente: function enviarTextoPaciente(p, texto, chave) {
     return MsgSvc.enviar(chave || MsgSvc.chavePaciente(p), {
@@ -880,6 +950,9 @@ var MsgSvc = {
               c.pacId = p.dbId;
               DB.upd('conversas', c.id, {
                 paciente_id: p.dbId
+              }).then(function () {
+                // o servidor copia a foto do WhatsApp para o paciente recém-vinculado
+                return chamarWa({ acao: 'foto', conversa_id: c.id });
               })["catch"](function () {});
             }
             return _context7.a(2, p);

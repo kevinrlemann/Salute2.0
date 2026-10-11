@@ -7,8 +7,12 @@ export type Provedor = 'evolution' | 'zapi';
 
 // evento no formato que public.n8n_ingerir_evento entende
 export type Evento = {
-  tipo: 'mensagem' | 'status';
+  // mensagem e status vão ao banco (n8n_ingerir_evento); reacao, apagar e editar são tratados pela função
+  tipo: 'mensagem' | 'status' | 'reacao' | 'apagar' | 'editar';
   id_externo: string;
+  // id da mensagem alvo (reação, apagada, editada) ou da mensagem citada (resposta)
+  alvo?: string;
+  resposta_a?: string;
   telefone?: string;
   nome?: string;
   texto?: string;
@@ -40,30 +44,74 @@ export const telefoneDoJid = (jid: string): string | null => {
 };
 
 // ---------- Evolution API (v2) ----------
-const MIDIA_EVOLUTION = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'documentWithCaptionMessage'];
+const MIDIA_EVOLUTION = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'documentWithCaptionMessage', 'stickerMessage', 'ptvMessage'];
 const midiaEvolution = (m: Obj): Evento['midia'] => {
   for (const k of MIDIA_EVOLUTION) {
     let x = o(m[k]);
     if (k === 'documentWithCaptionMessage') x = o(o(x.message).documentMessage);
-    if (Object.keys(x).length) return { mime: s(x.mimetype) || undefined, nome: s(x.fileName) || undefined };
+    if (Object.keys(x).length) return { mime: s(x.mimetype) || (k === 'stickerMessage' ? 'image/webp' : undefined), nome: s(x.fileName) || undefined };
   }
   return undefined;
+};
+// mensagens embrulhadas (visualização única, temporárias, com documento e legenda): abre até chegar na mensagem real
+export const desembrulhar = (m: Obj): Obj => {
+  let x = m;
+  for (let i = 0; i < 4; i++) {
+    const w = x.viewOnceMessage || x.viewOnceMessageV2 || x.viewOnceMessageV2Extension || x.ephemeralMessage || x.documentWithCaptionMessage;
+    if (!w || !o(o(w).message) || !Object.keys(o(o(w).message)).length) break;
+    x = o(o(w).message);
+  }
+  return x;
+};
+// cartão de contato (vCard): nome e telefones, sem o resto do cartão
+const contatoDoVcard = (c: Obj): string => {
+  const v = s(c.vcard);
+  const nome = s(c.displayName) || (v.match(/^FN:(.+)$/m) || [])[1] || '';
+  const tels = Array.from(v.matchAll(/^TEL[^:]*:(.+)$/gm)).map((x) => x[1].trim()).filter(Boolean);
+  const unicos = Array.from(new Set(tels)).slice(0, 3);
+  return [nome.trim(), unicos.join(' · ')].filter(Boolean).join(' · ');
 };
 const textoEvolution = (m: Obj): { texto: string; tipo: string } => {
   if (s(m.conversation)) return { texto: s(m.conversation), tipo: 'text' };
   if (s(o(m.extendedTextMessage).text)) return { texto: s(o(m.extendedTextMessage).text), tipo: 'text' };
   if (m.imageMessage) return { texto: s(o(m.imageMessage).caption), tipo: 'image' };
   if (m.videoMessage) return { texto: s(o(m.videoMessage).caption), tipo: 'video' };
+  if (m.ptvMessage) return { texto: '', tipo: 'video' };
   if (m.audioMessage) return { texto: '', tipo: 'audio' };
   if (m.documentMessage) return { texto: s(o(m.documentMessage).caption) || s(o(m.documentMessage).fileName), tipo: 'document' };
-  if (m.documentWithCaptionMessage) {
-    const d = o(o(o(m.documentWithCaptionMessage).message).documentMessage);
-    return { texto: s(d.caption) || s(d.fileName), tipo: 'document' };
-  }
   if (m.stickerMessage) return { texto: '', tipo: 'sticker' };
   if (s(o(m.buttonsResponseMessage).selectedDisplayText)) return { texto: s(o(m.buttonsResponseMessage).selectedDisplayText), tipo: 'text' };
   if (s(o(o(m.listResponseMessage)).title)) return { texto: s(o(m.listResponseMessage).title), tipo: 'text' };
+  // localização (fixa ou em tempo real): vira um link de mapa
+  const loc = o(m.locationMessage || m.liveLocationMessage);
+  if (Object.keys(loc).length) {
+    const lat = Number(loc.degreesLatitude), lng = Number(loc.degreesLongitude);
+    const nome = [s(loc.name), s(loc.address)].filter(Boolean).join(', ');
+    const link = Number.isFinite(lat) && Number.isFinite(lng) ? `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}` : '';
+    return { texto: ['📍 Localização' + (m.liveLocationMessage ? ' em tempo real' : ''), nome, link].filter(Boolean).join('\n'), tipo: 'text' };
+  }
+  // cartão de contato (um ou vários)
+  if (m.contactMessage) return { texto: '👤 Contato: ' + contatoDoVcard(o(m.contactMessage)), tipo: 'text' };
+  if (m.contactsArrayMessage) {
+    const lista = (Array.isArray(o(m.contactsArrayMessage).contacts) ? o(m.contactsArrayMessage).contacts as unknown[] : []).map((c) => contatoDoVcard(o(c))).filter(Boolean);
+    return { texto: '👤 Contatos:\n' + lista.slice(0, 10).join('\n'), tipo: 'text' };
+  }
+  // enquete: pergunta e opções
+  const poll = o(m.pollCreationMessage || m.pollCreationMessageV2 || m.pollCreationMessageV3);
+  if (Object.keys(poll).length) {
+    const ops = (Array.isArray(poll.options) ? poll.options as unknown[] : []).map((x) => s(o(x).optionName)).filter(Boolean);
+    return { texto: '📊 Enquete: ' + s(poll.name) + (ops.length ? '\n• ' + ops.slice(0, 12).join('\n• ') : ''), tipo: 'text' };
+  }
+  if (m.eventMessage) return { texto: '📅 Evento: ' + s(o(m.eventMessage).name), tipo: 'text' };
   return { texto: '', tipo: 'outro' };
+};
+// id da mensagem citada (responder): vem no contextInfo de qualquer parte da mensagem
+const citadaEvolution = (m: Obj): string | undefined => {
+  for (const v of Object.values(m)) {
+    const id = s(o(o(v).contextInfo).stanzaId);
+    if (id) return id;
+  }
+  return undefined;
 };
 
 // anúncio do clique no WhatsApp: vem no contextInfo.externalAdReply de alguma parte da mensagem
@@ -119,12 +167,42 @@ export function lerEvolution(corpo: Obj): Array<Evento | Conexao> {
       const tel = telefoneDoJid(jid);
       const id = s(k.id);
       if (!tel || !id) continue;
-      const { texto, tipo } = textoEvolution(o(d.message));
+      const m = desembrulhar(o(d.message));
+      const deMim = k.fromMe === true;
+      // reação a uma mensagem (emoji vazio = reação retirada)
+      const re = o(m.reactionMessage);
+      if (Object.keys(re).length) {
+        const alvo = s(o(re.key).id);
+        if (alvo) out.push({ tipo: 'reacao', id_externo: id, alvo, telefone: tel, texto: s(re.text), de_mim: deMim });
+        continue;
+      }
+      // mensagem apagada para todos
+      const pr = o(m.protocolMessage);
+      if (Object.keys(pr).length) {
+        const tipoPr = s(pr.type).toUpperCase();
+        const alvo = s(o(pr.key).id);
+        if (alvo && (tipoPr === 'REVOKE' || tipoPr === '0')) out.push({ tipo: 'apagar', id_externo: id, alvo, telefone: tel, de_mim: deMim });
+        else if (alvo && (tipoPr === 'MESSAGE_EDIT' || tipoPr === '14')) {
+          const { texto } = textoEvolution(desembrulhar(o(pr.editedMessage)));
+          if (texto) out.push({ tipo: 'editar', id_externo: id, alvo, telefone: tel, texto, de_mim: deMim });
+        }
+        continue;
+      }
+      // edição no formato novo (editedMessage com protocolMessage dentro)
+      const ed = o(o(o(m.editedMessage).message).protocolMessage);
+      if (Object.keys(ed).length) {
+        const alvo = s(o(ed.key).id);
+        const { texto } = textoEvolution(desembrulhar(o(ed.editedMessage)));
+        if (alvo && texto) out.push({ tipo: 'editar', id_externo: id, alvo, telefone: tel, texto, de_mim: deMim });
+        continue;
+      }
+      const { texto, tipo } = textoEvolution(m);
+      const anuncio = anuncioEvolution(d);
       out.push({
         tipo: 'mensagem', id_externo: id, telefone: tel, nome: s(d.pushName) || undefined,
-        texto, tipo_msg: tipo, de_mim: k.fromMe === true, timestamp: Number(d.messageTimestamp) || undefined,
-        midia: midiaEvolution(o(d.message)), anuncio: anuncioEvolution(d),
-        campos_contexto: anuncioEvolution(d) ? undefined : camposContexto(d),
+        texto, tipo_msg: tipo, de_mim: deMim, timestamp: Number(d.messageTimestamp) || undefined,
+        midia: midiaEvolution(m), anuncio, resposta_a: citadaEvolution(m),
+        campos_contexto: anuncio ? undefined : camposContexto(d),
       });
     } else if (ev === 'messages.update') {
       const id = s(d.keyId) || s(o(d.key).id) || s(d.messageId);
@@ -265,6 +343,32 @@ export function pedidoFoto(p: Provedor, i: Inst, seg: string, telefone: string):
     headers: { apikey: seg, 'content-type': 'application/json' },
     body: JSON.stringify({ number: digitos(telefone) }),
   };
+}
+
+// contatos da agenda do aparelho (Evolution v2): devolve a lista completa ou só um número
+export function pedidoContatos(p: Provedor, i: Inst, seg: string, telefone?: string): Pedido | null {
+  if (p === 'zapi') return null;
+  const where = telefone ? { remoteJid: digitos(telefone) + '@s.whatsapp.net' } : {};
+  return {
+    url: `${base(i)}/chat/findContacts/${encodeURIComponent(i.nome_instancia || '')}`, method: 'POST',
+    headers: { apikey: seg, 'content-type': 'application/json' },
+    body: JSON.stringify({ where }),
+  };
+}
+
+// nomes salvos na agenda, por telefone (só dígitos). Grupos, canais e contatos sem nome não entram.
+export function lerContatos(r: unknown): Record<string, string> {
+  const lista = Array.isArray(r) ? r as unknown[] : Array.isArray(o(r).contacts) ? o(r).contacts as unknown[] : [];
+  const out: Record<string, string> = {};
+  for (const item of lista) {
+    const c = o(item);
+    if (c.isGroup === true || c.isSaved === false) continue;
+    const tel = telefoneDoJid(s(c.remoteJid) || s(c.id));
+    const nome = (s(c.name) || s(c.pushName) || s(c.verifiedName)).trim();
+    if (!tel || !nome || /^\+?\d[\d\s().-]*$/.test(nome)) continue;
+    out[tel] = nome.slice(0, 120);
+  }
+  return out;
 }
 
 export function lerFotoUrl(r: unknown): string | null {

@@ -283,6 +283,38 @@ function publicarPacientes(list) {
   PAC_STORE.v = list;
   atualizarFiltrosPacientes();
   avisar(PAC_STORE);
+  assinarFotosPacientes(list);
+}
+// foto do paciente (vinda do WhatsApp ou enviada na ficha): link assinado do bucket privado, usado em todo o sistema
+var PAC_FOTO = {};
+function assinarFotosPacientes(list) {
+  if (!SB_ON) return;
+  var paths = (list || []).filter(function (p) {
+    return p.fotoPath && !PAC_FOTO[p.fotoPath];
+  }).map(function (p) {
+    return p.fotoPath;
+  });
+  var aplicar = function aplicar() {
+    var mudou = false;
+    PAC.forEach(function (p) {
+      var u = p.fotoPath ? PAC_FOTO[p.fotoPath] : null;
+      if (u && p.foto !== u) {
+        p.foto = u;
+        mudou = true;
+      }
+    });
+    if (mudou) {
+      PAC_STORE.v = PAC.slice();
+      avisar(PAC_STORE);
+    }
+  };
+  if (!paths.length) return aplicar();
+  SB.storage.from('clinica').createSignedUrls(paths, 3600).then(function (r) {
+    (r.data || []).forEach(function (u) {
+      if (u.signedUrl) PAC_FOTO[u.path] = u.signedUrl;
+    });
+    aplicar();
+  })["catch"](function () {});
 }
 CARGAS.pacientes = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2() {
   var rows;

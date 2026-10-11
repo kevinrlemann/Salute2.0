@@ -15,7 +15,7 @@
 // O envio das respostas continua com o n8n (n8n_envio_preflight monta o pedido para cada provedor).
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { lerEstado, lerEventos, lerFotoUrl, lerQr, nomeArquivo, pedidoDesconectar, pedidoEstado, pedidoFoto, pedidoMidia, pedidosConectar, provedorDe, type Evento, type Inst, type Pedido } from './provedores.ts';
+import { lerContatos, lerEstado, lerEventos, lerFotoUrl, lerQr, nomeArquivo, pedidoContatos, pedidoDesconectar, pedidoEstado, pedidoFoto, pedidoMidia, pedidosConectar, provedorDe, type Evento, type Inst, type Pedido } from './provedores.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -188,6 +188,144 @@ async function guardarDiagnostico(conversaId: string, campos: string) {
   }
 }
 
+// segredo da instância (chave da API não oficial), já como texto
+async function segredoDe(inst: Record<string, unknown>): Promise<string> {
+  const { data } = await adm.rpc('ler_segredo', { p_clinica: inst.clinica_id, p_provedor: 'whatsapp_nao_oficial' });
+  return String(data || '');
+}
+const instDe = (inst: Record<string, unknown>): Inst => ({ api_url: String(inst.api_url || ''), nome_instancia: String(inst.nome_instancia || '') });
+const soDigitos = (v: unknown) => String(v || '').replace(/\D/g, '');
+// variações do número brasileiro (com e sem o nono dígito), para casar agenda e conversa
+function variantesTel(tel: string): string[] {
+  const d = soDigitos(tel);
+  const out = [d];
+  if (/^55\d{10}$/.test(d)) out.push(d.slice(0, 4) + '9' + d.slice(4));
+  if (/^55\d{2}9\d{8}$/.test(d)) out.push(d.slice(0, 4) + d.slice(5));
+  return out;
+}
+
+// mensagem do banco pelo id do WhatsApp (dentro da clínica)
+async function mensagemPorIdWa(clinicaId: unknown, idWa: string) {
+  const { data } = await adm.from('mensagens').select('id, tipo, direcao').eq('clinica_id', clinicaId).eq('whatsapp_mensagem_id', idWa).is('excluido_em', null).limit(1).maybeSingle();
+  return data;
+}
+
+// reação, mensagem apagada e mensagem editada: não passam pelo banco de ingestão, a função grava direto
+async function tratarEdicao(inst: Record<string, unknown>, ev: Evento): Promise<boolean> {
+  try {
+    const alvo = ev.alvo ? await mensagemPorIdWa(inst.clinica_id, ev.alvo) : null;
+    if (!alvo) return false;
+    if (ev.tipo === 'reacao') {
+      // o contato só tem uma reação por mensagem: a anterior sai e a nova entra (emoji vazio = retirou)
+      await adm.from('reacoes_mensagem').update({ excluido_em: new Date().toISOString() }).eq('mensagem_id', alvo.id).eq('do_contato', !ev.de_mim).is('excluido_em', null);
+      if (ev.texto) await adm.from('reacoes_mensagem').insert({ clinica_id: inst.clinica_id, mensagem_id: alvo.id, emoji: ev.texto.slice(0, 16), do_contato: !ev.de_mim, usuario_id: null });
+      return true;
+    }
+    if (ev.tipo === 'apagar') {
+      await adm.from('mensagens').update({ apagada: true, apagada_para: 'todos', apagada_em: new Date().toISOString() }).eq('id', alvo.id);
+      return true;
+    }
+    if (ev.tipo === 'editar' && ev.texto) {
+      const campo = alvo.tipo === 'texto' ? 'texto' : 'legenda';
+      await adm.from('mensagens').update({ [campo]: ev.texto.slice(0, 8000), editada_em: new Date().toISOString() }).eq('id', alvo.id);
+      return true;
+    }
+  } catch (e) {
+    console.warn('[whatsapp] edição', (e as Error).name);
+  }
+  return false;
+}
+
+// nome salvo na agenda do aparelho vale mais que o nome que a pessoa usa no WhatsApp
+async function aplicarNomeAgenda(clinicaId: unknown, conversa: { id: string; nome_contato: string | null; lead_id: string | null }, nome: string) {
+  if (!nome || conversa.nome_contato === nome) return false;
+  const antigo = conversa.nome_contato;
+  await adm.from('conversas').update({ nome_contato: nome }).eq('id', conversa.id);
+  if (conversa.lead_id) {
+    // o lead só muda se ainda estiver com o nome automático (telefone, "Contato ..." ou o nome do WhatsApp)
+    const { data: lead } = await adm.from('leads').select('id, nome, telefone').eq('id', conversa.lead_id).maybeSingle();
+    const n = String(lead?.nome || '').trim();
+    const automatico = !n || /^\+?\d[\d\s().-]*$/.test(n) || /^Contato\b/i.test(n) || (antigo && n === antigo) || soDigitos(n) === soDigitos(lead?.telefone);
+    if (lead && automatico) await adm.from('leads').update({ nome }).eq('id', lead.id);
+  }
+  return true;
+}
+
+// um contato: pede à agenda o nome deste número (quando a conversa ainda não tem nome da agenda)
+async function guardarNomeAgenda(inst: Record<string, unknown>, conversaId: string, telefone: string, nomeWa?: string) {
+  try {
+    const { data: cv } = await adm.from('conversas').select('id, nome_contato, lead_id').eq('id', conversaId).maybeSingle();
+    if (!cv) return;
+    if (cv.nome_contato && cv.nome_contato !== nomeWa) return; // já tem nome da agenda (ou digitado)
+    const prov = provedorDe(inst.provedor_nao_oficial as string);
+    const seg = await segredoDe(inst);
+    const ped = seg && inst.api_url && inst.nome_instancia ? pedidoContatos(prov, instDe(inst), seg, telefone) : null;
+    if (!ped) return;
+    const r = await chamar(ped);
+    if (!r.ok) return;
+    const nomes = lerContatos(r.dados);
+    const nome = variantesTel(telefone).map((t) => nomes[t]).find(Boolean);
+    if (nome) await aplicarNomeAgenda(inst.clinica_id, cv, nome);
+  } catch (e) {
+    console.warn('[whatsapp] agenda', (e as Error).name);
+  }
+}
+
+// todas as conversas: casa a agenda inteira do aparelho com as conversas da clínica (agendador, de hora em hora)
+async function sincronizarContatos() {
+  const { data: lista } = await adm.from('instancias_whatsapp')
+    .select('id, clinica_id, provedor_nao_oficial, api_url, nome_instancia')
+    .eq('tipo_api', 'nao_oficial').is('excluido_em', null).eq('status', 'conectado');
+  let instancias = 0, contatos = 0, atualizadas = 0;
+  for (const inst of lista || []) {
+    const prov = provedorDe(inst.provedor_nao_oficial as string);
+    const seg = await segredoDe(inst);
+    const ped = seg && inst.api_url && inst.nome_instancia ? pedidoContatos(prov, instDe(inst), seg) : null;
+    if (!ped) continue;
+    const r = await chamar(ped);
+    if (!r.ok) continue;
+    const nomes = lerContatos(r.dados);
+    instancias++; contatos += Object.keys(nomes).length;
+    const { data: convs } = await adm.from('conversas').select('id, telefone, nome_contato, lead_id')
+      .eq('clinica_id', inst.clinica_id).is('excluido_em', null).limit(5000);
+    for (const cv of convs || []) {
+      const nome = variantesTel(String(cv.telefone || '')).map((t) => nomes[t]).find(Boolean);
+      if (nome && await aplicarNomeAgenda(inst.clinica_id, cv, nome)) atualizadas++;
+    }
+  }
+  // foto do WhatsApp que ainda não chegou ao paciente (vínculo feito depois da foto)
+  let fotos = 0;
+  const { data: semFoto } = await adm.from('conversas').select('id, clinica_id, foto_contato_path, paciente:pacientes!conversas_paciente_id_fkey(foto_path)')
+    .not('foto_contato_path', 'is', null).not('paciente_id', 'is', null).is('excluido_em', null).limit(500);
+  for (const cv of semFoto || []) {
+    const pac = cv.paciente as unknown as { foto_path: string | null } | null;
+    if (pac && !pac.foto_path) { await levarFotoAoPaciente(cv.clinica_id, cv.id, String(cv.foto_contato_path)); fotos++; }
+  }
+  return { instancias, contatos, atualizadas, fotos };
+}
+
+// figurinha recebida vira figurinha da clínica (biblioteca): copia o arquivo e cria o registro
+async function salvarFigurinha(auth: string, mensagemId: string, rotulo: string) {
+  const leitor = createClient(URL_SB, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false }, global: { headers: { Authorization: auth } } });
+  const { data: m } = await leitor.from('mensagens').select('id, clinica_id, tipo, anexos:anexos_mensagem(arquivo_path, mime_type, excluido_em)').eq('id', mensagemId).maybeSingle();
+  if (!m) return json({ erro: 'Sem permissão para esta mensagem.' }, 403);
+  const an = (m.anexos || []).find((a: { excluido_em: string | null }) => !a.excluido_em);
+  if (m.tipo !== 'figurinha' || !an) return json({ erro: 'Esta mensagem não é uma figurinha.' }, 400);
+  const { data: ja } = await adm.from('figurinhas').select('id').eq('clinica_id', m.clinica_id).eq('imagem_path', an.arquivo_path).is('excluido_em', null).limit(1).maybeSingle();
+  if (ja) return json({ ok: true, id: ja.id, repetida: true });
+  const dl = await adm.storage.from('mensagens').download(an.arquivo_path);
+  if (dl.error || !dl.data) return json({ erro: 'Não foi possível ler a figurinha.' }, 502);
+  const destino = `${m.clinica_id}/figurinhas/${crypto.randomUUID()}.webp`;
+  const up = await adm.storage.from('mensagens').upload(destino, dl.data, { contentType: an.mime_type || 'image/webp', upsert: false });
+  if (up.error) return json({ erro: 'Não foi possível guardar a figurinha.' }, 502);
+  const { count } = await adm.from('figurinhas').select('id', { count: 'exact', head: true }).eq('clinica_id', m.clinica_id).is('excluido_em', null);
+  const { data: fig, error } = await adm.from('figurinhas').insert({
+    clinica_id: m.clinica_id, rotulo: (rotulo || 'Figurinha').slice(0, 40), emoji: null, cor_fundo: null, imagem_path: destino, ordem: (count || 0) + 1,
+  }).select('id, rotulo, emoji, cor_fundo, imagem_path, ordem, clinica_id').single();
+  if (error || !fig) return json({ erro: 'Não foi possível salvar a figurinha.' }, 500);
+  return json({ ok: true, figurinha: fig });
+}
+
 // ---------- 1) webhook do provedor ----------
 async function webhook(req: Request, id: string, token: string) {
   const tam = Number(req.headers.get('content-length') || 0);
@@ -205,7 +343,8 @@ async function webhook(req: Request, id: string, token: string) {
   const midias: Promise<void>[] = [];
   for (const ev of eventos) {
     if ('conexao' in ev) { await gravarConexao(inst, ev.conexao, ev.numero); continue; }
-    const { midia, anuncio, campos_contexto, ...evento } = ev;
+    if (ev.tipo === 'reacao' || ev.tipo === 'apagar' || ev.tipo === 'editar') { if (await tratarEdicao(inst, ev)) gravados++; continue; }
+    const { midia, anuncio, campos_contexto, alvo: _alvo, ...evento } = ev;
     const { data, error } = await adm.rpc('n8n_ingerir_evento', { p_provedor: prov, p_instancia_ref: inst.id, p_evento: evento, p_token: token });
     if (error) { console.warn('[whatsapp] ingestão falhou', error.code); continue; }
     const res = (data || {}) as { ok?: boolean; mensagem_id?: string; conversa_id?: string };
@@ -215,8 +354,11 @@ async function webhook(req: Request, id: string, token: string) {
     if (res.ok && anuncio && res.conversa_id && !ev.de_mim) midias.push(guardarAnuncio(inst.clinica_id, res.conversa_id, anuncio));
     // contexto sem anúncio: guarda só os nomes dos campos na conversa, para conferir o formato
     if (res.ok && campos_contexto && res.conversa_id && !ev.de_mim) midias.push(guardarDiagnostico(res.conversa_id, campos_contexto));
-    // contato que escreveu: busca a foto de perfil (uma vez por conversa)
-    if (res.ok && res.conversa_id && ev.tipo === 'mensagem' && !ev.de_mim && ev.telefone) midias.push(guardarFoto(inst, res.conversa_id, ev.telefone).then(() => undefined));
+    // contato que escreveu: busca a foto de perfil (uma vez por conversa) e o nome salvo na agenda do aparelho
+    if (res.ok && res.conversa_id && ev.tipo === 'mensagem' && !ev.de_mim && ev.telefone) {
+      midias.push(guardarFoto(inst, res.conversa_id, ev.telefone).then(() => undefined));
+      midias.push(guardarNomeAgenda(inst, res.conversa_id, ev.telefone, ev.nome));
+    }
   }
   // a mídia é baixada depois da resposta, para o provedor não esperar
   if (midias.length) {
@@ -245,6 +387,11 @@ async function gestao(req: Request) {
     const ok = inst ? await guardarFoto(inst, cid, String(cv.telefone || '')) : false;
     const { data: fin } = ok ? await adm.from('conversas').select('foto_contato_path').eq('id', cid).maybeSingle() : { data: null };
     return json({ foto: ok, foto_path: fin?.foto_contato_path || null });
+  }
+  if (acao === 'figurinha') {
+    const mid = String(corpo.mensagem_id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(mid)) return json({ erro: 'Pedido inválido.' }, 400);
+    return await salvarFigurinha(auth, mid, String(corpo.rotulo || ''));
   }
   const id = String(corpo.instancia_id || '');
   if (!['conectar', 'estado', 'desconectar'].includes(acao) || !/^[0-9a-f-]{36}$/i.test(id)) return json({ erro: 'Pedido inválido.' }, 400);
@@ -313,7 +460,7 @@ async function gestao(req: Request) {
   return json({ estado: 'conectando', qr });
 }
 
-// ---------- 3) vigia: consulta as instâncias conectadas (chamado pelo agendador do banco a cada 10 min) ----------
+// ---------- 3) vigia: consulta as instâncias conectadas (chamado pelo agendador do banco a cada minuto) ----------
 // Só responde com o segredo guardado no cofre do banco (x-vigia-token). Se o provedor não responder, não derruba o status.
 async function vigiar() {
   const { data: lista } = await adm.from('instancias_whatsapp')
@@ -345,7 +492,9 @@ Deno.serve(async (req) => {
     if (segredoVigia !== null) {
       const { data: ok } = await adm.rpc('vigia_token_valido', { p_token: segredoVigia });
       if (!ok) return json({ erro: 'Não autorizado.' }, 401);
-      return json(await vigiar());
+      const corpo = await req.json().catch(() => ({})) as Record<string, unknown>;
+      // { acao: 'contatos' } sincroniza a agenda; sem ação, confere as conexões
+      return json(corpo.acao === 'contatos' ? await sincronizarContatos() : await vigiar());
     }
     if (id && token) return await webhook(req, id, token);
     return await gestao(req);

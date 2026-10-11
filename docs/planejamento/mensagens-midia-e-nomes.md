@@ -99,3 +99,25 @@ de ativar, mostrar a opção grátis que resolve.
 ## 5. Decisão de LGPD antes do passo 5
 Transcrever áudio envia a voz do paciente (possivelmente com dados de saúde) a um fornecedor externo. Isso é o achado A3
 de `docs/security.md`. **Não ativar sem decisão do fundador.**
+
+---
+
+## Situação em 2026-10-11 (executado)
+
+- **Nome da agenda (confirmado)**: o endpoint `POST /chat/findContacts/{instância}` da Evolution v2 devolve os contatos salvos
+  no aparelho com o nome da agenda em `pushName` (3.777 dos 3.797 contatos salvos vinham com nome no teste). A função
+  `whatsapp` (versão 11) busca o nome a cada mensagem recebida de conversa sem nome da agenda e, de hora em hora (cron
+  `contatos_whatsapp`, minuto 7), casa a agenda inteira com as conversas. Ordem na tela: paciente cadastrado > nome da agenda
+  (`conversas.nome_contato`) > nome do WhatsApp > número. O lead só muda de nome se ainda estiver com o nome automático.
+- **Tipos de mensagem (confirmado em teste unitário, não confirmado com mensagem real)**: figurinha baixa a imagem (webp);
+  localização vira link de mapa; cartão de contato vira nome e telefone; enquete vira lista; reação, apagada e editada
+  atualizam a mensagem original (`reacoes_mensagem`, `apagada`, `editada_em`); resposta citada liga em `resposta_a_mensagem_id`.
+- **Mídia enviada pelo aparelho** agora é baixada (a ingestão devolve `mensagem_id` também para mensagens de_mim).
+- **Mídia enviada pelo sistema**: a fila (`n8n_envio_preflight`) passa a achar o anexo da mensagem ou a imagem da figurinha;
+  anexo ainda subindo espera 20 s. O WF02 do n8n ganhou o nó "Enviar figurinha pela Evolution" (`sendSticker`).
+- **Figurinhas da clínica**: figurinha recebida pode ser salva pelo menu da mensagem ("Salvar figurinha") e aparece no painel
+  de figurinhas para reenviar. Para trazer as figurinhas já salvas no celular: envie cada uma pelo celular para qualquer
+  conversa da clínica; ela chega no sistema e pode ser salva. Não existe API para ler a coleção de figurinhas do aparelho.
+- **Foto do paciente**: a foto do WhatsApp é copiada para `pacientes.foto_path` (no vínculo e na sincronização de hora em hora)
+  e o front passa a mostrar `foto_path` na lista e na ficha (links assinados do bucket `clinica`).
+- **Pendente**: transcrição de áudio (decisão de LGPD) e teste com mensagens reais de cada tipo.
