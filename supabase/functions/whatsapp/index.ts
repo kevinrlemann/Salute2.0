@@ -98,11 +98,29 @@ async function guardarMidia(inst: Record<string, unknown>, prov: 'evolution' | '
   }
 }
 
+// a foto do WhatsApp também vira foto do paciente (lista e ficha), se ele ainda não tem uma
+async function levarFotoAoPaciente(clinicaId: unknown, conversaId: string, fotoPath: string) {
+  try {
+    const { data: cv } = await adm.from('conversas').select('paciente_id').eq('id', conversaId).maybeSingle();
+    if (!cv?.paciente_id) return;
+    const { data: pac } = await adm.from('pacientes').select('foto_path').eq('id', cv.paciente_id).maybeSingle();
+    if (!pac || pac.foto_path) return;
+    const dl = await adm.storage.from('mensagens').download(fotoPath);
+    if (dl.error || !dl.data) return;
+    const destino = `${clinicaId}/pacientes/${cv.paciente_id}/foto.jpg`;
+    const up = await adm.storage.from('clinica').upload(destino, dl.data, { contentType: 'image/jpeg', upsert: true });
+    if (up.error) { console.warn('[whatsapp] foto do paciente não copiada'); return; }
+    await adm.from('pacientes').update({ foto_path: destino }).eq('id', cv.paciente_id).is('foto_path', null);
+  } catch (e) {
+    console.warn('[whatsapp] foto do paciente', (e as Error).name);
+  }
+}
+
 // foto de perfil do contato: se a conversa ainda não tem, pede ao provedor e guarda no bucket "mensagens"
 async function guardarFoto(inst: Record<string, unknown>, conversaId: string, telefone: string): Promise<boolean> {
   try {
     const { data: cv } = await adm.from('conversas').select('foto_contato_path').eq('id', conversaId).maybeSingle();
-    if (cv?.foto_contato_path) return true;
+    if (cv?.foto_contato_path) { await levarFotoAoPaciente(inst.clinica_id, conversaId, cv.foto_contato_path); return true; }
     const prov = provedorDe(inst.provedor_nao_oficial as string);
     if (prov !== 'evolution' || !inst.api_url || !inst.nome_instancia) return false;
     const { data: seg } = await adm.rpc('ler_segredo', { p_clinica: inst.clinica_id, p_provedor: 'whatsapp_nao_oficial' });
@@ -122,6 +140,7 @@ async function guardarFoto(inst: Record<string, unknown>, conversaId: string, te
     const up = await adm.storage.from('mensagens').upload(path, bytes, { contentType: mime, upsert: true });
     if (up.error) { console.warn('[whatsapp] foto não guardada'); return false; }
     await adm.from('conversas').update({ foto_contato_path: path }).eq('id', conversaId);
+    await levarFotoAoPaciente(inst.clinica_id, conversaId, path);
     return true;
   } catch (e) {
     console.warn('[whatsapp] foto', (e as Error).name);

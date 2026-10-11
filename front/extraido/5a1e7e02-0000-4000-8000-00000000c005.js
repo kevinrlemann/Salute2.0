@@ -124,7 +124,8 @@ function assinarFotos(convs) {
 }
 // conversa sem foto: pede ao servidor uma vez (ele busca no WhatsApp e guarda)
 function pedirFoto(c) {
-  if (c.foto_contato_path || FOTO_PEDIDA[c.id]) return;
+  // o servidor decide: também copia a foto para o paciente, se ele ainda não tiver uma
+  if (FOTO_PEDIDA[c.id]) return;
   FOTO_PEDIDA[c.id] = true;
   SB.auth.getSession().then(function (r) {
     var tok = r && r.data && r.data.session ? r.data.session.access_token : SB_CFG.key;
