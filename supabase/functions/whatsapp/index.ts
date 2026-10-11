@@ -313,12 +313,40 @@ async function gestao(req: Request) {
   return json({ estado: 'conectando', qr });
 }
 
+// ---------- 3) vigia: consulta as instâncias conectadas (chamado pelo agendador do banco a cada 10 min) ----------
+// Só responde com o segredo guardado no cofre do banco (x-vigia-token). Se o provedor não responder, não derruba o status.
+async function vigiar() {
+  const { data: lista } = await adm.from('instancias_whatsapp')
+    .select('id, clinica_id, status, numero, tipo_api, provedor_nao_oficial, api_url, nome_instancia')
+    .eq('tipo_api', 'nao_oficial').is('excluido_em', null).in('status', ['conectado', 'conectando']);
+  let verificadas = 0, semResposta = 0, caidas = 0;
+  for (const inst of lista || []) {
+    if (!inst.api_url || !inst.nome_instancia) continue;
+    const prov = provedorDe(inst.provedor_nao_oficial as string);
+    const { data: seg } = await adm.rpc('ler_segredo', { p_clinica: inst.clinica_id, p_provedor: 'whatsapp_nao_oficial' });
+    if (!seg) continue;
+    const st = await chamar(pedidoEstado(prov, { api_url: String(inst.api_url), nome_instancia: String(inst.nome_instancia) }, String(seg)));
+    if (!st.ok && st.status !== 404) { semResposta++; continue; }
+    const estado = st.ok ? lerEstado(prov, st.dados) : 'desconectado';
+    verificadas++;
+    if (estado === 'desconectado') caidas++;
+    if (estado !== inst.status) await gravarConexao(inst, estado);
+  }
+  return { verificadas, sem_resposta: semResposta, caidas };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ erro: 'Use POST' }, 405);
   const u = new URL(req.url);
   const id = u.searchParams.get('i'), token = u.searchParams.get('t');
   try {
+    const segredoVigia = req.headers.get('x-vigia-token');
+    if (segredoVigia !== null) {
+      const { data: ok } = await adm.rpc('vigia_token_valido', { p_token: segredoVigia });
+      if (!ok) return json({ erro: 'Não autorizado.' }, 401);
+      return json(await vigiar());
+    }
     if (id && token) return await webhook(req, id, token);
     return await gestao(req);
   } catch (e) {
