@@ -1258,29 +1258,28 @@ WaSvc.desconectar = function () {
 function WaNaoOficial(props) {
   var h = React.createElement;
   var mobile = props.mobile;
+  // os dados técnicos (endereço, nome da instância, chave) ficam guardados e não aparecem na tela
   var _f = React.useState(waNaoOficialTela), f = _f[0], setF = _f[1];
   var _q = React.useState(null), qr = _q[0], setQr = _q[1];
   var _b = React.useState(false), busy = _b[0], setBusy = _b[1];
   var _e = React.useState(''), erro = _e[0], setErro = _e[1];
   var _s = React.useState(''), situacao = _s[0], setSituacao = _s[1];
+  var _st = React.useState(function () { return CAT.v.instancia && CAT.v.instancia.status || 'desconectado'; }), st = _st[0], setSt = _st[1];
   var timer = React.useRef(null);
-  var _kp = React.useState(''), chaveP = _kp[0], setChaveP = _kp[1];
-  var _mp = React.useState(''), msgP = _mp[0], setMsgP = _mp[1];
-  var admin = typeof SESSAO !== 'undefined' && !!(SESSAO.v && SESSAO.v.admin);
   var parar = function () { if (timer.current) { clearInterval(timer.current); timer.current = null; } };
-  var guardarPadrao = function () {
-    setMsgP('');
-    DB.rpc('salvar_segredo', { p_clinica: null, p_provedor: 'whatsapp_nao_oficial', p_segredo: chaveP.trim() }, 'Não foi possível guardar a chave padrão').then(function () {
-      setChaveP(''); setMsgP('Chave padrão guardada. As clínicas já podem conectar o WhatsApp.');
-    }, function (e) { setMsgP(e && e.message ? e.message : 'Não foi possível guardar a chave padrão.'); });
-  };
+  var atualizaSt = function () { setSt(CAT.v.instancia && CAT.v.instancia.status || 'desconectado'); };
   React.useEffect(function () { return parar; }, []);
-  var campo = function (k) { return function (e) { var n = Object.assign({}, f); n[k] = e.target.value; setF(n); }; };
+  // o vigia do servidor confere a conexão a cada minuto; a tela relê o status no mesmo ritmo
+  React.useEffect(function () {
+    var t = setInterval(function () { waRecarregar().then(atualizaSt, function () {}); }, 60000);
+    return function () { clearInterval(t); };
+  }, []);
   var zapi = f.prov === 'zapi';
   var completo = zapi ? (f.inst.trim() && f.chave.trim()) : true;
   var conectou = function () {
     parar(); setQr(null); setSituacao('');
     return waRecarregar().then(function () {
+      atualizaSt();
       avisoOk('WhatsApp conectado', 'As mensagens dos pacientes já chegam em Conversas.');
     });
   };
@@ -1302,71 +1301,53 @@ function WaNaoOficial(props) {
       setBusy(false);
       setF(waNaoOficialTela());
       if (j.estado === 'conectado') return conectou();
-      setQr(j.qr); setSituacao('Aguardando a leitura do QR Code...');
+      setQr(j.qr); setSituacao('Aguardando a leitura do QR Code...'); atualizaSt();
       acompanhar();
     }, function (e) {
       setBusy(false);
       setErro(e && e.message ? e.message : 'Não foi possível gerar o QR Code.');
     });
   };
-  var chip = function (k, rotulo) {
-    var sel = f.prov === k;
-    return h("button", {
-      key: k, type: "button",
-      onClick: function () { parar(); setQr(null); var n = Object.assign({}, f, { prov: k, chave: '', cliente: '' }); n.inst = k === 'zapi' ? '' : 'salute-' + String(CLI() || '').slice(0, 8); setF(n); },
-      style: { padding: '8px 16px', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13.5, fontWeight: 600,
-        border: sel ? '2px solid #1F5EFF' : '2px solid rgba(214,226,242,.95)', background: sel ? 'rgba(31,94,255,.08)' : '#fff', color: sel ? '#1F5EFF' : 'var(--text-body)' }
-    }, rotulo);
+  var desconectar = function () {
+    setBusy(true); setErro('');
+    Promise.resolve().then(function () { return WaSvc.desconectar(); }).then(function () {
+      setBusy(false); parar(); setQr(null); setSituacao('');
+      return waRecarregar();
+    }).then(atualizaSt, function (e) {
+      setBusy(false);
+      setErro(e && e.message ? e.message : 'Não foi possível desconectar o WhatsApp.');
+    });
   };
+  var no = st === 'conectado';
+  var cor = no ? '#1E9E5A' : qr || st === 'conectando' ? '#D98A1B' : '#C2353A';
+  var titulo = no ? 'No ar' : qr || st === 'conectando' ? 'Aguardando conexão' : 'Fora do ar';
   var grade = { display: 'grid', gridTemplateColumns: mobile ? '1fr' : '1fr 1fr', gap: 12 };
-  var I = window.OInput, Btn = window.OBtn, B = window.B || 'b';
-  // clínica: tela simples, só conectar. Os detalhes técnicos ficam só para a equipe da Salute.
-  if (!admin) return h("div", { style: { display: 'flex', flexDirection: 'column', gap: 18, padding: 22, borderRadius: 20, background: 'rgba(255,255,255,.7)', border: '1.5px solid rgba(255,255,255,.95)', alignItems: 'flex-start' } },
-    h("b", { style: { fontSize: 17 } }, "Conectar o WhatsApp da clínica"),
-    h("span", { style: { fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Assim as conversas dos pacientes chegam aqui no sistema, e a equipe responde por aqui."),
-    qr ? h("img", { src: qr, alt: "QR Code do WhatsApp", width: 210, height: 210, style: { display: 'block', width: 210, height: 210, borderRadius: 14, background: '#fff', padding: 10, boxSizing: 'border-box' } }) : null,
-    qr ? h("ol", { style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, color: 'var(--text-body)' } },
-      h("li", null, "No celular da clínica, abra o WhatsApp."),
-      h("li", null, "Toque em Aparelhos conectados e depois em Conectar aparelho."),
-      h("li", null, "Aponte a câmera para este código.")) : null,
-    situacao ? h("span", { style: { fontSize: 13, color: 'var(--text-muted)' } }, situacao) : null,
-    erro ? h("div", { role: "alert", style: { fontSize: 13, color: '#C2353A', lineHeight: 1.5 } }, erro) : null,
-    h(Btn, { iconLeft: qr ? "refresh-cw" : "qr-code", loading: busy, disabled: !completo, onClick: gerar }, qr ? "Gerar novo código" : "Conectar WhatsApp"));
-
+  var Btn = window.OBtn, B = window.B || 'b';
   return h("div", { style: { display: 'flex', flexDirection: 'column', gap: 16, padding: 18, borderRadius: 20, background: 'rgba(255,255,255,.7)', border: '1.5px solid rgba(255,255,255,.95)' } },
-    h("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-      h("span", { style: { fontSize: 13, color: 'var(--text-muted)', marginRight: 4 } }, "Provedor:"),
-      chip('evolution', 'API não oficial 01'), chip('zapi', 'API não oficial 02')),
-    h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, zapi
-      ? "Você encontra o ID e o token da instância no painel da API não oficial 02. O Client-Token fica em Segurança, na sua conta."
-      : "Use o endereço e a chave (apikey) do seu servidor da API não oficial 01. A instância é criada sozinha se ainda não existir."),
-    admin ? h("div", { style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 16, border: '1.5px dashed #C9D6EE' } },
-      h("b", { style: { fontSize: 14 } }, "Chave padrão da API não oficial 01 (só a equipe da Salute)"),
-      h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Guarde a chave uma única vez. Todas as clínicas usam essa chave e só precisam ler o QR Code."),
-      h(I, { label: "Chave da API (apikey)", type: "password", value: chaveP, onChange: function (e) { setChaveP(e.target.value); } }),
-      h("div", null, h(Btn, { iconLeft: "save", disabled: !chaveP.trim(), onClick: guardarPadrao }, "Guardar chave padrão")),
-      msgP ? h("span", { style: { fontSize: 13, color: 'var(--text-muted)' } }, msgP) : null) : null,
-    zapi ? h("div", { style: grade },
-      zapi ? null : h(I, { label: "Endereço do servidor", iconLeft: "globe", placeholder: "https://evolution.suaempresa.com", value: f.url, onChange: campo('url') }),
-      h(I, { label: zapi ? "ID da instância" : "Nome da instância", value: f.inst, onChange: campo('inst') }),
-      h(I, { label: zapi ? "Token da instância" : "Chave da API (apikey)", type: "password", value: f.chave, onChange: campo('chave') }),
-      zapi ? h(I, { label: "Client-Token (opcional)", type: "password", value: f.cliente, onChange: campo('cliente') }) : null) : null,
-    h("div", { style: { display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' } },
+    h("div", { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
+      h("span", { style: { width: 10, height: 10, borderRadius: '50%', background: cor, boxShadow: '0 0 0 4px ' + cor + '33' } }),
+      h("b", { style: { fontSize: 17 } }, "WhatsApp da clínica: " + titulo)),
+    h("span", { style: { fontSize: 13.5, color: 'var(--text-muted)', lineHeight: 1.5 } }, no
+      ? "A conexão é checada a cada minuto. Se cair, o sistema avisa e você reconecta por aqui."
+      : "Para receber e responder as conversas dos pacientes, leia o QR Code com o celular da clínica."),
+    no ? null : h("div", { style: { display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' } },
       h("div", { style: { padding: 10, borderRadius: 18, background: '#fff', boxShadow: '0 10px 24px -14px rgba(23,73,170,.5)' } },
         qr ? h("img", { src: qr, alt: "QR Code do WhatsApp", width: 170, height: 170, style: { display: 'block', width: 170, height: 170, borderRadius: 12 } })
           : h("div", { style: { width: 170, height: 170, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 14, boxSizing: 'border-box', borderRadius: 12, border: '1.5px dashed #C9D6EE', color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.4 } },
-            "Preencha os dados e toque em Gerar QR Code.")),
+            "Toque em Conectar WhatsApp para gerar o QR Code.")),
       h("div", { style: { flex: 1, minWidth: 220, display: 'flex', flexDirection: 'column', gap: 10 } },
         h("ol", { style: { margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14, color: 'var(--text-body)' } },
           h("li", null, "Abra o WhatsApp no celular da clínica."),
           h("li", null, "Toque em ", h(B, null, "Aparelhos conectados"), " e depois em ", h(B, null, "Conectar aparelho"), "."),
           h("li", null, "Aponte a câmera para este QR Code.")),
         situacao ? h("div", { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' } },
-          h("span", { style: { width: 8, height: 8, borderRadius: '50%', background: '#1F5EFF', boxShadow: '0 0 0 4px rgba(31,94,255,.2)' } }), situacao) : null,
-        erro ? h("div", { role: "alert", style: { fontSize: 13, color: '#C2353A', lineHeight: 1.5 } }, erro) : null,
-        h("div", null, h(Btn, { iconLeft: qr ? "refresh-cw" : "qr-code", loading: busy, disabled: !completo, onClick: gerar }, qr ? "Gerar novo QR Code" : "Gerar QR Code")))),
+          h("span", { style: { width: 8, height: 8, borderRadius: '50%', background: '#1F5EFF', boxShadow: '0 0 0 4px rgba(31,94,255,.2)' } }), situacao) : null)),
+    erro ? h("div", { role: "alert", style: { fontSize: 13, color: '#C2353A', lineHeight: 1.5 } }, erro) : null,
+    h("div", { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+      no ? h(Btn, { iconLeft: "unplug", loading: busy, onClick: desconectar }, "Desconectar WhatsApp")
+        : h(Btn, { iconLeft: qr ? "refresh-cw" : "qr-code", loading: busy, disabled: !completo, onClick: gerar }, qr ? "Gerar novo QR Code" : "Conectar WhatsApp")),
     h("span", { style: { fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 } },
-      "Atenção: a API não oficial pode ter o número bloqueado pelo WhatsApp se houver muitos disparos. Use um número da clínica, não um pessoal."));
+      "Atenção: usar muitos disparos pode bloquear o número no WhatsApp. Use um número da clínica, não um pessoal."));
 }
 
 Object.assign(window, {

@@ -1,4 +1,4 @@
-/* VIGIA DO WHATSAPP (não oficial): a cada 10 minutos o banco pede à função "whatsapp" que confira */
+/* VIGIA DO WHATSAPP (não oficial): a cada minuto o banco pede à função "whatsapp" que confira */
 /* se as conexões continuam ligadas. Quando uma cai (conectado -> desconectado), entra um alerta crítico. */
 /*
  * Pré-requisito (fora deste arquivo, para o segredo não ir ao repositório público):
@@ -39,8 +39,8 @@ create or replace trigger tg_whatsapp_avisar_queda
   after update of status on public.instancias_whatsapp
   for each row execute function public.whatsapp_avisar_queda();
 
-/* 3) agendador: a cada 10 minutos chama o vigia (o segredo é lido do cofre na hora do envio) */
-select cron.schedule('vigia_whatsapp', '*/10 * * * *', $$
+/* 3) agendador: a cada minuto chama o vigia (o segredo é lido do cofre na hora do envio) */
+select cron.schedule('vigia_whatsapp', '* * * * *', $$
   select net.http_post(
     url := 'https://gbhsslyoybqjvjznlave.supabase.co/functions/v1/whatsapp',
     headers := jsonb_build_object('Content-Type', 'application/json', 'x-vigia-token', (select decrypted_secret from vault.decrypted_secrets where name = 'vigia_whatsapp')),
