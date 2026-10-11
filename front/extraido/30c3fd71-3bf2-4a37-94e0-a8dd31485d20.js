@@ -119,7 +119,7 @@ var ADICIONAIS_STORE = makeStore([{
 }, {
   codigo: 'armazenamento_25', nome: '+25 GB de armazenamento', descricao: 'Para fotos, exames e documentos.', preco: 29, cobranca: 'mensal', quantidade: 25, planos: ['inicial', 'assistente', 'iapro', 'enterprise']
 }, {
-  codigo: 'zapi', nome: 'Z-API no lugar da Evolution', descricao: 'Conexão do WhatsApp gerenciada pela Z-API.', preco: 119, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro', 'enterprise']
+  codigo: 'zapi', nome: 'API não oficial 02 no lugar da API não oficial 01', descricao: 'Conexão do WhatsApp gerenciada pela API não oficial 02.', preco: 119, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro', 'enterprise']
 }, {
   codigo: 'meta_oficial', nome: 'WhatsApp oficial da Meta', descricao: 'Custo das mensagens da Meta + 20%.', preco: null, cobranca: 'sob_consulta', quantidade: null, planos: ['enterprise']
 }]);

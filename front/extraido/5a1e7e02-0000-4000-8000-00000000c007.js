@@ -1336,12 +1336,12 @@ function WaNaoOficial(props) {
   return h("div", { style: { display: 'flex', flexDirection: 'column', gap: 16, padding: 18, borderRadius: 20, background: 'rgba(255,255,255,.7)', border: '1.5px solid rgba(255,255,255,.95)' } },
     h("div", { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
       h("span", { style: { fontSize: 13, color: 'var(--text-muted)', marginRight: 4 } }, "Provedor:"),
-      chip('evolution', 'Evolution API'), chip('zapi', 'Z-API')),
+      chip('evolution', 'API não oficial 01'), chip('zapi', 'API não oficial 02')),
     h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, zapi
-      ? "Você encontra o ID e o token da instância no painel da Z-API. O Client-Token fica em Segurança, na sua conta."
-      : "Use o endereço e a chave (apikey) do seu servidor Evolution. A instância é criada sozinha se ainda não existir."),
+      ? "Você encontra o ID e o token da instância no painel da API não oficial 02. O Client-Token fica em Segurança, na sua conta."
+      : "Use o endereço e a chave (apikey) do seu servidor da API não oficial 01. A instância é criada sozinha se ainda não existir."),
     admin ? h("div", { style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 16, border: '1.5px dashed #C9D6EE' } },
-      h("b", { style: { fontSize: 14 } }, "Chave padrão da Evolution (só a equipe da Salute)"),
+      h("b", { style: { fontSize: 14 } }, "Chave padrão da API não oficial 01 (só a equipe da Salute)"),
       h("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Guarde a chave uma única vez. Todas as clínicas usam essa chave e só precisam ler o QR Code."),
       h(I, { label: "Chave da API (apikey)", type: "password", value: chaveP, onChange: function (e) { setChaveP(e.target.value); } }),
       h("div", null, h(Btn, { iconLeft: "save", disabled: !chaveP.trim(), onClick: guardarPadrao }, "Guardar chave padrão")),
