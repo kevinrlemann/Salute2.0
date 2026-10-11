@@ -1471,7 +1471,7 @@ function WaMsg(_ref0) {
       boxSizing: 'border-box',
       flexShrink: 0
     }
-  }, (m.name.split('.').pop() || 'ARQ').slice(0, 4).toUpperCase()), /*#__PURE__*/React.createElement("span", {
+  }, (String(m.name || '').split('.').pop() || 'ARQ').slice(0, 4).toUpperCase()), /*#__PURE__*/React.createElement("span", {
     style: {
       flex: 1,
       minWidth: 0
@@ -1489,7 +1489,7 @@ function WaMsg(_ref0) {
       fontSize: 12,
       color: WA.sub
     }
-  }, (m.name.split('.').pop() || '').toUpperCase(), " \xB7 ", waSize(m.size || 0))), /*#__PURE__*/React.createElement("span", {
+  }, (String(m.name || '').split('.').pop() || '').toUpperCase(), " \xB7 ", waSize(m.size || 0))), /*#__PURE__*/React.createElement("span", {
     style: {
       width: 32,
       height: 32,
