@@ -154,7 +154,7 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         return carregar('catalogos');
       case 1:
         _context.n = 2;
-        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), lead:leads(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
+        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), lead:leads!conversas_lead_id_fkey(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
           ascending: false,
           nullsFirst: false
         }).limit(1000)), DB.ler(DB.sel('canais_equipe', 'id,nome,tipo,funcao,criado_em,participantes:participantes_canal(usuario_id,ultima_leitura_em,excluido_em)').order('criado_em'))["catch"](function () {
