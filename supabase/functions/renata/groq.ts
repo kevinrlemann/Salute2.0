@@ -7,7 +7,8 @@
 export const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
 // em ordem de preferência; o próximo entra quando o anterior bate no limite do plano grátis.
 // Cada modelo tem o próprio limite por minuto, então a troca soma a capacidade dos três.
-export const GROQ_MODELOS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+// o 20b responde bem mais rápido e cobre a maioria das perguntas; o 120b entra quando o 20b está no limite
+export const GROQ_MODELOS = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b'];
 // ajustes por modelo: menos "raciocínio" gasta menos tokens e responde mais rápido
 const EXTRAS: Record<string, Record<string, unknown>> = {
   'openai/gpt-oss-120b': { reasoning_effort: 'low' },
