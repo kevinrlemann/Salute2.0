@@ -18,6 +18,8 @@ export type Evento = {
   status?: string;
   // mídia recebida (não vai para o banco: a função baixa e guarda no armazenamento da clínica)
   midia?: { url?: string; mime?: string; nome?: string };
+  // anúncio de onde veio a conversa (click-to-WhatsApp); não vai para o banco, a função guarda na conversa
+  anuncio?: { titulo?: string; corpo?: string; url?: string; ctwa_clid?: string };
 };
 
 // mudança de conexão do aparelho (QR lido, celular desconectado)
@@ -62,6 +64,33 @@ const textoEvolution = (m: Obj): { texto: string; tipo: string } => {
   return { texto: '', tipo: 'outro' };
 };
 
+// anúncio do clique no WhatsApp: vem no contextInfo.externalAdReply de alguma parte da mensagem
+let avisosContexto = 0;
+const anuncioEvolution = (d: Obj): Evento['anuncio'] => {
+  const cis: Obj[] = [];
+  for (const v of Object.values(o(d.message))) {
+    const ci = o(o(v).contextInfo);
+    if (Object.keys(ci).length) cis.push(ci);
+  }
+  const topo = o(d.contextInfo);
+  if (Object.keys(topo).length) cis.push(topo);
+  for (const ci of cis) {
+    const ad = o(ci.externalAdReply);
+    if (Object.keys(ad).length) {
+      return {
+        titulo: s(ad.title) || undefined, corpo: s(ad.body) || undefined, url: s(ad.sourceUrl) || undefined,
+        ctwa_clid: s(ci.ctwaClid) || s(ad.ctwaClid) || undefined,
+      };
+    }
+  }
+  // só os nomes dos campos (nunca o conteúdo), para conferir o formato real nos registros
+  if (cis.length && avisosContexto < 5) {
+    avisosContexto++;
+    console.info('[whatsapp] contexto sem anúncio; campos:', cis.map((c) => Object.keys(c).join(',')).join(' | '));
+  }
+  return undefined;
+};
+
 const STATUS_EVOLUTION: Record<string, string> = {
   SERVER_ACK: 'sent', DELIVERY_ACK: 'delivered', READ: 'read', PLAYED: 'read', ERROR: 'failed',
   '1': 'sent', '2': 'sent', '3': 'delivered', '4': 'read', '5': 'read', '0': 'failed',
@@ -85,7 +114,7 @@ export function lerEvolution(corpo: Obj): Array<Evento | Conexao> {
       out.push({
         tipo: 'mensagem', id_externo: id, telefone: tel, nome: s(d.pushName) || undefined,
         texto, tipo_msg: tipo, de_mim: k.fromMe === true, timestamp: Number(d.messageTimestamp) || undefined,
-        midia: midiaEvolution(o(d.message)),
+        midia: midiaEvolution(o(d.message)), anuncio: anuncioEvolution(d),
       });
     } else if (ev === 'messages.update') {
       const id = s(d.keyId) || s(o(d.key).id) || s(d.messageId);

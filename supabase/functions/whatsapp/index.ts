@@ -148,6 +148,36 @@ async function guardarFoto(inst: Record<string, unknown>, conversaId: string, te
   }
 }
 
+// origem do lead a partir do link do anúncio (nomes iguais aos da tabela origens_lead)
+function origemDoAnuncio(url?: string): string {
+  const h = (url || '').toLowerCase();
+  if (/instagram\.com|ig\.me/.test(h)) return 'Instagram';
+  if (/facebook\.com|fb\.com|fb\.me|fb\.watch|messenger\.com/.test(h)) return 'Facebook';
+  if (/tiktok\.com/.test(h)) return 'TikTok';
+  if (/google\.|youtube\.com|youtu\.be|g\.co\//.test(h)) return 'Google';
+  return 'Tráfego pago';
+}
+
+// guarda o anúncio na conversa (só no primeiro contato) e troca "Não informado" pela origem do anúncio
+async function guardarAnuncio(clinicaId: unknown, conversaId: string, a: NonNullable<Evento['anuncio']>) {
+  try {
+    const { data: cv } = await adm.from('conversas').select('origem_anuncio, lead_id').eq('id', conversaId).maybeSingle();
+    if (!cv) return;
+    if (!cv.origem_anuncio) {
+      await adm.from('conversas').update({ origem_anuncio: { ...a, recebido_em: new Date().toISOString() } })
+        .eq('id', conversaId).is('origem_anuncio', null);
+    }
+    if (!cv.lead_id) return;
+    const { data: nao } = await adm.from('origens_lead').select('id').eq('clinica_id', clinicaId).eq('nome', 'Não informado').is('excluido_em', null).limit(1).maybeSingle();
+    const { data: alvo } = await adm.from('origens_lead').select('id').eq('clinica_id', clinicaId).eq('nome', origemDoAnuncio(a.url))
+      .eq('ativo', true).is('excluido_em', null).order('ordem').limit(1).maybeSingle();
+    if (!nao || !alvo) return;
+    await adm.from('leads').update({ origem_id: alvo.id }).eq('id', cv.lead_id).eq('origem_id', nao.id);
+  } catch (e) {
+    console.warn('[whatsapp] anúncio', (e as Error).name);
+  }
+}
+
 // ---------- 1) webhook do provedor ----------
 async function webhook(req: Request, id: string, token: string) {
   const tam = Number(req.headers.get('content-length') || 0);
@@ -165,12 +195,14 @@ async function webhook(req: Request, id: string, token: string) {
   const midias: Promise<void>[] = [];
   for (const ev of eventos) {
     if ('conexao' in ev) { await gravarConexao(inst, ev.conexao, ev.numero); continue; }
-    const { midia, ...evento } = ev;
+    const { midia, anuncio, ...evento } = ev;
     const { data, error } = await adm.rpc('n8n_ingerir_evento', { p_provedor: prov, p_instancia_ref: inst.id, p_evento: evento, p_token: token });
     if (error) { console.warn('[whatsapp] ingestão falhou', error.code); continue; }
     const res = (data || {}) as { ok?: boolean; mensagem_id?: string; conversa_id?: string };
     if (res.ok) gravados++;
     if (res.ok && midia && res.mensagem_id && res.conversa_id) midias.push(guardarMidia(inst, prov, ev, res.mensagem_id, res.conversa_id));
+    // veio de um anúncio (click-to-WhatsApp): guarda os dados do anúncio na conversa e ajusta a origem do lead
+    if (res.ok && anuncio && res.conversa_id && !ev.de_mim) midias.push(guardarAnuncio(inst.clinica_id, res.conversa_id, anuncio));
     // contato que escreveu: busca a foto de perfil (uma vez por conversa)
     if (res.ok && res.conversa_id && ev.tipo === 'mensagem' && !ev.de_mim && ev.telefone) midias.push(guardarFoto(inst, res.conversa_id, ev.telefone).then(() => undefined));
   }
