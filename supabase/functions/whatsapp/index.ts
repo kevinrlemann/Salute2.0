@@ -15,7 +15,7 @@
 // O envio das respostas continua com o n8n (n8n_envio_preflight monta o pedido para cada provedor).
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { lerEstado, lerEventos, lerQr, nomeArquivo, pedidoDesconectar, pedidoEstado, pedidoMidia, pedidosConectar, provedorDe, type Evento, type Inst, type Pedido } from './provedores.ts';
+import { lerEstado, lerEventos, lerFotoUrl, lerQr, nomeArquivo, pedidoDesconectar, pedidoEstado, pedidoFoto, pedidoMidia, pedidosConectar, provedorDe, type Evento, type Inst, type Pedido } from './provedores.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -98,6 +98,37 @@ async function guardarMidia(inst: Record<string, unknown>, prov: 'evolution' | '
   }
 }
 
+// foto de perfil do contato: se a conversa ainda não tem, pede ao provedor e guarda no bucket "mensagens"
+async function guardarFoto(inst: Record<string, unknown>, conversaId: string, telefone: string): Promise<boolean> {
+  try {
+    const { data: cv } = await adm.from('conversas').select('foto_contato_path').eq('id', conversaId).maybeSingle();
+    if (cv?.foto_contato_path) return true;
+    const prov = provedorDe(inst.provedor_nao_oficial as string);
+    if (prov !== 'evolution' || !inst.api_url || !inst.nome_instancia) return false;
+    const { data: seg } = await adm.rpc('ler_segredo', { p_clinica: inst.clinica_id, p_provedor: 'whatsapp_nao_oficial' });
+    if (!seg) return false;
+    const ped = pedidoFoto(prov, { api_url: String(inst.api_url), nome_instancia: String(inst.nome_instancia) }, String(seg), telefone);
+    if (!ped) return false;
+    const info = await chamar(ped);
+    const url = info.ok ? lerFotoUrl(info.dados) : null;
+    if (!url) return false; // sem foto pública ou privacidade do contato: fica sem foto
+    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return false;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    if (!bytes.length || bytes.length > 2_000_000) return false;
+    const mime = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
+    if (!mime.startsWith('image/')) return false;
+    const path = `${inst.clinica_id}/contatos/${conversaId}.jpg`;
+    const up = await adm.storage.from('mensagens').upload(path, bytes, { contentType: mime, upsert: true });
+    if (up.error) { console.warn('[whatsapp] foto não guardada'); return false; }
+    await adm.from('conversas').update({ foto_contato_path: path }).eq('id', conversaId);
+    return true;
+  } catch (e) {
+    console.warn('[whatsapp] foto', (e as Error).name);
+    return false;
+  }
+}
+
 // ---------- 1) webhook do provedor ----------
 async function webhook(req: Request, id: string, token: string) {
   const tam = Number(req.headers.get('content-length') || 0);
@@ -121,6 +152,8 @@ async function webhook(req: Request, id: string, token: string) {
     const res = (data || {}) as { ok?: boolean; mensagem_id?: string; conversa_id?: string };
     if (res.ok) gravados++;
     if (res.ok && midia && res.mensagem_id && res.conversa_id) midias.push(guardarMidia(inst, prov, ev, res.mensagem_id, res.conversa_id));
+    // contato que escreveu: busca a foto de perfil (uma vez por conversa)
+    if (res.ok && res.conversa_id && ev.tipo === 'mensagem' && !ev.de_mim && ev.telefone) midias.push(guardarFoto(inst, res.conversa_id, ev.telefone).then(() => undefined));
   }
   // a mídia é baixada depois da resposta, para o provedor não esperar
   if (midias.length) {
@@ -137,6 +170,19 @@ async function gestao(req: Request) {
   if (!/^Bearer\s+\S+/i.test(auth)) return json({ erro: 'Entre de novo no sistema.' }, 401);
   const corpo = await req.json().catch(() => ({})) as Record<string, unknown>;
   const acao = String(corpo.acao || '');
+  if (acao === 'foto') {
+    // a tela pede a foto ao abrir uma conversa sem foto; quem pode ver a conversa (RLS) consegue
+    const cid = String(corpo.conversa_id || '');
+    if (!/^[0-9a-f-]{36}$/i.test(cid)) return json({ erro: 'Pedido inválido.' }, 400);
+    const leitor = createClient(URL_SB, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false }, global: { headers: { Authorization: auth } } });
+    const { data: cv } = await leitor.from('conversas').select('id, telefone, instancia_whatsapp_id').eq('id', cid).is('excluido_em', null).maybeSingle();
+    if (!cv) return json({ erro: 'Sem permissão para esta conversa.' }, 403);
+    const { data: inst } = await adm.from('instancias_whatsapp')
+      .select('id, clinica_id, provedor_nao_oficial, api_url, nome_instancia').eq('id', cv.instancia_whatsapp_id).maybeSingle();
+    const ok = inst ? await guardarFoto(inst, cid, String(cv.telefone || '')) : false;
+    const { data: fin } = ok ? await adm.from('conversas').select('foto_contato_path').eq('id', cid).maybeSingle() : { data: null };
+    return json({ foto: ok, foto_path: fin?.foto_contato_path || null });
+  }
   const id = String(corpo.instancia_id || '');
   if (!['conectar', 'estado', 'desconectar'].includes(acao) || !/^[0-9a-f-]{36}$/i.test(id)) return json({ erro: 'Pedido inválido.' }, 400);
 

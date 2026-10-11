@@ -218,6 +218,22 @@ export function pedidoMidia(p: Provedor, i: Inst, seg: string, idMensagem: strin
   };
 }
 
+// foto de perfil do contato: pede o endereço da imagem (Evolution v2) e lê a resposta
+export function pedidoFoto(p: Provedor, i: Inst, seg: string, telefone: string): Pedido | null {
+  if (p === 'zapi') return null;
+  return {
+    url: `${base(i)}/chat/fetchProfilePictureUrl/${encodeURIComponent(i.nome_instancia || '')}`, method: 'POST',
+    headers: { apikey: seg, 'content-type': 'application/json' },
+    body: JSON.stringify({ number: digitos(telefone) }),
+  };
+}
+
+export function lerFotoUrl(r: unknown): string | null {
+  const d = o(r);
+  const u = s(d.profilePictureUrl) || s(d.profilePicUrl) || s(d.url);
+  return /^https:\/\//i.test(u) ? u : null;
+}
+
 const EXT: Record<string, string> = {
   'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3',
   'audio/mp4': 'm4a', 'application/pdf': 'pdf',

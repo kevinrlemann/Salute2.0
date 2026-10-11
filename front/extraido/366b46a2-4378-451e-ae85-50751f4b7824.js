@@ -328,6 +328,7 @@ function MensagensV01(_ref) {
       }
     }, /*#__PURE__*/React.createElement(MAv, {
       name: c.n,
+      src: c.foto || undefined,
       size: 50,
       status: "online"
     }), /*#__PURE__*/React.createElement("span", {
@@ -436,6 +437,7 @@ function MensagensV01(_ref) {
     }
   }, /*#__PURE__*/React.createElement(MAv, {
     name: cur.n,
+    src: cur.foto || undefined,
     size: 52,
     status: "online"
   }), /*#__PURE__*/React.createElement("span", {
@@ -919,7 +921,7 @@ function WaBubble(_ref5) {
       color: out ? 'rgba(233,237,239,.6)' : WA.sub
     }
   }, m.t, out ? /*#__PURE__*/React.createElement(WaTicks, {
-    s: m.s || 'read'
+    s: m.s || 'sent'
   }) : null)));
 }
 
@@ -1218,7 +1220,7 @@ function WaMsg(_ref0) {
       color: media && !m.text ? '#fff' : out ? 'rgba(233,237,239,.6)' : WA.sub
     }
   }, m.t, out && !m.deleted ? /*#__PURE__*/React.createElement(WaTicks, {
-    s: m.s || 'read'
+    s: m.s || 'sent'
   }) : null);
   var startPress = function startPress() {
     clearTimeout(pressRef.current);
@@ -4012,6 +4014,7 @@ function MensagensWA(_ref10) {
       }
     }, /*#__PURE__*/React.createElement(MAv, {
       name: c.n,
+      src: c.foto || undefined,
       size: 49
     }), /*#__PURE__*/React.createElement("span", {
       style: {
@@ -4168,6 +4171,7 @@ function MensagensWA(_ref10) {
     }
   }, /*#__PURE__*/React.createElement(MAv, {
     name: cur.n,
+    src: cur.foto || undefined,
     size: 40
   }), /*#__PURE__*/React.createElement("span", {
     style: {

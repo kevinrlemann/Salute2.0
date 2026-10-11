@@ -78,10 +78,14 @@ var figurinhaUrl = function figurinhaUrl(f) {
 var FIGS = [];
 
 /* ---------- Listas de conversas ---------- */
+// foto de perfil já assinada (bucket privado), por caminho guardado na conversa
+var FOTO_URL = {};
+var FOTO_PEDIDA = {};
 var convTela = function convTela(c) {
   return {
     id: c.id,
     n: c.nome_contato || c.paciente && c.paciente.nome || BR.telTela(c.telefone),
+    foto: c.foto_contato_path ? FOTO_URL[c.foto_contato_path] || null : null,
     m: c.ultima_mensagem_previa || '',
     t: horaLista(c.ultima_mensagem_em),
     u: c.nao_lidas || 0,
@@ -102,6 +106,42 @@ function publicarInbox(list) {
   }));
   MSG_LISTA.v = MSG_LISTA.v + 1;
   avisar(MSG_LISTA);
+}
+// assina as fotos das conversas (uma vez por caminho) e publica a lista de novo
+function assinarFotos(convs) {
+  var paths = convs.map(function (c) {
+    return c.foto_contato_path;
+  }).filter(function (p) {
+    return p && !FOTO_URL[p];
+  });
+  if (!paths.length) return;
+  SB.storage.from('mensagens').createSignedUrls(paths, 3600).then(function (r) {
+    (r.data || []).forEach(function (u) {
+      if (u.signedUrl) FOTO_URL[u.path] = u.signedUrl;
+    });
+    publicarInbox(convs.map(convTela));
+  })["catch"](function () {});
+}
+// conversa sem foto: pede ao servidor uma vez (ele busca no WhatsApp e guarda)
+function pedirFoto(c) {
+  if (c.foto_contato_path || FOTO_PEDIDA[c.id]) return;
+  FOTO_PEDIDA[c.id] = true;
+  SB.auth.getSession().then(function (r) {
+    var tok = r && r.data && r.data.session ? r.data.session.access_token : SB_CFG.key;
+    return fetch(SB_CFG.url + '/functions/v1/whatsapp', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + tok, apikey: SB_CFG.key, 'content-type': 'application/json' },
+      body: JSON.stringify({ acao: 'foto', conversa_id: c.id })
+    });
+  }).then(function (r) {
+    return r.ok ? r.json() : null;
+  }).then(function (j) {
+    if (!j || !j.foto_path) return;
+    if (MSG_CONV[c.id]) MSG_CONV[c.id].foto_contato_path = j.foto_path;
+    assinarFotos(Object.keys(MSG_CONV).map(function (k) {
+      return MSG_CONV[k];
+    }));
+  })["catch"](function () {});
 }
 CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
   var _yield$Promise$all, _yield$Promise$all2, convs, canais, figs;
@@ -131,6 +171,11 @@ CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
           MSG_CONV[c.id] = c;
         });
         publicarInbox(convs.map(convTela));
+        assinarFotos(convs);
+        // até 20 conversas sem foto por carga; o servidor busca a foto uma vez
+        convs.filter(function (c) {
+          return !c.foto_contato_path && c.telefone;
+        }).slice(0, 20).forEach(pedirFoto);
         _context.n = 3;
         return carregarCanais(canais);
       case 3:
@@ -262,7 +307,7 @@ function _msgTela() {
               id: r.id,
               me: me,
               t: BR.hm(r.enviada_em),
-              s: TICK[r.status_entrega] || 'read',
+              s: TICK[r.status_entrega] || 'sent',
               kind: kind,
               text: kind === 'text' ? r.texto : r.legenda || r.texto || undefined,
               url: kind === 'sticker' ? figurinhaUrl(fig) : an ? urls[an.arquivo_path] : undefined,
