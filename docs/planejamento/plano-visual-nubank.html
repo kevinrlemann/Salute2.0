@@ -1,0 +1,176 @@
+<title>Salute no celular</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: texto corrido à esquerda e um celular desenhado por aba; no celular, telas empilhadas. */
+:root {
+  --bg: #F3F6FC; --fg: #10203A; --muted: #5B6B85; --card: #FFFFFF; --line: #DCE4F2;
+  --accent: #1F5EFF; --accent-soft: #E6EEFF; --ok: #1E9E5A; --warn: #D98A1B; --bad: #C2353A;
+  --phone: #0E1B33; --display: 'Manrope', 'Segoe UI', system-ui, sans-serif; --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0D1526; --fg: #E8EEF9; --muted: #9AA9C3; --card: #16213A; --line: #2A3858; --accent: #5B8CFF; --accent-soft: #1E2E55; --phone: #05090F; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0D1526; --fg: #E8EEF9; --muted: #9AA9C3; --card: #16213A; --line: #2A3858; --accent: #5B8CFF; --accent-soft: #1E2E55; --phone: #05090F; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); line-height: 1.5; font-size: 15px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 56px; padding-inline: 16px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; font-weight: 800; letter-spacing: -.01em; }
+h2 { font-size: 22px; font-weight: 800; margin-top: 44px; }
+h3 { font-size: 15px; font-weight: 700; }
+p { margin: 8px 0 0; max-width: 62ch; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.principios { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 16px; }
+.principio { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+.principio b { display: block; font-family: var(--display); font-size: 15px; }
+.principio span { color: var(--muted); font-size: 13.5px; }
+.aba { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; margin-top: 18px; }
+@media (max-width: 760px) { .aba { grid-template-columns: 1fr; } .phone { margin: 0 auto; } }
+.lista { margin: 10px 0 0; padding-left: 18px; }
+.lista li { margin: 6px 0; }
+.lista li b { font-weight: 600; }
+.hoje { background: var(--accent-soft); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; margin-top: 12px; }
+/* celular */
+.phone { width: 300px; max-width: 100%; background: var(--phone); border-radius: 36px; padding: 10px; box-shadow: 0 30px 60px -30px rgba(16,32,58,.5); }
+.tela { background: var(--bg); border-radius: 28px; overflow: hidden; font-size: 12.5px; min-height: 560px; display: flex; flex-direction: column; }
+.topo { padding: 16px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+.topo b { font-family: var(--display); font-size: 17px; }
+.av { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 11px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; margin: 0 12px 10px; padding: 12px 14px; }
+.big { font-family: var(--display); font-size: 26px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.sub { color: var(--muted); font-size: 11.5px; }
+.chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--accent-soft); color: var(--accent); }
+.chip.ok { background: rgba(30,158,90,.14); color: var(--ok); } .chip.warn { background: rgba(217,138,27,.16); color: var(--warn); } .chip.bad { background: rgba(194,53,58,.14); color: var(--bad); }
+.linha { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.linha:first-of-type { border-top: 0; }
+.linha .hora { width: 40px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); }
+.linha .nome { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.linha .nome small { display: block; color: var(--muted); font-size: 11px; }
+.acoes { display: flex; gap: 8px; padding: 0 12px 10px; overflow-x: auto; }
+.acao { flex: 0 0 auto; width: 78px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 10px 8px; text-align: center; font-size: 11px; font-weight: 600; }
+.acao i { display: block; width: 28px; height: 28px; margin: 0 auto 6px; border-radius: 50%; background: var(--accent-soft); }
+.fab { margin: auto 12px 12px; background: var(--accent); color: #fff; border-radius: 999px; padding: 12px; text-align: center; font-weight: 700; font-size: 13px; }
+.barra { display: flex; justify-content: space-around; padding: 10px 6px 14px; border-top: 1px solid var(--line); font-size: 10px; color: var(--muted); }
+.barra b { color: var(--accent); }
+.fade { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin-top: 6px; }
+.fade i { display: block; height: 100%; background: var(--accent); }
+table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--display); font-size: 12.5px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.tabela { overflow-x: auto; }
+</style>
+<div class="wrap">
+  <span class="eyebrow">Plano visual · celular</span>
+  <h1>Agenda, Estoque e Financeiro no celular</h1>
+  <p class="muted">Como as três abas ficariam seguindo o jeito do Nubank: uma pergunta por tela, o número que importa em destaque, ações grandes e tudo que é detalhe escondido até a pessoa pedir. Os desenhos ao lado são propostas, não telas prontas.</p>
+
+  <h2>O que o Nubank faz bem (e vale copiar)</h2>
+  <div class="principios">
+    <div class="principio"><b>Uma coisa por tela</b><span>Cada tela responde uma pergunta. "O que tenho hoje?", "Quanto entrou?", "O que está acabando?".</span></div>
+    <div class="principio"><b>O número grande primeiro</b><span>Saldo, consultas de hoje, itens em falta. O resto fica abaixo, em cartões.</span></div>
+    <div class="principio"><b>Ações na mão</b><span>Fileira de atalhos rolável logo abaixo do resumo e um botão principal fixo no pé da tela.</span></div>
+    <div class="principio"><b>Detalhe só quando pede</b><span>Tocar num item abre uma gaveta de baixo para cima, com fundo escurecido. Nada de formulário cheio de uma vez.</span></div>
+    <div class="principio"><b>Linguagem de gente</b><span>"Entrou", "Saiu", "Está acabando", "Atrasou". Sem jargão de sistema.</span></div>
+    <div class="principio"><b>Polegar alcança</b><span>Tudo que importa fica na metade de baixo. Filtros e busca no topo, mas opcionais.</span></div>
+  </div>
+
+  <h2>Agenda</h2>
+  <div class="aba">
+    <div>
+      <p><b>Pergunta da tela:</b> quem vem hoje e qual é o próximo horário livre?</p>
+      <ul class="lista">
+        <li><b>Resumo no topo:</b> "Hoje · 8 consultas · próxima às 14:00 com Aline Prado". Um toque na próxima abre a ficha.</li>
+        <li><b>Profissional antes da data:</b> chips com a foto de cada Dr(a). A data vem depois, numa faixa de dias deslizante (seg a sáb), com um ponto nos dias cheios.</li>
+        <li><b>Lista por horário, não grade:</b> no celular, grade de colunas não cabe. Cada consulta vira uma linha: hora em azul, nome com foto do WhatsApp, procedimento, estado (confirmado, aguardando, atrasou).</li>
+        <li><b>Horário livre é um item da lista:</b> "15:30 · livre · tocar para agendar". Tocar abre o formulário padrão de agendamento.</li>
+        <li><b>Confirmar pelo WhatsApp em um toque:</b> ação rápida na linha. A mensagem sai pela fila já existente.</li>
+        <li><b>Gaveta de detalhe:</b> tocar na consulta abre de baixo para cima: paciente, procedimento, valor, botões Confirmar, Remarcar, Faltou.</li>
+      </ul>
+      <div class="hoje"><b>Hoje já temos:</b> faixa de horas 06h a 20h, seletor de profissional acima da data e cartões reorganizados. <b>Falta:</b> resumo no topo, lista por horário, horário livre como item, ações rápidas e a gaveta.</div>
+    </div>
+    <div class="phone"><div class="tela">
+      <div class="topo"><b>Agenda</b><span class="av">S</span></div>
+      <div class="card"><div class="sub">Hoje, sábado 11 de outubro</div><div class="big">8 consultas</div><div class="sub">Próxima às 14:00 · Aline Prado · Limpeza</div></div>
+      <div class="acoes"><div class="acao"><i></i>Agendar</div><div class="acao"><i></i>Confirmar todos</div><div class="acao"><i></i>Bloquear</div><div class="acao"><i></i>Lista de espera</div></div>
+      <div class="card">
+        <div style="display:flex;gap:6px;margin-bottom:8px"><span class="chip">Dra. Carla</span><span class="chip" style="background:transparent;border:1px solid var(--line);color:var(--muted)">Dr. Pedro</span></div>
+        <div class="linha"><span class="hora">14:00</span><span class="nome">Aline Prado<small>Limpeza · 30 min</small></span><span class="chip ok">confirmado</span></div>
+        <div class="linha"><span class="hora">14:30</span><span class="nome">Amanda Torres Vieira<small>Avaliação</small></span><span class="chip warn">aguardando</span></div>
+        <div class="linha"><span class="hora">15:00</span><span class="nome">Bruno Lima<small>Botox · 60 min</small></span><span class="chip bad">atrasou</span></div>
+        <div class="linha"><span class="hora">16:00</span><span class="nome muted">Livre<small>tocar para agendar</small></span></div>
+      </div>
+      <div class="fab">+ Agendar consulta</div>
+      <div class="barra"><span><b>Agenda</b></span><span>Pacientes</span><span>Conversas</span><span>Financeiro</span><span>Mais</span></div>
+    </div></div>
+  </div>
+
+  <h2>Estoque</h2>
+  <div class="aba">
+    <div>
+      <p><b>Pergunta da tela:</b> o que está acabando e o que preciso comprar?</p>
+      <ul class="lista">
+        <li><b>Número grande:</b> "3 itens acabando". Abaixo, os itens em alerta com uma barra de quanto resta.</li>
+        <li><b>Lista por urgência, não por nome:</b> primeiro o que está abaixo do mínimo, depois o que vence em 30 dias, depois o resto.</li>
+        <li><b>Dar baixa em um toque:</b> botão "Usei 1" na linha. Sem abrir formulário. Para quantidade diferente, segurar o botão abre a gaveta.</li>
+        <li><b>Entrada de compra por foto:</b> tirar foto da nota fiscal, o sistema sugere os itens e a pessoa confirma. (Depende de decisão sobre IA e custo.)</li>
+        <li><b>Lista de compras pronta:</b> ação rápida "Gerar lista" monta o pedido com o que está abaixo do mínimo e manda pelo WhatsApp para o fornecedor.</li>
+        <li><b>Busca no topo, só se precisar:</b> campo de busca com leitura de código de barras pela câmera.</li>
+      </ul>
+      <div class="hoje"><b>Hoje já temos:</b> cadastro de itens, movimentações e mínimo por item. <b>Falta:</b> tela de alertas como entrada principal, baixa em um toque, lista de compras e entrada por foto.</div>
+    </div>
+    <div class="phone"><div class="tela">
+      <div class="topo"><b>Estoque</b><span class="av">S</span></div>
+      <div class="card"><div class="sub">Atenção</div><div class="big">3 itens acabando</div><div class="sub">e 2 vencem em 30 dias</div></div>
+      <div class="acoes"><div class="acao"><i></i>Entrada</div><div class="acao"><i></i>Gerar lista</div><div class="acao"><i></i>Ler código</div><div class="acao"><i></i>Inventário</div></div>
+      <div class="card">
+        <div class="linha"><span class="nome">Luva nitrílica M<small>2 caixas · mínimo 5</small><div class="fade"><i style="width:28%"></i></div></span><span class="chip">Usei 1</span></div>
+        <div class="linha"><span class="nome">Anestésico lidocaína<small>4 tubetes · mínimo 20</small><div class="fade"><i style="width:15%"></i></div></span><span class="chip">Usei 1</span></div>
+        <div class="linha"><span class="nome">Ácido hialurônico 1 ml<small>1 seringa · vence 02/11</small><div class="fade"><i style="width:40%"></i></div></span><span class="chip">Usei 1</span></div>
+        <div class="linha"><span class="nome">Gaze estéril<small>38 pacotes · ok</small><div class="fade"><i style="width:85%;background:var(--ok)"></i></div></span><span class="chip">Usei 1</span></div>
+      </div>
+      <div class="fab">Registrar entrada</div>
+      <div class="barra"><span>Agenda</span><span>Pacientes</span><span>Conversas</span><span><b>Estoque</b></span><span>Mais</span></div>
+    </div></div>
+  </div>
+
+  <h2>Financeiro</h2>
+  <div class="aba">
+    <div>
+      <p><b>Pergunta da tela:</b> quanto entrou, quanto saiu e quem ainda não pagou?</p>
+      <ul class="lista">
+        <li><b>Saldo do mês em destaque</b>, com um olho para esconder (como no banco). Abaixo, "Entrou" e "Saiu" lado a lado e a barra de quanto do mês já passou.</li>
+        <li><b>A receber vem antes do histórico:</b> "R$ 2.350 a receber de 4 pacientes". Tocar mostra a lista com botão "Cobrar pelo WhatsApp".</li>
+        <li><b>Lançar em dois toques:</b> ação rápida "Recebi" abre uma gaveta com teclado numérico grande, paciente sugerido pela agenda de hoje e forma de pagamento em chips. Nada de tela com dez campos.</li>
+        <li><b>Extrato como no app do banco:</b> lista por dia, verde para entrada e vermelho para saída, com o nome do paciente e a foto do WhatsApp.</li>
+        <li><b>Resumo por profissional e por procedimento</b> fica numa segunda tela ("Ver relatório"), não na principal.</li>
+        <li><b>Renata ajuda a lançar:</b> "Recebi 350 da Aline no Pix" já é entendido pela Renata; a gaveta mostra o lançamento pronto para confirmar.</li>
+      </ul>
+      <div class="hoje"><b>Hoje já temos:</b> lançamentos, categorias e painel de indicadores. <b>Falta:</b> saldo e a receber como entrada principal, gaveta de lançamento rápido, cobrança pelo WhatsApp e extrato por dia.</div>
+    </div>
+    <div class="phone"><div class="tela">
+      <div class="topo"><b>Financeiro</b><span class="av">S</span></div>
+      <div class="card"><div class="sub">Saldo de outubro</div><div class="big">R$ 18.430</div><div class="sub"><span style="color:var(--ok)">▲ Entrou R$ 24.900</span> · <span style="color:var(--bad)">▼ Saiu R$ 6.470</span></div><div class="fade"><i style="width:36%"></i></div><div class="sub">dia 11 de 31</div></div>
+      <div class="acoes"><div class="acao"><i></i>Recebi</div><div class="acao"><i></i>Paguei</div><div class="acao"><i></i>Cobrar</div><div class="acao"><i></i>Relatório</div></div>
+      <div class="card"><div class="sub">A receber</div><div style="font-family:var(--display);font-size:18px;font-weight:800">R$ 2.350 de 4 pacientes</div><div class="sub">2 vencidos · tocar para cobrar pelo WhatsApp</div></div>
+      <div class="card">
+        <div class="sub" style="margin-bottom:4px">Hoje</div>
+        <div class="linha"><span class="av">AP</span><span class="nome">Aline Prado<small>Limpeza · Pix</small></span><b style="color:var(--ok)">+ 350</b></div>
+        <div class="linha"><span class="av">BL</span><span class="nome">Bruno Lima<small>Botox · cartão 3x</small></span><b style="color:var(--ok)">+ 1.200</b></div>
+        <div class="linha"><span class="av" style="background:rgba(194,53,58,.12);color:var(--bad)">F</span><span class="nome">Fornecedor Dental Sul<small>Luvas e gaze</small></span><b style="color:var(--bad)">- 430</b></div>
+      </div>
+      <div class="fab">Recebi um pagamento</div>
+      <div class="barra"><span>Agenda</span><span>Pacientes</span><span>Conversas</span><span><b>Financeiro</b></span><span>Mais</span></div>
+    </div></div>
+  </div>
+
+  <h2>Ordem sugerida para construir</h2>
+  <p class="muted">Do que muda mais a rotina com menos esforço para o que depende de decisões.</p>
+  <div class="tabela"><table>
+    <tr><th>Ordem</th><th>Entrega</th><th>Por que primeiro</th><th>Esforço</th></tr>
+    <tr><td>1</td><td>Agenda: resumo do dia, lista por horário e horário livre como item</td><td>É a tela mais usada no celular e reaproveita o formulário de agendamento que já existe</td><td>Médio</td></tr>
+    <tr><td>2</td><td>Financeiro: saldo, a receber e gaveta "Recebi"</td><td>Lançar rápido é o que mais falta hoje; a Renata já entende o lançamento</td><td>Médio</td></tr>
+    <tr><td>3</td><td>Estoque: alertas como tela principal e "Usei 1"</td><td>Pequeno e resolve a dor de item que acaba sem aviso</td><td>Pequeno</td></tr>
+    <tr><td>4</td><td>Cobrança e confirmação pelo WhatsApp em um toque</td><td>Usa a fila de envio já pronta; precisa só do texto padrão por clínica</td><td>Pequeno</td></tr>
+    <tr><td>5</td><td>Barra de navegação fixa no pé (5 abas)</td><td>Muda a estrutura do app inteiro; melhor fazer depois que as telas acima existirem</td><td>Médio</td></tr>
+    <tr><td>6</td><td>Entrada de estoque por foto da nota</td><td>Depende de decisão sobre custo de IA e de dados que vão para fornecedor externo</td><td>Grande</td></tr>
+  </table></div>
+  <p class="muted" style="margin-top:18px">Regra que vale para as três abas: o que já existe no computador continua igual. O celular ganha uma camada mais simples por cima dos mesmos dados e das mesmas permissões do banco.</p>
+</div>
