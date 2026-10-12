@@ -8546,6 +8546,17 @@ function RenataVoiceMode(_ref16) {
     _React$useState16 = _slicedToArray(_React$useState15, 2),
     said = _React$useState16[0],
     setSaid = _React$useState16[1];
+  // fileira: a última fala da Renata fica em cima enquanto a pessoa fala de novo
+  var _prevSt = React.useState(null),
+    prev = _prevSt[0],
+    setPrev = _prevSt[1];
+  var guardarDita = function guardarDita() {
+    var t = R.lastSaid || '';
+    if (t) setPrev({
+      quem: 'renata',
+      texto: t
+    });
+  };
   var _React$useState17 = React.useState(false),
     _React$useState18 = _slicedToArray(_React$useState17, 2),
     muted = _React$useState18[0],
@@ -8655,11 +8666,13 @@ function RenataVoiceMode(_ref16) {
   }();
   var speak = function speak(text, show, cedo) {
     var tok = ++R.tok;
+    R.lastSaid = show || text;
     setSaid(show || text);
     setState('speaking');
     var fim = function fim() {
       if (R.tok !== tok || !R.alive) return;
       stopBarge();
+      guardarDita();
       setHeard('');
       setTimeout(listen, 120);
     };
@@ -8707,6 +8720,7 @@ function RenataVoiceMode(_ref16) {
           R.tok++;
           rnStopSpeak();
           R.rest = null;
+          guardarDita();
           setSaid('');
           setState('listening');
         }
@@ -9083,6 +9097,7 @@ function RenataVoiceMode(_ref16) {
     rnStopSpeak();
     stopBarge();
     R.rest = null;
+    guardarDita();
     setSaid('');
     setHeard('');
     listen();
@@ -9176,35 +9191,80 @@ function RenataVoiceMode(_ref16) {
       minHeight: 20,
       textAlign: 'center'
     }
-  }, LBL[state]), heard && state === 'speaking' ? /*#__PURE__*/React.createElement("p", {
-    style: {
-      margin: 0,
-      maxWidth: 540,
-      textAlign: 'center',
-      fontSize: mobile ? 14 : 15,
-      color: 'var(--text-muted)',
-      lineHeight: 1.45
-    }
-  }, 'Você: ' + heard) : null, heard && (state === 'listening' || state === 'thinking') ? /*#__PURE__*/React.createElement("p", {
-    style: {
-      margin: 0,
-      maxWidth: 540,
-      textAlign: 'center',
-      fontSize: mobile ? 18 : 20,
-      fontWeight: 500,
-      color: 'var(--text-strong)',
-      lineHeight: 1.4
-    }
-  }, heard) : null, said && state === 'speaking' ? /*#__PURE__*/React.createElement("p", {
-    style: {
-      margin: 0,
-      maxWidth: 540,
-      textAlign: 'center',
-      fontSize: mobile ? 15.5 : 16.5,
-      color: 'var(--text-body)',
-      lineHeight: 1.55
-    }
-  }, said) : null, err ? /*#__PURE__*/React.createElement("div", {
+  }, LBL[state]), function () {
+    var falando = state === 'speaking' || state === 'thinking' && !!said;
+    var topo = state === 'speaking' || state === 'thinking' ? heard ? {
+      quem: 'eu',
+      texto: heard
+    } : null : prev && prev.quem === 'renata' ? prev : null;
+    if (state === 'thinking' && !said && prev && prev.quem === 'renata' && !heard) topo = prev;
+    var baixo = state === 'speaking' ? said : state === 'listening' || state === 'thinking' ? heard : '';
+    var atualDaRenata = state === 'speaking';
+    if (!topo && !baixo) return null;
+    var pill = function pill(quem) {
+      return /*#__PURE__*/React.createElement("span", {
+        style: {
+          flexShrink: 0,
+          fontSize: 10.5,
+          fontWeight: 700,
+          letterSpacing: .4,
+          textTransform: 'uppercase',
+          color: quem === 'renata' ? '#1F5EFF' : 'var(--text-muted)',
+          marginTop: 3
+        }
+      }, quem === 'renata' ? 'Renata' : 'Você');
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: '100%',
+        maxWidth: 560,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10
+      }
+    }, topo ? /*#__PURE__*/React.createElement("div", {
+      key: 'topo-' + topo.quem,
+      style: {
+        display: 'flex',
+        gap: 8,
+        alignItems: 'flex-start',
+        padding: '8px 12px',
+        borderRadius: 14,
+        background: 'rgba(255,255,255,.45)',
+        borderLeft: '2px solid rgba(31,94,255,.25)',
+        opacity: .72
+      }
+    }, pill(topo.quem), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        lineHeight: 1.4,
+        color: 'var(--text-body)',
+        display: '-webkit-box',
+        WebkitLineClamp: 3,
+        WebkitBoxOrient: 'vertical',
+        overflow: 'hidden'
+      }
+    }, topo.texto)) : null, /*#__PURE__*/React.createElement("div", {
+      key: 'baixo-' + (atualDaRenata ? 'renata' : 'eu'),
+      style: {
+        display: 'flex',
+        gap: 8,
+        alignItems: 'flex-start',
+        padding: '12px 14px',
+        borderRadius: 16,
+        background: 'rgba(255,255,255,.8)',
+        border: '1.5px solid rgba(255,255,255,.95)',
+        boxShadow: '0 10px 24px -20px rgba(23,73,170,.5)'
+      }
+    }, pill(atualDaRenata ? 'renata' : 'eu'), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: atualDaRenata ? mobile ? 15.5 : 16.5 : mobile ? 17 : 19,
+        fontWeight: atualDaRenata ? 400 : 500,
+        color: atualDaRenata ? 'var(--text-body)' : 'var(--text-strong)',
+        lineHeight: 1.45
+      }
+    }, baixo || (state === 'thinking' ? 'Pensando\u2026' : state === 'speaking' ? '\u2026' : 'Pode falar\u2026'))));
+  }(), err ? /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 440,
       display: 'flex',
