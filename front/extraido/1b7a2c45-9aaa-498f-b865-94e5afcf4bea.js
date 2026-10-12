@@ -592,6 +592,7 @@ function MxCobrancas(p){
     var novo = Object.assign({}, r, {status: 'Recebido'});
     REC_STORE.v = REC_STORE.v.map(function(x){ return x === r ? novo : x; });
     avisar(REC_STORE);
+    ctx.feito('Recebimento confirmado', brl(r.total - (r.desc || 0)) + ' de ' + (r.pac || 'venda avulsa'));
     if (SB_ON) FinSvc.status('rec', r, 'Recebido').catch(function(e){ if (window.avisoErro) avisoErro('Não foi possível marcar como recebido', e); });
   };
   return mxTela({titulo: 'Cobranças', onFechar: ctx.fechar, children: [
@@ -705,6 +706,15 @@ function MxNotas(p){
         React.createElement("span", {style:{fontSize:13,fontWeight:600,color:cor(n.status)}}, rotulo(n.status) + (n.status === 'erro' && n.erro_mensagem ? ' · ' + n.erro_mensagem : '')));
     })
   ]});
+}
+/* ---------- celular: aviso "Feito" depois de uma ação feita fora das telas de fluxo ---------- */
+var MX_FEITO = makeStore(null);
+function mxFeito(titulo, texto){ MX_FEITO.v = {titulo: titulo, texto: texto, n: Date.now()}; avisar(MX_FEITO); }
+window.mxFeito = mxFeito;
+function MxFeitoGlobal(){
+  var st = useStore(MX_FEITO), f = st[0];
+  if (!f) return null;
+  return React.createElement(MxFeito, {key: f.n, titulo: f.titulo, texto: f.texto, onFim: function(){ MX_FEITO.v = null; avisar(MX_FEITO); }});
 }
 function MxRoot(p){
   var st = React.useState(null);
@@ -15321,7 +15331,7 @@ function App() {
     onFechar: function onFechar() {
       return setMx(null);
     }
-  }) : null, acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
+  }) : null, React.createElement(MxFeitoGlobal, null), acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
     onClose: function onClose() {
       return setAcaoAberta(false);
     },
