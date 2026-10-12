@@ -3616,6 +3616,7 @@ function CrmBoard(_ref1) {
   var lostLead = lost ? leads.find(function (x) {
     return x.id === lost;
   }) : null;
+  if (mobile) return React.createElement(MxCrmLista, {leads: leads, onOpen: onOpen});
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     ref: boardRef,
     style: {
@@ -3825,6 +3826,44 @@ function CrmBoard(_ref1) {
     }, m);
   })))));
 }
+/* ---------- celular: deslizar para arquivar, filtro Esperando e CRM em lista ---------- */
+function MxDeslize(p){
+  var st = React.useState(0), dx = st[0], setDx = st[1];
+  var ref = React.useRef({x: null, moveu: false});
+  if (!p.ativo) return p.children;
+  return React.createElement("div", {style:{position:'relative',overflow:'hidden'}},
+    React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#D93838',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:18,fontSize:15,fontWeight:600}}, p.rotulo || 'Arquivar'),
+    React.createElement("div", {
+      onTouchStart: function(e){ ref.current = {x: e.touches[0].clientX, moveu: false}; },
+      onTouchMove: function(e){ if (ref.current.x == null) return; var d = e.touches[0].clientX - ref.current.x; if (Math.abs(d) > 8) ref.current.moveu = true; if (d < 0) setDx(Math.max(d, -160)); },
+      onTouchEnd: function(){ var d = dx; ref.current.x = null; setDx(0); if (d <= -120 && p.onDeslizar) p.onDeslizar(); },
+      onClickCapture: function(e){ if (ref.current.moveu) { e.stopPropagation(); e.preventDefault(); ref.current.moveu = false; } },
+      style:{position:'relative',background:'#fff',transform:'translateX(' + dx + 'px)',transition: dx ? 'none' : 'transform .2s ease'}}, p.children));
+}
+function arquivarConversa(c){
+  var it = INBOX.find(function(x){ return x.id === c.id; });
+  if (it) it.arq = true;
+  MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA);
+  if (SB_ON) DB.upd('conversas', c.id, {arquivada: true}, 'Não foi possível arquivar a conversa').catch(function(){
+    if (it) it.arq = false; MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA);
+  });
+}
+function MxCrmLista(p){
+  return React.createElement("div", {style:{padding:'4px 12px 24px',display:'flex',flexDirection:'column',gap:16,overflowY:'auto',height:'calc(100vh - 190px)'}},
+    CRM_STAGES.map(function(st){
+      var itens = p.leads.filter(function(x){ return x.stage === st.id; });
+      return React.createElement("section", {key: st.id, "aria-label": st.label, style:{display:'flex',flexDirection:'column',gap:8}},
+        React.createElement("div", {style:{display:'flex',alignItems:'center',gap:8,padding:'0 4px'}},
+          React.createElement("span", {style:{width:10,height:10,borderRadius:'50%',background: st.c}}),
+          React.createElement("span", {style:{fontSize:15,fontWeight:600,color:'var(--text-strong)'}}, st.label),
+          React.createElement("span", {style:{fontSize:13,color:'#8a96a8'}}, itens.length)),
+        itens.length ? itens.map(function(l){
+          return React.createElement("button", {key: l.id, type:"button", onClick: function(){ p.onOpen(l); }, style:{display:'flex',flexDirection:'column',gap:2,width:'100%',boxSizing:'border-box',padding:'12px 14px',borderRadius:14,border:0,background:'#fff',textAlign:'left',cursor:'pointer',fontFamily:'inherit',boxShadow:'0 6px 14px -12px rgba(23,73,170,.5)'}},
+            React.createElement("span", {style:{fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, crmName(l)),
+            React.createElement("span", {style:{fontSize:13,color:'#8a96a8'}}, (l.tel || '') + (l.ia === false ? ' · IA desligada' : '')));
+        }) : React.createElement("p", {style:{margin:'0 4px',fontSize:14,color:'#8a96a8'}}, 'Ninguém nesta etapa.'));
+    }));
+}
 function MensagensWA(_ref10) {
   var mobile = _ref10.mobile;
   var _ref12 = SB_ON ? usePrefFiltro('mensagens.aba', 'p') : React.useState('p'),
@@ -3883,6 +3922,7 @@ function MensagensWA(_ref10) {
     text: 'Entendo. Está sentindo mais alguma coisa?'
   }];
   var isTeam = tab === 'd';
+  var flSt = React.useState('todas'), fl = flSt[0], setFl = flSt[1];
   var ALL = isTeam ? EQUIPE : INBOX;
   var keyOf = function keyOf(c) {
     return SB_ON ? (isTeam ? 'eq:' : 'conv:') + c.id : 'c' + c.id;
@@ -3904,8 +3944,9 @@ function MensagensWA(_ref10) {
     return SB_ON ? c.id === sel ? 0 : c.u : read[c.id] ? 0 : c.u;
   };
   var term = q.trim().toLowerCase();
+  var precisaAtencao = function (c) { return c.u > 0 || c.ia === false || !!c.equipe; };
   var LIST = ALL.filter(function (c) {
-    return !term || c.n.toLowerCase().includes(term);
+    return (!term || c.n.toLowerCase().includes(term)) && (fl === 'arquivadas' ? !!c.arq : !c.arq) && (fl !== 'esperando' || precisaAtencao(c));
   });
   var cur = ALL.find(function (c) {
     return c.id === sel;
@@ -4025,7 +4066,13 @@ function MensagensWA(_ref10) {
     return setTab('p');
   }), chip(isTeam, 'Equipe', function () {
     return setTab('d');
-  })), /*#__PURE__*/React.createElement("div", {
+  }), mobile ? chip(fl === 'todas', 'Todas', function () {
+    return setFl('todas');
+  }) : null, mobile ? chip(fl === 'esperando', 'Esperando (' + ALL.filter(function (c) { return !c.arq && precisaAtencao(c); }).length + ')', function () {
+    return setFl('esperando');
+  }) : null, mobile ? chip(fl === 'arquivadas', 'Arquivadas', function () {
+    return setFl('arquivadas');
+  }) : null), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       overflowY: 'auto',
@@ -4036,7 +4083,7 @@ function MensagensWA(_ref10) {
     var on = c.id === sel,
       last = lastOf(c),
       u = unreadOf(c);
-    return /*#__PURE__*/React.createElement("button", {
+    return React.createElement(MxDeslize, {key: c.id, ativo: mobile && !c.arq, rotulo: "Arquivar", onDeslizar: function () { arquivarConversa(c); }, children: React.createElement("button", {
       key: c.id,
       type: "button",
       onClick: function onClick() {
@@ -4153,7 +4200,7 @@ function MensagensWA(_ref10) {
         justifyContent: 'center',
         flexShrink: 0
       }
-    }, u) : null)));
+    }, u) : null)))});
   }), !LIST.length ? /*#__PURE__*/React.createElement("p", {
     style: {
       textAlign: 'center',

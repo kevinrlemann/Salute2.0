@@ -137,6 +137,7 @@ var convTela = function convTela(c) {
     tel: c.telefone,
     leadId: c.lead_id,
     ia: c.ia_ativa,
+    arq: c.arquivada,
     // a IA passou a conversa para a equipe e ninguém resolveu ainda
     equipe: (c.transf || (MSG_CONV[c.id] || {}).transf || []).some(function (x) {
       return x.status === 'aberta' || x.status === 'em_atendimento';
