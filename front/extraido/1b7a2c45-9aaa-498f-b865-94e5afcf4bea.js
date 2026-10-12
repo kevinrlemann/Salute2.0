@@ -280,6 +280,11 @@ var MOB_MAIS_ITENS = [{
   sub: 'Abaixo do mínimo e leitura de código',
   icon: 'shopping-cart'
 }, {
+  id: 'mx_notas',
+  label: 'Notas fiscais',
+  sub: 'Emitidas, pendentes e com erro',
+  icon: 'file-text'
+}, {
   id: 'perfil',
   label: 'Configurações',
   sub: 'Clínica, equipe, integrações e plano',
@@ -675,6 +680,32 @@ function MxCompras(p){
     })
   ]});
 }
+function MxNotas(p){
+  var ctx = p.ctx;
+  var st = React.useState({lista: null, erro: ''});
+  var s = st[0];
+  var set = function(x){ st[1](function(o){ return Object.assign({}, o, x); }); };
+  React.useEffect(function(){
+    if (!SB_ON) return set({lista: []});
+    DB.ler(DB.sel('notas_fiscais', 'id,tomador_nome,valor_liquido,status,data_emissao,numero_nfse,erro_mensagem')).then(function(rs){
+      set({lista: (rs || []).slice().sort(function(a, b){ return String(b.data_emissao || '').localeCompare(String(a.data_emissao || '')); })});
+    }, function(){ set({lista: [], erro: 'Não consegui carregar as notas. Tente de novo.'}); });
+  }, []);
+  var rotulo = function(x){ return x === 'emitida' ? 'Emitida' : x === 'erro' ? 'Com erro' : x === 'pendente' ? 'Pendente' : (x || 'Sem situação'); };
+  var cor = function(x){ return x === 'erro' ? '#D93838' : x === 'emitida' ? '#1F9D55' : '#8a96a8'; };
+  var lista = s.lista;
+  return mxTela({titulo: 'Notas fiscais', onFechar: ctx.fechar, children: [
+    lista === null ? React.createElement("p", {key:'c', style:{margin:0,fontSize:15,color:'var(--text-muted)'}}, 'Carregando…') : null,
+    s.erro ? React.createElement("p", {key:'e', style:{margin:0,fontSize:15,color:'#D93838'}}, s.erro) : null,
+    lista && !lista.length && !s.erro ? React.createElement("p", {key:'v', style:{margin:0,fontSize:15,color:'var(--text-muted)'}}, 'Nenhuma nota fiscal emitida ainda.') : null,
+    (lista || []).map(function(n){
+      return React.createElement("div", {key: n.id, style: MX_CARD},
+        React.createElement("span", {style:{display:'flex',justifyContent:'space-between',gap:10,fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, React.createElement("span", {style:{minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}, n.tomador_nome || 'Sem tomador'), React.createElement("span", {style:{flexShrink:0}}, brl(n.valor_liquido || 0))),
+        React.createElement("span", {style:{fontSize:13,color:'var(--text-muted)'}}, (n.data_emissao ? String(n.data_emissao).split('-').reverse().join('/') : 'Sem data') + (n.numero_nfse ? ' · nº ' + n.numero_nfse : '')),
+        React.createElement("span", {style:{fontSize:13,fontWeight:600,color:cor(n.status)}}, rotulo(n.status) + (n.status === 'erro' && n.erro_mensagem ? ' · ' + n.erro_mensagem : '')));
+    })
+  ]});
+}
 function MxRoot(p){
   var st = React.useState(null);
   var feito = st[0];
@@ -686,6 +717,7 @@ function MxRoot(p){
   if (id === 'mx_cobrancas') return React.createElement(MxCobrancas, {ctx: ctx});
   if (id === 'mx_extrato') return React.createElement(MxExtrato, {ctx: ctx});
   if (id === 'mx_compras') return React.createElement(MxCompras, {ctx: ctx});
+  if (id === 'mx_notas') return React.createElement(MxNotas, {ctx: ctx});
   return null;
 }
 
