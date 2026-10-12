@@ -100,7 +100,11 @@ var estTela = function estTela() {
   return {
     estac: !!g.tem_estacionamento,
     acess: !!g.tem_acessibilidade,
-    wifi: !!g.tem_wifi_pacientes
+    wifi: !!g.tem_wifi_pacientes,
+    // atendimento pela IA no WhatsApp: a clínica escolhe
+    mostrarValor: g.ia_mostrar_valor !== false,
+    agendaDireto: g.ia_agenda_procedimento_direto !== false,
+    avaliacao: g.ia_procedimento_avaliacao_id || ''
   };
 };
 // DIAS começa na segunda; no banco 0 é domingo
@@ -188,10 +192,17 @@ var ClinSvc = {
             }).eq('id', CLI()).select().single(), 'Não foi possível salvar os dados da clínica');
           case 5:
             cli = _context3.v;
+            if (est.agendaDireto === false && !est.avaliacao) {
+              avisoErro('Escolha o procedimento de avaliação', 'Sem ele, a IA não tem o que agendar quando o procedimento direto está desligado.');
+              throw new Error('avaliacao');
+            }
             cfg = {
               tem_estacionamento: !!est.estac,
               tem_acessibilidade: !!est.acess,
               tem_wifi_pacientes: !!est.wifi,
+              ia_mostrar_valor: est.mostrarValor !== false,
+              ia_agenda_procedimento_direto: est.agendaDireto !== false,
+              ia_procedimento_avaliacao_id: est.agendaDireto === false ? (est.avaliacao || null) : null,
               parcelas_maximas_credito: parseInt(parc, 10) || 1
             };
             if (!CAT.v.config) {
