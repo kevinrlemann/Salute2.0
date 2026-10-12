@@ -1356,7 +1356,8 @@ function PainelScreen(_ref14) {
     return /*#__PURE__*/React.createElement(StatCard, _extends({
       key: s.title
     }, s, {
-      onMenu: function onMenu() {},
+      // celular: os três pontos do cartão não abrem nada, então ficam só no computador
+      onMenu: mobile ? undefined : function onMenu() {},
       style: _objectSpread(_objectSpread({}, glass), {}, {
         padding: mobile ? 18 : 22
       })

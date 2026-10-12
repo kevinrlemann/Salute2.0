@@ -3856,7 +3856,7 @@ function MxCrmLista(p){
       return React.createElement("section", {key: st.id, "aria-label": st.label, style:{display:'flex',flexDirection:'column',gap:8}},
         React.createElement("div", {style:{display:'flex',alignItems:'center',gap:8,padding:'0 4px'}},
           React.createElement("span", {style:{width:10,height:10,borderRadius:'50%',background: st.c}}),
-          React.createElement("span", {style:{fontSize:15,fontWeight:600,color:'var(--text-strong)'}}, st.label),
+          React.createElement("span", {style:{fontSize:15,fontWeight:600,color:'#fff'}}, String(st.label).replace(/lead/i, 'contato')),
           React.createElement("span", {style:{fontSize:13,color:'#8a96a8'}}, itens.length)),
         itens.length ? itens.map(function(l){
           return React.createElement("button", {key: l.id, type:"button", onClick: function(){ p.onOpen(l); }, style:{display:'flex',flexDirection:'column',gap:2,width:'100%',boxSizing:'border-box',padding:'12px 14px',borderRadius:14,border:0,background:'#fff',textAlign:'left',cursor:'pointer',fontFamily:'inherit',boxShadow:'0 6px 14px -12px rgba(23,73,170,.5)'}},
@@ -4012,10 +4012,11 @@ function MensagensWA(_ref10) {
       menuAberto ? React.createElement("span", { "data-overlay": "1", style: { position: 'absolute', top: 46, left: 0, zIndex: 20, minWidth: 220, padding: 6, borderRadius: 14, background: WA.head, boxShadow: '0 12px 30px -10px rgba(0,0,0,.6)', display: 'flex', flexDirection: 'column' } },
         React.createElement("button", { type: "button", onClick: function () { setTab('p'); setMenuAberto(false); }, style: Object.assign({}, itemMenu, { fontWeight: !isTeam ? 600 : 400 }) }, 'Pacientes'),
         React.createElement("button", { type: "button", onClick: function () { setTab('d'); setMenuAberto(false); }, style: Object.assign({}, itemMenu, { fontWeight: isTeam ? 600 : 400 }) }, 'Equipe'),
-        React.createElement("button", { type: "button", onClick: function () { setCrm(true); setMenuAberto(false); }, style: itemMenu }, 'CRM de leads'),
+        React.createElement("button", { type: "button", onClick: function () { setCrm(true); setMenuAberto(false); }, style: itemMenu }, 'Funil de clientes'),
         React.createElement("button", { type: "button", onClick: function () { setFl('arquivadas'); setMenuAberto(false); }, style: itemMenu }, 'Arquivadas')) : null),
     React.createElement("span", { style: { flex: 1, textAlign: 'center', fontSize: 21, fontWeight: 700, color: WA.text, whiteSpace: 'nowrap' } }, isTeam ? 'Equipe' : 'Conversas'),
-    React.createElement("button", { type: "button", "aria-label": "Nova conversa", title: "Pesquisar ou começar uma conversa", onClick: function () { var i = document.querySelector('input[aria-label="Pesquisar conversa"]'); if (i) i.focus(); }, style: Object.assign({}, botaoRedondo, { background: WA.green, color: '#fff' }) }, React.createElement(MIcon, { name: "plus", size: 22 })));
+    // não existe fluxo para começar uma conversa daqui (o paciente escreve primeiro); o botão é só a busca
+    React.createElement("button", { type: "button", "aria-label": "Pesquisar conversa", title: "Pesquisar conversa", onClick: function () { var i = document.querySelector('input[aria-label="Pesquisar conversa"]'); if (i) { i.focus(); i.scrollIntoView({ block: 'nearest' }); } }, style: Object.assign({}, botaoRedondo, { background: WA.green, color: '#fff' }) }, React.createElement(MIcon, { name: "search", size: 20 })));
   var ARQ_LINHA = React.createElement("button", { type: "button", onClick: function () { setFl('arquivadas'); }, style: { width: '100%', display: 'flex', alignItems: 'center', gap: 14, height: 52, padding: '0 16px', border: 0, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', color: WA.text, fontSize: 15, fontWeight: 500, textAlign: 'left' } },
     React.createElement(MIcon, { name: "archive", size: 19 }),
     React.createElement("span", { style: { flex: 1 } }, 'Arquivadas'),
@@ -4076,7 +4077,7 @@ function MensagensWA(_ref10) {
     onChange: function onChange(e) {
       return setQ(e.target.value);
     },
-    placeholder: "Pesquisar ou come\xE7ar uma nova conversa",
+    placeholder: mobile ? "Pesquisar conversa" : "Pesquisar ou come\xE7ar uma nova conversa",
     "aria-label": "Pesquisar conversa",
     style: {
       flex: 1,
@@ -4492,7 +4493,9 @@ function MensagensWA(_ref10) {
         color: WA.sub,
         whiteSpace: 'nowrap'
       }
-    }, total, " leads"), chip(true, 'CRM', function () {
+    }, total, " leads"), mobile ? /*#__PURE__*/React.createElement("span", {
+      style: { height: 32, padding: '0 12px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', fontSize: 14, fontWeight: 600, background: WA.chip, color: WA.green, whiteSpace: 'nowrap' }
+    }, 'Funil de clientes') : chip(true, 'CRM', function () {
       return setCrm(false);
     }))), cargaCrm !== 'ok' ? /*#__PURE__*/React.createElement("div", {
       style: {

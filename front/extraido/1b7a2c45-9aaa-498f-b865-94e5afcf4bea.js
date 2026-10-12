@@ -57,6 +57,7 @@ var ROUTES = {
   },
   mensagens: {
     title: 'Mensagens',
+    mobileTitle: 'Conversas',
     C: MensagensScreen
   },
   gestao: {
@@ -103,15 +104,20 @@ function InicioScreen(props) {
         flexDirection: 'column',
         alignItems: 'center',
         gap: 6,
-        minWidth: 72,
+        minWidth: 0,
+        width: '100%',
         minHeight: 44,
+        padding: 0,
         border: 0,
         background: 'transparent',
         cursor: 'pointer',
         fontFamily: 'inherit',
         color: 'var(--text-strong)',
-        fontSize: 13,
-        fontWeight: 500
+        fontSize: 12.5,
+        fontWeight: 500,
+        lineHeight: 1.2,
+        textAlign: 'center',
+        flexShrink: 0
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -212,20 +218,23 @@ function InicioScreen(props) {
     }
   }, 'Tocar para abrir a agenda')), /*#__PURE__*/React.createElement("div", {
     style: {
-      display: 'flex',
-      gap: 8,
-      overflowX: 'auto',
+      display: 'grid',
+      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+      gap: 4,
       paddingBottom: 2
     }
-  }, atalho('calendar-plus', 'Agendar', function () {
+  }, atalho('calendar-plus', 'Agendar consulta', function () {
+    // mesmo formulário de agendamento de todos os pontos de entrada
+    if (window.abrirNovoAgendamento) return window.abrirNovoAgendamento({});
     return onNew && onNew();
-  }), atalho('banknote', 'Recebi', function () {
-    return onNavigate && onNavigate('gestao');
-  }), atalho('message-circle', 'Conversas', function () {
+  }), atalho('banknote', 'Recebi pagamento', function () {
+    return onNavigate && onNavigate('mx_recebi');
+  }), atalho('message-circle', 'Ver conversas', function () {
     return onNavigate && onNavigate('mensagens');
-  }), atalho('package', 'Estoque', function () {
+  }), atalho('package', 'Ver estoque', function () {
+    window.__gestaoAreaPedida = 'estoque';
     return onNavigate && onNavigate('gestao');
-  }), atalho('sparkles', 'Renata', function () {
+  }), atalho('sparkles', 'Falar com Renata', function () {
     RN_STORE.v = Object.assign({}, RN_STORE.v, {
       open: true
     });
@@ -256,11 +265,13 @@ var MOB_MAIS_ITENS = [{
   icon: 'users'
 }, {
   id: 'gestao',
+  area: 'financeiro',
   label: 'Financeiro',
   sub: 'Recebidos, pagamentos e a receber',
   icon: 'wallet'
 }, {
   id: 'gestao',
+  area: 'estoque',
   label: 'Estoque',
   sub: 'Itens, alertas e entradas',
   icon: 'package'
@@ -297,6 +308,8 @@ function MaisScreen(props) {
       key: it.label,
       type: "button",
       onClick: function onClick() {
+        // Financeiro e Estoque abrem a Gestão já na área certa
+        if (it.area) window.__gestaoAreaPedida = it.area;
         return onNavigate && onNavigate(it.id);
       },
       style: {
@@ -401,7 +414,7 @@ function MaisScreen(props) {
       fontSize: 16,
       fontWeight: 600
     }
-  }, "Renata IA"), /*#__PURE__*/React.createElement("span", {
+  }, "Falar com a Renata"), /*#__PURE__*/React.createElement("span", {
     style: {
       display: 'block',
       fontSize: 13,
@@ -640,7 +653,7 @@ function MxCompras(p){
   var baixos = (PROD_STORE.v || []).filter(function(x){ return x.qtd < x.min; });
   var buscarCodigo = function(codigo){
     var c = String(codigo || '').trim();
-    if (!c) return;
+    if (!c) return up({achado: '', erro: 'Digite ou leia o código do produto primeiro.'});
     if (!SB_ON) return up({achado: '', erro: 'Leitura de código funciona com a clínica conectada.'});
     DB.ler(DB.sel('produtos', 'id,nome,quantidade_atual,estoque_minimo').eq('codigo_barras', c).is('excluido_em', null)).then(function(rs){
       if (!rs || !rs.length) return up({achado: '', erro: 'Nenhum produto com o código ' + c + '.'});
@@ -750,7 +763,7 @@ function MxRoot(p){
   var feito = st[0];
   if (feito) return React.createElement(MxFeito, {titulo: feito.titulo, texto: feito.texto, onFim: p.onFechar});
   var ctx = {feito: function(titulo, texto){ st[1]({titulo: titulo, texto: texto}); }, fechar: p.onFechar};
-  var id = p.id;
+  var id = String(p.id).replace(/^mx_(recebi|paguei|usei)$/, '$1');
   if (id === 'recebi' || id === 'paguei') return React.createElement(MxDinheiro, {tipo: id, ctx: ctx});
   if (id === 'usei') return React.createElement(MxUsei, {ctx: ctx});
   if (id === 'mx_cobrancas') return React.createElement(MxCobrancas, {ctx: ctx});
@@ -15406,7 +15419,7 @@ function App() {
     },
     onEscolher: function onEscolher(id) {
       setAcaoAberta(false);
-      if (id === 'agendar') return setNovo(true);
+      if (id === 'agendar') return window.abrirNovoAgendamento ? window.abrirNovoAgendamento({}) : setNovo(true);
       if (id === 'recebi' || id === 'paguei' || id === 'usei') return setMx(id);
       return navegar('gestao');
     }
@@ -15427,7 +15440,12 @@ function App() {
       iconLeft: "check",
       onClick: function onClick() {
         if (SB_ON) {
-          agendarRapido(nv, setToast).then(function (ok) {
+          // celular: o sucesso vai para a tela "Feito"; os erros continuam no aviso
+          var avisar_ = mobile && window.mxFeito ? function (t) {
+            if (t && t.tone === 'success') return mxFeito(t.title || 'Consulta agendada', t.description || '');
+            setToast(t);
+          } : setToast;
+          agendarRapido(nv, avisar_).then(function (ok) {
             if (ok) {
               setNovo(false);
               setNv({
