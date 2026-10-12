@@ -521,6 +521,8 @@ function _aoMudarMensagens() {
             })), [tela]).filter(function (c) {
               return !(MSG_CONV[c.id] || {}).excluido_em;
             }));
+            // foto do contato recém-chegada: assina na hora para aparecer sem recarregar a tela
+            if (n.foto_contato_path && !FOTO_URL[n.foto_contato_path]) assinarFotos([n]);
           }
           return _context13.a(2);
         case 1:
