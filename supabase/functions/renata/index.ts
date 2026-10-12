@@ -1,24 +1,24 @@
 // =====================================================================
 // SALUTE 02 · Edge Function "renata"
-// Ponte entre o sistema e as IAs (Groq e ElevenLabs). As chaves ficam no
+// Ponte entre o sistema e as IAs (ChatGPT da OpenAI e ElevenLabs). As chaves ficam no
 // cofre do Supabase (Vault) ou nos segredos da função e nunca vão para o navegador.
 //
 // Ações (POST, com o login do usuário no cabeçalho Authorization):
-//   status       diz se há chave de IA (Groq) e da ElevenLabs para a clínica
+//   status       diz se há chave de IA (OpenAI) e da ElevenLabs para a clínica
 //   chat         repassa a conversa para a IA, em streaming, e soma o consumo
 //   testar       testa a chave de IA da clínica
 //   voz          transforma texto em fala pela ElevenLabs (devolve audio/mpeg)
 //   transcrever  transforma fala em texto pela ElevenLabs (multipart com o arquivo)
 //
-// IA usada: Groq, com a chave da clínica ou a padrão da Salute (cofre ou segredo
-// GROQ_API_KEY). O front conversa no formato do Claude; groq.ts faz a tradução.
+// IA usada: ChatGPT (OpenAI), com a chave da clínica ou a padrão da Salute (cofre ou segredo
+// OPENAI_API_KEY). O front conversa no formato do Claude; openai.ts faz a tradução.
 //
 // Proteções do chat (S2): só modelos conhecidos, tamanho máximo de pedido e
 // limite mensal de mensagens quando a clínica usa a chave da Salute.
 // As regras do Agente de IA (tabela agente_ia) entram sempre no começo das instruções.
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { chamarGroq, codigoErro, eventosClaude, paraGroq } from './groq.ts';
+import { chamarOpenAI, codigoErro, eventosClaude, paraOpenAI } from './openai.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +32,7 @@ const VOZ_RESERVA = 'EXAVITQu4vr4xnSDxMaL';
 const VOZ_PAGA = new Map<string, number>();
 const json = (obj: unknown, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 
-// o front ainda manda o nome do modelo do Claude; serve só para validar o pedido (o Groq usa os seus)
+// o front ainda manda o nome do modelo do Claude; serve só para validar o pedido (o ChatGPT usa os seus)
 const MODELOS = /^claude-(haiku-4-5|sonnet-4-5|sonnet-5-5)(-\d{8})?$/;
 // mensagens por mês quando a clínica não tem plano com limite e usa a chave da Salute
 const LIMITE_PADRAO = Number(Deno.env.get('RENATA_LIMITE_PADRAO') || 300);
@@ -105,28 +105,28 @@ Deno.serve(async (req) => {
       p_caracteres_voz: p.chars || 0, p_segundos: p.segs || 0,
     });
 
-  // chave do Groq desta clínica ou a padrão da Salute
+  // chave da OpenAI desta clínica ou a padrão da Salute
   const escolherIA = async () => {
     const { data: propria } = await adm.from('segredos_integracao').select('id')
-      .eq('clinica_id', clinica).eq('provedor', 'groq').is('excluido_em', null).limit(1);
-    const key = await chave('groq', 'GROQ_API_KEY');
+      .eq('clinica_id', clinica).eq('provedor', 'openai').is('excluido_em', null).limit(1);
+    const key = await chave('openai', 'OPENAI_API_KEY');
     return key ? { key, propria: !!(propria && propria.length) } : null;
   };
 
   if (acao === 'status') {
     const [ia, v] = await Promise.all([escolherIA(), chave('elevenlabs', 'ELEVENLABS_API_KEY')]);
-    return json({ claude: !!ia, ia: ia ? 'groq' : null, voz: !!v });
+    return json({ claude: !!ia, ia: ia ? 'openai' : null, voz: !!v });
   }
 
   if (acao === 'testar') {
     const ia = await escolherIA();
     if (!ia) return json({ ok: false, motivo: 'sem chave' });
-    const r = await chamarGroq(ia.key, { max_tokens: 8, messages: [{ role: 'user', content: 'Responda apenas: ok' }] });
+    const r = await chamarOpenAI(ia.key, { max_tokens: 8, messages: [{ role: 'user', content: 'Responda apenas: ok' }] });
     const ok = r.ok;
     await r.body?.cancel();
     await adm.from('renata_configuracoes').update({ claude_status_teste: ok ? 'ok' : 'erro ' + r.status, claude_testado_em: new Date().toISOString() })
       .eq('clinica_id', clinica).is('excluido_em', null);
-    return json({ ok, status: r.status, ia: 'groq' });
+    return json({ ok, status: r.status, ia: 'openai' });
   }
 
   if (acao === 'chat') {
@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
       : Array.isArray(p.system) ? p.system.map((b) => (b && typeof b === 'object' && 'text' in b ? String((b as { text: unknown }).text) : '')).join('\n') : '';
     const sistema = typeof regras === 'string' && regras ? regras + '\n\n' + sisFront : sisFront;
 
-    const rg = await chamarGroq(ia.key, paraGroq({ system: sistema, messages: msgs as { role: string; content: unknown }[], tools: tools as { name: string }[] | undefined, max_tokens: maxTokens }));
+    const rg = await chamarOpenAI(ia.key, paraOpenAI({ system: sistema, messages: msgs as { role: string; content: unknown }[], tools: tools as { name: string }[] | undefined, max_tokens: maxTokens }));
     if (!rg.ok || !rg.body) {
       // o navegador recebe só o código e uma frase simples, nunca o texto cru do provedor
       const cod = codigoErro(await rg.text().catch(() => ''));

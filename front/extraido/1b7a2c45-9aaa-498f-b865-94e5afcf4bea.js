@@ -1055,7 +1055,7 @@ RENATA_TOOLS.push({
   }
 });
 var RENATA_RULES = function RENATA_RULES(voice) {
-  // instruções da Renata (secretária virtual da equipe). Texto enxuto: o plano grátis do Groq corta o pedido em ~7 mil caracteres.
+  // instruções da Renata (secretária virtual da equipe). Texto enxuto: pedido menor custa menos no ChatGPT.
   var R = ['Você é a Renata, secretária virtual da ' + RN_CLINICA.fantasia + ' dentro do sistema Salute IA. Está conversando com ' + rnQuem() + '. Hoje é ' + rnHojeTxt() + '.',
   '',
   'COMO ENTENDER O QUE A PESSOA DISSE',
@@ -8007,11 +8007,11 @@ function MesComFeriados(_ref) {
 window.MesComFeriados = MesComFeriados;
 window.feriadosNacionaisJS = feriadosNacionaisJS;
 
-/* ---------- conexões da Renata: passo a passo do Groq ---------- */
+/* ---------- conexões da Renata: passo a passo do ChatGPT (OpenAI) ---------- */
 function RnPassoGroq(_ref) {
   var note = _ref.note,
     btn2 = _ref.btn2;
-  var passos = ['Toque em \u201CAbrir o Groq\u201D e entre com a sua conta Google ou GitHub. N\xE3o pede cart\xE3o.', 'Na p\xE1gina \u201CAPI Keys\u201D, clique em \u201CCreate API Key\u201D, d\xEA o nome Salute e clique em \u201CSubmit\u201D.', 'Copie a chave na hora (come\xE7a com gsk_ e s\xF3 aparece uma vez), cole no campo abaixo e toque em \u201CTestar conex\xE3o\u201D.', 'Apareceu \u201CConectada\u201D? Toque em Salvar. Pronto: a Renata j\xE1 responde com IA.'];
+  var passos = ['Toque em \u201CAbrir a OpenAI\u201D e entre com a mesma conta do seu ChatGPT (ou crie uma). Na primeira vez a OpenAI pede um cart\xE3o e um cr\xE9dito inicial (US$ 5 j\xE1 d\xE1 para muitas conversas).', 'Na p\xE1gina \u201CAPI keys\u201D, clique em \u201CCreate new secret key\u201D, d\xEA o nome Salute e clique em \u201CCreate secret key\u201D.', 'Copie a chave na hora (come\xE7a com sk- e s\xF3 aparece uma vez), cole no campo abaixo e toque em \u201CTestar conex\xE3o\u201D.', 'Apareceu \u201CConectada\u201D? Toque em Salvar. Pronto: a Renata j\xE1 responde com o ChatGPT.'];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -8027,7 +8027,7 @@ function RnPassoGroq(_ref) {
       fontSize: 13.5,
       color: 'var(--text-strong)'
     }
-  }, "Conectar o Groq (gr\xE1tis)"), /*#__PURE__*/React.createElement("ol", {
+  }, "Conectar o ChatGPT (OpenAI)"), /*#__PURE__*/React.createElement("ol", {
     style: {
       margin: 0,
       paddingLeft: 18,
@@ -8043,7 +8043,7 @@ function RnPassoGroq(_ref) {
       key: i
     }, p);
   })), /*#__PURE__*/React.createElement("a", {
-    href: "https://console.groq.com/keys",
+    href: "https://platform.openai.com/api-keys",
     target: "_blank",
     rel: "noopener noreferrer",
     style: _objectSpread(_objectSpread({}, btn2), {}, {
@@ -8056,9 +8056,9 @@ function RnPassoGroq(_ref) {
   }, /*#__PURE__*/React.createElement(RIcon, {
     name: "external-link",
     size: 14
-  }), "Abrir o Groq"), /*#__PURE__*/React.createElement("span", {
+  }), "Abrir a OpenAI"), /*#__PURE__*/React.createElement("span", {
     style: note
-  }, "O plano gratuito do Groq tem limite di\xE1rio de uso; se a Renata avisar que chegou ao limite, \xE9 s\xF3 esperar o dia virar. Para atender pacientes reais, prefira o plano pago do Groq (custa centavos por conversa)."));
+  }, "A assinatura do ChatGPT (Plus) n\xE3o serve aqui: o sistema usa a chave da API, que \xE9 cobrada por uso e custa centavos por conversa. Acompanhe o gasto em platform.openai.com/usage."));
 }
 
 /* ---------- conexões da Renata ---------- */
@@ -8247,14 +8247,14 @@ function RenataSettings(_ref13) {
     size: 18
   }))), /*#__PURE__*/React.createElement("div", {
     style: sec
-  }, head('brain', 'Inteligência', mode === 'ia' ? 'Conectada pelo Claude neste link' : k.trim() ? 'IA conectada com a sua chave do Groq' : 'Conecte o Groq (grátis) em 1 minuto'), mode === 'ia' ? /*#__PURE__*/React.createElement("span", {
+  }, head('brain', 'Inteligência', mode === 'ia' ? 'Conectada pelo Claude neste link' : k.trim() ? 'IA conectada com a sua chave da OpenAI' : 'Conecte o ChatGPT (OpenAI) em 2 minutos'), mode === 'ia' ? /*#__PURE__*/React.createElement("span", {
     style: note
   }, "Aqui dentro do Claude a Renata j\xE1 usa IA de verdade. A chave abaixo \xE9 para o sistema no seu dom\xEDnio.") : null, /*#__PURE__*/React.createElement(RnPassoGroq, {
     note: note,
     btn2: btn2
   }), /*#__PURE__*/React.createElement("label", {
     style: lab
-  }, "Chave da IA (Groq, gr\xE1tis)", /*#__PURE__*/React.createElement("input", {
+  }, "Chave da IA (OpenAI)", /*#__PURE__*/React.createElement("input", {
     type: "password",
     style: inp,
     value: k,
@@ -8262,7 +8262,7 @@ function RenataSettings(_ref13) {
       setK(e.target.value);
       setAiTest(null);
     },
-    placeholder: "Cole aqui a chave do Groq (come\xE7a com gsk_)",
+    placeholder: "Cole aqui a chave da OpenAI (come\xE7a com sk-)",
     autoComplete: "off"
   })), /*#__PURE__*/React.createElement("div", {
     style: {

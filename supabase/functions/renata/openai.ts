@@ -1,25 +1,20 @@
 // =====================================================================
-// Tradução entre o formato da Anthropic, que o front da Renata usa, e o
-// Groq (endpoint compatível com OpenAI). O front não muda: o pedido chega no
+// Tradução entre o formato da Anthropic, que o front da Renata usa, e a
+// API do ChatGPT (OpenAI, chat completions). O front não muda: o pedido chega no
 // formato do Claude e a resposta volta nos mesmos eventos do Claude.
 // =====================================================================
 
-export const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-// em ordem de preferência; o próximo entra quando o anterior bate no limite do plano grátis.
-// Cada modelo tem o próprio limite por minuto, então a troca soma a capacidade dos três.
-// o 20b responde bem mais rápido e cobre a maioria das perguntas; o 120b entra quando o 20b está no limite
-export const GROQ_MODELOS = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b', 'qwen/qwen3.8-27b'];
-// ajustes por modelo: menos "raciocínio" gasta menos tokens e responde mais rápido
-const EXTRAS: Record<string, Record<string, unknown>> = {
-  'openai/gpt-oss-120b': { reasoning_effort: 'low' },
-  'openai/gpt-oss-20b': { reasoning_effort: 'low' },
-  'qwen/qwen3.8-27b': { reasoning_effort: 'none' },
-};
+export const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
+// em ordem de preferência; o próximo entra quando o anterior está indisponível ou no limite por minuto.
+// gpt-4.1-mini: rápido e barato, bom com ferramentas. gpt-4o-mini: reserva.
+export const OPENAI_MODELOS = ['gpt-4.1-mini', 'gpt-4o-mini'];
+// ajustes por modelo (nenhum por enquanto; os modelos acima não aceitam reasoning_effort)
+const EXTRAS: Record<string, Record<string, unknown>> = {};
 
-// o plano grátis do Groq aceita ~8 mil tokens por minuto em cada modelo (pedido + resposta).
-// O resumo da clínica é cortado nesse tamanho; o resto a Renata consulta pelas ferramentas.
-export const MAX_SISTEMA = 7000, MAX_DESC_FERRAMENTA = 200, MAX_DESC_CAMPO = 80, MAX_RESPOSTA = 1000;
-// espera máxima (segundos) quando os três modelos estão no limite por minuto
+// o resumo da clínica é cortado neste tamanho (caracteres); o resto a Renata consulta pelas ferramentas.
+// O ChatGPT aceita pedidos grandes, mas quanto maior o pedido, maior o custo por mensagem.
+export const MAX_SISTEMA = 24000, MAX_DESC_FERRAMENTA = 300, MAX_DESC_CAMPO = 120, MAX_RESPOSTA = 1000;
+// espera máxima (segundos) quando os modelos estão no limite por minuto
 export const MAX_ESPERA = 4;
 // só o código do erro do provedor vai para os registros (nada do conteúdo do pedido ou da resposta)
 export const codigoErro = (txt: string) => {
@@ -66,8 +61,8 @@ const textoDe = (c: unknown): string =>
     : Array.isArray(c) ? c.map((b) => (b && (b as Bloco).type === 'text' ? (b as Bloco).text || '' : '')).join('\n')
       : '';
 
-// pedido no formato Anthropic → corpo do Groq (sem o modelo, escolhido na chamada)
-export function paraGroq(p: { system?: unknown; messages: Mensagem[]; tools?: Ferramenta[]; max_tokens?: number }) {
+// pedido no formato Anthropic → corpo do ChatGPT (sem o modelo, escolhido na chamada)
+export function paraOpenAI(p: { system?: unknown; messages: Mensagem[]; tools?: Ferramenta[]; max_tokens?: number }) {
   const msgs: Record<string, unknown>[] = [];
   let sistema = textoDe(p.system);
   if (sistema.length > MAX_SISTEMA) {
@@ -95,13 +90,15 @@ export function paraGroq(p: { system?: unknown; messages: Mensagem[]; tools?: Fe
     messages: msgs,
     max_tokens: Math.min(p.max_tokens || MAX_RESPOSTA, MAX_RESPOSTA),
     stream: true,
+    // o consumo (tokens) só vem no streaming quando pedido
+    stream_options: { include_usage: true },
     ...(p.tools && p.tools.length ? {
       tools: p.tools.map((t) => ({ type: 'function', function: { name: t.name, description: corta(t.description || '', MAX_DESC_FERRAMENTA), parameters: limparSchema(t.input_schema || { type: 'object', properties: {} }) } })),
     } : {}),
   };
 }
 
-// streaming do Groq → eventos do Claude (message_start, content_block_*, message_delta, message_stop)
+// streaming do ChatGPT → eventos do Claude (message_start, content_block_*, message_delta, message_stop)
 export function eventosClaude(onFim: (tin: number, tout: number) => void | Promise<void>) {
   const enc = new TextEncoder(), dec = new TextDecoder();
   let buf = '', iniciou = false, proximo = 0, textoAberto = -1, teveFerramenta = false, fim = '', tin = 0, tout = 0, terminou = false;
@@ -132,12 +129,12 @@ export function eventosClaude(onFim: (tin: number, tout: number) => void | Promi
         let c: Record<string, any>;
         try { c = JSON.parse(dado); } catch (_) { continue; }
         if (c.error) {
-          console.warn(`[groq] erro no streaming (${codigoErro(JSON.stringify(c))})`);
+          console.warn(`[openai] erro no streaming (${codigoErro(JSON.stringify(c))})`);
           evento(ctl, { type: 'error', error: { type: 'api_error', message: 'A IA interrompeu a resposta. Tente de novo.' } });
           continue;
         }
         if (!iniciou) { iniciou = true; evento(ctl, { type: 'message_start', message: { role: 'assistant', content: [], usage: { input_tokens: 0, output_tokens: 0 } } }); }
-        // o Groq manda o consumo no último pedaço, em x_groq.usage (ou usage)
+        // o consumo vem no último pedaço (usage); x_groq é compatibilidade com o provedor antigo
         const uso = c.usage || (c.x_groq && c.x_groq.usage);
         if (uso) { tin = uso.prompt_tokens || tin; tout = uso.completion_tokens || tout; }
         const ch = c.choices && c.choices[0];
@@ -181,10 +178,10 @@ export function encolher(corpo: Record<string, unknown>) {
   return { ...corpo, messages: [{ role: 'system', content: novo }, ...msgs!.slice(1)] };
 }
 
-// chama o Groq tentando os modelos em ordem: limite (429/413) ou modelo indisponível (404/400 de modelo) passa para o próximo
-export async function chamarGroq(key: string, corpo: Record<string, unknown>, modelos = GROQ_MODELOS, nova = true): Promise<Response> {
+// chama o ChatGPT tentando os modelos em ordem: limite (429/413) ou modelo indisponível (404/400 de modelo) passa para o próximo
+export async function chamarOpenAI(key: string, corpo: Record<string, unknown>, modelos = OPENAI_MODELOS, nova = true): Promise<Response> {
   let ultima: Response | null = null, espera = Infinity;
-  const enviar = (modelo: string, extras: Record<string, unknown>) => fetch(GROQ_URL, {
+  const enviar = (modelo: string, extras: Record<string, unknown>) => fetch(OPENAI_URL, {
     method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
     body: JSON.stringify({ ...corpo, ...extras, model: modelo }),
   });
@@ -198,7 +195,7 @@ export async function chamarGroq(key: string, corpo: Record<string, unknown>, mo
     // pedido grande demais para este modelo: tenta de novo com o resumo da clínica menor
     if (r.status === 413) {
       const menor = encolher(corpo);
-      if (menor) { await r.body?.cancel(); r = await fetch(GROQ_URL, {
+      if (menor) { await r.body?.cancel(); r = await fetch(OPENAI_URL, {
         method: 'POST', headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
         body: JSON.stringify({ ...menor, ...(EXTRAS[modelo] || {}), model: modelo }),
       }); }
@@ -206,7 +203,7 @@ export async function chamarGroq(key: string, corpo: Record<string, unknown>, mo
     if (r.ok) return r;
     if (r.status === 401 || r.status === 403) return r; // chave errada: não adianta trocar de modelo
     const txt = await r.text();
-    console.warn(`[groq] ${modelo} respondeu ${r.status} (${codigoErro(txt)})`);
+    console.warn(`[openai] ${modelo} respondeu ${r.status} (${codigoErro(txt)})`);
     ultima = new Response(txt, { status: r.status, headers: r.headers });
     const seg = /try again in ([\d.]+)s/i.exec(txt);
     if (r.status === 429 && seg) espera = Math.min(espera, Number(seg[1]));
@@ -216,7 +213,7 @@ export async function chamarGroq(key: string, corpo: Record<string, unknown>, mo
   // todos no limite por minuto, mas por poucos segundos: espera e tenta uma vez mais
   if (nova && espera <= MAX_ESPERA) {
     await new Promise((ok) => setTimeout(ok, espera * 1000 + 300));
-    return chamarGroq(key, corpo, modelos, false);
+    return chamarOpenAI(key, corpo, modelos, false);
   }
   return ultima as Response;
 }

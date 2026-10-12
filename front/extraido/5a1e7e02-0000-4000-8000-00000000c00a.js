@@ -42,9 +42,9 @@ function rnPrimeiroNome() {
   return String((SESSAO.v.perfil || {}).nome || '').split(' ')[0] || 'tudo bem';
 }
 
-/* ---------- chave de IA: Groq (começa com gsk_) ---------- */
+/* ---------- chave de IA: ChatGPT da OpenAI (começa com sk-) ---------- */
 function rnProvedorChave(k) {
-  return 'groq';
+  return 'openai';
 }
 
 /* ---------- chamada à função do servidor ---------- */
@@ -613,7 +613,7 @@ function _rnSemIA() {
             mode: 'demo'
           });
         case 6:
-          t = why ? "N\xE3o consegui falar com a IA agora (".concat(why, "). Tente de novo em instantes.") : 'A Renata ainda não está ligada à IA nesta clínica. Em **Conexões da Renata**, aqui no chat, o dono ou gestor conecta a IA (o Groq é gratuito e leva 1 minuto, com o passo a passo na tela). Enquanto isso, já consigo preparar lançamentos no financeiro e no estoque para você confirmar.';
+          t = why ? "N\xE3o consegui falar com a IA agora (".concat(why, "). Tente de novo em instantes.") : 'A Renata ainda não está ligada à IA nesta clínica. Em **Conexões da Renata**, aqui no chat, o dono ou gestor conecta o ChatGPT (leva 2 minutos, com o passo a passo na tela). Enquanto isso, já consigo preparar lançamentos no financeiro e no estoque para você confirmar.';
           if (!voice) {
             _context10.n = 7;
             break;

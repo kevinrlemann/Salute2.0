@@ -1,5 +1,5 @@
-// Rodar: cp supabase/functions/renata/groq.ts /tmp/groq.mts && sed "s#../groq.ts#/tmp/groq.mts#" supabase/functions/renata/testes/groq.test.mts > /tmp/t.mts && npx tsx /tmp/t.mts
-import { eventosClaude, paraGroq, chamarGroq, GROQ_MODELOS } from '../groq.ts';
+// Rodar: node --experimental-strip-types --test supabase/functions/renata/testes/openai.test.mts
+import { eventosClaude, paraOpenAI, chamarOpenAI, OPENAI_MODELOS } from '../openai.ts';
 import assert from 'node:assert/strict';
 
 // leitor igual ao do front (1b7a2c45…js, linhas ~2792-2910)
@@ -78,7 +78,7 @@ const t4 = await rodar('sem [DONE]', [{ choices: [{ index: 0, delta: { content: 
 assert.equal(t4.texto, 'ok'); assert.equal(t4.stop, 'end_turn');
 
 // 5) conversão do pedido: sistema, ferramentas, rodada com tool_result
-const corpo = paraGroq({
+const corpo = paraOpenAI({
   system: [{ type: 'text', text: 'Você é a Renata.' }],
   max_tokens: 1400,
   tools: [{ name: 'estoque', description: 'Consulta estoque', input_schema: { type: 'object', $schema: 'x', additionalProperties: false, properties: { produto: { type: ['string', 'null'], description: 'nome', default: '' } }, required: ['produto'] } }],
@@ -98,30 +98,30 @@ console.log('✓ conversão do pedido');
 const pedidos: string[] = [];
 (globalThis as any).fetch = async (_url: string, init: any) => {
   const m = JSON.parse(init.body).model; pedidos.push(m);
-  return new Response(m === GROQ_MODELOS[0] ? '{"error":"limite"}' : 'data: [DONE]\n\n', { status: m === GROQ_MODELOS[0] ? 429 : 200 });
+  return new Response(m === OPENAI_MODELOS[0] ? '{"error":"limite"}' : 'data: [DONE]\n\n', { status: m === OPENAI_MODELOS[0] ? 429 : 200 });
 };
-const r6 = await chamarGroq('gsk_teste', { messages: [] });
-assert.equal(r6.status, 200); assert.deepEqual(pedidos, GROQ_MODELOS.slice(0, 2));
+const r6 = await chamarOpenAI('gsk_teste', { messages: [] });
+assert.equal(r6.status, 200); assert.deepEqual(pedidos, OPENAI_MODELOS.slice(0, 2));
 // 7) chave errada (401) não tenta outro modelo
 pedidos.length = 0;
 (globalThis as any).fetch = async (_u: string, init: any) => { pedidos.push(JSON.parse(init.body).model); return new Response('{}', { status: 401 }); };
-const r7 = await chamarGroq('gsk_errada', { messages: [] });
+const r7 = await chamarOpenAI('gsk_errada', { messages: [] });
 assert.equal(r7.status, 401); assert.equal(pedidos.length, 1);
 console.log('✓ troca de modelo no limite e parada na chave errada');
 
 // 8) 413: reenvia ao mesmo modelo com resumo menor
 {
-  const { encolher, MAX_SISTEMA } = await import('../groq.ts');
-  const grande = { messages: [{ role: 'system', content: 'x'.repeat(12000) }, { role: 'user', content: 'oi' }] };
+  const { encolher, MAX_SISTEMA } = await import('../openai.ts');
+  const grande = { messages: [{ role: 'system', content: 'x'.repeat(MAX_SISTEMA * 2) }, { role: 'user', content: 'oi' }] };
   const m = encolher(grande) as any;
-  assert.ok(m.messages[0].content.length < 7000 && m.messages[0].content.startsWith('x'.repeat(MAX_SISTEMA / 2)));
+  assert.ok(m.messages[0].content.length < MAX_SISTEMA && m.messages[0].content.startsWith('x'.repeat(MAX_SISTEMA / 2)));
   assert.equal(encolher({ messages: [{ role: 'system', content: 'curto' }] }), null);
   const vistos: string[] = [];
   (globalThis as any).fetch = async (_u: string, init: any) => {
     const b = JSON.parse(init.body); vistos.push(b.model + ':' + b.messages[0].content.length);
-    return new Response(b.messages[0].content.length > 7000 ? '{"error":"too large"}' : 'data: [DONE]\n\n', { status: b.messages[0].content.length > 7000 ? 413 : 200 });
+    return new Response(b.messages[0].content.length > MAX_SISTEMA ? '{"error":"too large"}' : 'data: [DONE]\n\n', { status: b.messages[0].content.length > MAX_SISTEMA ? 413 : 200 });
   };
-  const r8 = await chamarGroq('gsk_x', grande);
+  const r8 = await chamarOpenAI('gsk_x', grande);
   assert.equal(r8.status, 200); assert.equal(vistos.length, 2); assert.equal(vistos[0].split(':')[0], vistos[1].split(':')[0]);
   console.log('✓ 413 reenvia ao mesmo modelo com resumo menor');
 }
@@ -132,7 +132,7 @@ console.log('✓ troca de modelo no limite e parada na chave errada');
   (globalThis as any).fetch = async () => (++n <= 3
     ? new Response('{"error":{"message":"Please try again in 0.2s"}}', { status: 429 })
     : new Response('data: [DONE]\n\n', { status: 200 }));
-  const r9 = await chamarGroq('gsk_x', { messages: [] });
+  const r9 = await chamarOpenAI('gsk_x', { messages: [] });
   assert.equal(r9.status, 200); assert.equal(n, 4);
   console.log('✓ espera alguns segundos e tenta de novo quando todos estão no limite');
 }

@@ -25,7 +25,7 @@ de IA "Renata" (texto e voz), que consulta dados e propõe ações que a equipe 
   compilado por Babel (helpers do regenerator), supabase-js 2.117.2, design system `SaluteProjetoDesigner`,
   ícones Lucide 0.468.0 via unpkg e gerador de QR local. Sem build tool e sem npm no front.
 - Back: Supabase (Postgres 17, RLS em todas as tabelas, Auth, Storage, Realtime) + edge function `renata` (Deno).
-- IA: Groq (modelos `openai/gpt-oss-120b`, `openai/gpt-oss-20b` e `qwen/qwen3.8-27b`, nessa ordem) via `renata`;
+- IA: ChatGPT da OpenAI (`gpt-4.1-mini`, reserva `gpt-4o-mini`) via `renata` (chave da clínica no cofre, provedor `openai`, ou segredo `OPENAI_API_KEY`); o atendimento no WhatsApp (n8n WF01) usa o mesmo ChatGPT, com a chave guardada só no n8n. Decisão do fundador (2026-10-12): só OpenAI, custo absorvido pela Salute;
   voz ElevenLabs via `renata`. WhatsApp e n8n: **não implementados**; o banco do Agente de IA (fila, envio,
   transferência, opt-out, agenda) está pronto, contrato em `docs/agente-ia.md`. Há uma segunda implementação `ia_*` no mesmo banco (ver lá).
 
@@ -35,7 +35,7 @@ de IA "Renata" (texto e voz), que consulta dados e propõe ações que a equipe 
 front/index.html            página publicada (bundle: scripts gzip+base64 no manifest)
 front/config.js             URL do Supabase + chave pública anon (pública por design)
 front/extraido/             scripts decodificados: é AQUI que se edita; depois reempacota
-supabase/functions/renata/  index.ts (ações status/chat/testar/voz/transcrever), groq.ts, testes/
+supabase/functions/renata/  index.ts (ações status/chat/testar/voz/transcrever), openai.ts, testes/
 supabase/migrations/        migrations versionadas (as 41 iniciais do banco não estão aqui; conteúdo não confirmado)
 tools/unbundle.py, rebundle.py
 docs/                       arquitetura, auditorias, manual, backlog
@@ -48,7 +48,7 @@ setup/environment-setup.sh  rtk + OmniRoute nas sessões de nuvem
 python3 -I tools/unbundle.py front/index.html front/extraido   # decodificar
 python3 -I tools/rebundle.py front/index.html front/extraido   # reempacotar só o que mudou
 node --check front/extraido/<arquivo>.js                       # sintaxe de cada script editado
-node --experimental-strip-types --test supabase/functions/renata/testes/groq.test.mts
+node --experimental-strip-types --test supabase/functions/renata/testes/openai.test.mts
 git push origin main:producao                                  # publicar (SÓ com comando do fundador)
 ```
 
@@ -59,7 +59,7 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 ## Arquitetura (resumo)
 
 - Navegador → supabase-js direto nas tabelas (RLS) e RPCs. IA e voz passam só pela edge function `renata`
-  (chaves no Vault ou nos segredos `GROQ_API_KEY`/`ELEVENLABS_API_KEY`, nunca no navegador).
+  (chaves no Vault ou nos segredos `OPENAI_API_KEY`/`ELEVENLABS_API_KEY`, nunca no navegador).
 - Os scripts do front conversam por globais em `window`, e a ordem dos `<script>` importa (ex.: `c001` define
   `SB`, `DB`, `SB_ON` e `Z` antes dos demais). `d47643ae` está minificado em linhas muito longas.
 - Acesso a dados: `DB.sel/ler/ins/upd/del` (`c001`), sempre com `clinica_id = CLI()` e `excluido_em is null`.
@@ -96,7 +96,7 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   com `minhas_clinicas()` / `clinicas_permitidas('<módulo>')` / `clinicas_gestao()` / `eh_admin_plataforma()`.
 - `SECURITY DEFINER` só com checagem de clínica e `set search_path`. Revogue `execute` de `anon` quando a função não for pública.
 - HTML montado como texto (impressão etc.) precisa escapar TODO dado (`escHtml`). Veja o achado A1 da auditoria 05.
-- Dados de paciente vão para Groq/ElevenLabs. Trate isso como risco de LGPD (achado A3) e não amplie sem decisão do fundador.
+- Dados de paciente vão para OpenAI/ElevenLabs. Trate isso como risco de LGPD (achado A3) e não amplie sem decisão do fundador.
 - Riscos abertos e prioridades: `docs/security.md` e `docs/backlog.md`.
 
 ## Padrões de interface (valem para toda tela nova)
