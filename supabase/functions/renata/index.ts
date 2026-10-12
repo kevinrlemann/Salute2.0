@@ -101,10 +101,12 @@ Deno.serve(async (req) => {
     const { data } = await adm.rpc('ler_segredo', { p_clinica: clinica, p_provedor: provedor });
     return (typeof data === 'string' && data) || Deno.env.get(env) || '';
   };
+  // origem do uso: pergunta por voz ou por texto (o WhatsApp é contado pelo próprio banco)
+  const origem = corpo.voz ? 'renata_voz' : 'renata_texto';
   const consumo = (p: { mensagens?: number; tin?: number; tout?: number; chars?: number; segs?: number }) =>
     adm.rpc('renata_registrar_consumo', {
       p_clinica: clinica, p_mensagens: p.mensagens || 0, p_tokens_entrada: p.tin || 0, p_tokens_saida: p.tout || 0,
-      p_caracteres_voz: p.chars || 0, p_segundos: p.segs || 0,
+      p_caracteres_voz: p.chars || 0, p_segundos: p.segs || 0, p_origem: origem,
     });
 
   // chave da OpenAI desta clínica ou a padrão da Salute (as duas consultas em paralelo, com cache)

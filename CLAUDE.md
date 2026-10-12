@@ -83,7 +83,7 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (`admin_aprovar_clinica`). Clínica criada pela equipe da Salute já nasce aprovada (2026-10-10).
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.
 - Feriados: os nacionais são calculados (`feriados_nacionais`) e somados aos da clínica (`feriados_do_mes`).
-- Limite mensal da Renata quando a clínica usa a chave da Salute (`renata_limite_mes`, padrão 300).
+- Limite mensal de IA (`renata_limite_mes`, padrão 300 sem plano): conta Renata por texto, Renata por voz e respostas da IA no WhatsApp (`renata_consumo.mensagens_renata_texto/_voz/_whatsapp`, soma em `mensagens_ia`). Ordem do limite: mês (`renata_consumo.limite_mensagens`) > clínica (`clinicas.limite_mensagens_ia`, só o master, RPC `admin_definir_limite_ia`) > plano. Vale para a Renata (função `renata`) e para o WhatsApp (`agente_pode_responder`, motivo `limite_mensagens`). Tela: Minha conta › Plano e cobrança › Uso da IA (RPC `ia_uso`).
 - Planos (tabela `planos`, 2026-10-09): Inicial R$ 197 (sem IA, `limite_mensagens_ia` 0), Assistente R$ 397 (1.500),
   IA Pro R$ 997 (10.000) e Enterprise sob consulta a partir de R$ 1.997 (null = sob medida em `renata_consumo`).
   Limites (`limite_usuarios`, `limite_profissionais`), `preco_anual`, `preco_implantacao` e os valores adicionais

@@ -3011,6 +3011,7 @@ function _rnClaudeApi() {
           return rnFn({
             acao: 'chat',
             primeira: round === 0,
+            voz: !!voice,
             payload: {
               model: models[mi],
               max_tokens: voice ? 450 : 1400,

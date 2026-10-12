@@ -263,6 +263,287 @@ function PlanosAdicionais(_ref) {
     }, (a.planos || []).map(nomePlano).join(', ')));
   }));
 }
+/* ---------- uso da IA no mês: Renata por texto, Renata por voz, WhatsApp e a soma ---------- */
+var USO_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+function UsoIA(_ref0) {
+  var mobile = _ref0.mobile;
+  var _React$useState0 = React.useState(null),
+    _React$useState1 = _slicedToArray(_React$useState0, 2),
+    dados = _React$useState1[0],
+    setDados = _React$useState1[1];
+  var _React$useState10 = React.useState(''),
+    _React$useState11 = _slicedToArray(_React$useState10, 2),
+    lim = _React$useState11[0],
+    setLim = _React$useState11[1];
+  var _React$useState12 = React.useState(null),
+    _React$useState13 = _slicedToArray(_React$useState12, 2),
+    aviso = _React$useState13[0],
+    setAviso = _React$useState13[1];
+  var master = !!(window.SESSAO && SESSAO.v && SESSAO.v.admin);
+  var carregar = function carregar() {
+    if (!SB_ON) {
+      setDados({
+        atual: {
+          renata_texto: 4120,
+          renata_voz: 980,
+          whatsapp: 1140,
+          usadas: 6240,
+          limite: 10000,
+          ilimitado: false
+        },
+        limite_clinica: null,
+        limite_plano: 10000,
+        plano: 'IA Pro',
+        meses: [{
+          ano: 2026,
+          mes: 10,
+          renata_texto: 4120,
+          renata_voz: 980,
+          whatsapp: 1140,
+          total: 6240
+        }, {
+          ano: 2026,
+          mes: 9,
+          renata_texto: 3870,
+          renata_voz: 1210,
+          whatsapp: 2960,
+          total: 8040
+        }]
+      });
+      return;
+    }
+    DB.rpc('ia_uso', {
+      p_clinica: CLI(),
+      p_meses: 6
+    }, 'Não foi possível carregar o uso da IA').then(function (r) {
+      setDados(r || null);
+      setLim(r && r.limite_clinica !== null && r.limite_clinica !== undefined ? String(r.limite_clinica) : '');
+    })["catch"](function () {
+      setDados(null);
+    });
+  };
+  React.useEffect(carregar, []);
+  if (!dados || !dados.atual) return null;
+  var a = dados.atual;
+  var n = function n(x) {
+    return Number(x || 0).toLocaleString('pt-BR');
+  };
+  var limite = a.ilimitado ? null : a.limite === null || a.limite === undefined ? 300 : Number(a.limite);
+  var pct = limite ? Math.min(100, Math.round(Number(a.usadas || 0) / limite * 100)) : 0;
+  var cor = pct >= 100 ? '#E5484D' : pct >= 80 ? '#F59E0B' : '#1F5EFF';
+  var card = function card(titulo, valor, sub, destaque) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: titulo,
+      style: {
+        flex: 1,
+        minWidth: mobile ? 'calc(50% - 5px)' : 150,
+        padding: '12px 14px',
+        borderRadius: 16,
+        background: destaque ? 'linear-gradient(160deg,#0A2A8F,#0B4BEB 60%,#7B4BC4 140%)' : 'rgba(255,255,255,.65)',
+        border: '1.5px solid rgba(255,255,255,.95)',
+        color: destaque ? '#fff' : 'var(--text-strong)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+      }
+    }, titulo), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        fontWeight: 700,
+        letterSpacing: '-0.02em',
+        marginTop: 2
+      }
+    }, n(valor)), sub ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+      }
+    }, sub) : null);
+  };
+  var salvarLimite = function salvarLimite(valor) {
+    var v = valor === '' ? null : Math.max(0, parseInt(valor, 10) || 0);
+    DB.rpc('admin_definir_limite_ia', {
+      p_clinica: CLI(),
+      p_limite: v
+    }, 'Não foi possível salvar o limite').then(function () {
+      setAviso(v === null ? 'Limite voltou para o do plano.' : 'Limite salvo: ' + n(v) + ' mensagens por mês.');
+      carregar();
+      setTimeout(function () {
+        return setAviso(null);
+      }, 4000);
+    })["catch"](function () {});
+  };
+  var inp = {
+    height: 36,
+    padding: '0 12px',
+    borderRadius: 12,
+    border: '1.5px solid rgba(214,226,242,.9)',
+    background: '#fff',
+    fontFamily: 'inherit',
+    fontSize: 14,
+    width: 140
+  };
+  var btn = function btn(label, onClick, sec) {
+    return /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: onClick,
+      style: {
+        height: 36,
+        padding: '0 14px',
+        borderRadius: 12,
+        border: sec ? '1.5px solid rgba(31,94,255,.25)' : 0,
+        background: sec ? 'transparent' : '#1F5EFF',
+        color: sec ? '#1F5EFF' : '#fff',
+        fontFamily: 'inherit',
+        fontSize: 13.5,
+        fontWeight: 600,
+        cursor: 'pointer'
+      }
+    }, label);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+      padding: mobile ? 14 : 18,
+      borderRadius: 20,
+      background: 'rgba(255,255,255,.5)',
+      border: '1.5px solid rgba(255,255,255,.95)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
+    style: {
+      margin: 0,
+      fontSize: 16,
+      fontWeight: 600,
+      color: 'var(--text-strong)'
+    }
+  }, "Uso da IA neste m\xEAs"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '3px 0 0',
+      fontSize: 12.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Cada pergunta feita \xE0 Renata (texto ou voz) e cada resposta da IA no WhatsApp contam 1 mensagem. ", a.ilimitado ? 'Este plano não tem limite.' : 'Limite do mês: ' + n(limite) + (dados.limite_clinica !== null && dados.limite_clinica !== undefined ? ' (definido pela Salute para esta clínica)' : dados.plano ? ' (plano ' + dados.plano + ')' : ' (padrão)') + '.')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap'
+    }
+  }, card('Renata por texto', a.renata_texto, 'perguntas no chat'), card('Renata por voz', a.renata_voz, 'perguntas faladas'), card('WhatsApp', a.whatsapp, 'respostas da IA'), card('Total', a.usadas, a.ilimitado ? 'sem limite' : 'de ' + n(limite), true)), a.ilimitado ? null : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 8,
+      borderRadius: 999,
+      background: 'rgba(214,226,242,.8)',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: pct + '%',
+      height: '100%',
+      borderRadius: 999,
+      background: cor,
+      transition: 'width .4s'
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: pct >= 100 ? '#E5484D' : 'var(--text-muted)',
+      marginTop: 4
+    }
+  }, pct >= 100 ? 'Limite do mês atingido: a Renata e a IA do WhatsApp param até o mês virar ou até a Salute ampliar o limite.' : pct + '% usado')), dados.meses && dados.meses.length ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflowX: 'auto'
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    style: {
+      width: '100%',
+      borderCollapse: 'collapse',
+      fontSize: 12.5,
+      minWidth: 360
+    }
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      color: 'var(--text-muted)',
+      textAlign: 'right'
+    }
+  }, /*#__PURE__*/React.createElement("th", {
+    style: {
+      textAlign: 'left',
+      fontWeight: 500,
+      padding: '4px 6px'
+    }
+  }, "M\xEAs"), ['Texto', 'Voz', 'WhatsApp', 'Total'].map(function (h) {
+    return /*#__PURE__*/React.createElement("th", {
+      key: h,
+      style: {
+        fontWeight: 500,
+        padding: '4px 6px'
+      }
+    }, h);
+  }))), /*#__PURE__*/React.createElement("tbody", null, dados.meses.map(function (m) {
+    return /*#__PURE__*/React.createElement("tr", {
+      key: m.ano + '-' + m.mes,
+      style: {
+        textAlign: 'right',
+        borderTop: '1px solid rgba(214,226,242,.7)',
+        color: 'var(--text-body)'
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        textAlign: 'left',
+        padding: '5px 6px'
+      }
+    }, USO_MESES[(m.mes || 1) - 1] + '/' + m.ano), [m.renata_texto, m.renata_voz, m.whatsapp].map(function (v, i) {
+      return /*#__PURE__*/React.createElement("td", {
+        key: i,
+        style: {
+          padding: '5px 6px'
+        }
+      }, n(v));
+    }), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: '5px 6px',
+        fontWeight: 700
+      }
+    }, n(m.total)));
+  })))) : null, master ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+      paddingTop: 10,
+      borderTop: '1px solid rgba(214,226,242,.7)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Salute (administrador master): limite mensal desta cl\xEDnica"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: 0,
+    style: inp,
+    value: lim,
+    placeholder: dados.limite_plano !== null && dados.limite_plano !== undefined ? 'plano: ' + n(dados.limite_plano) : 'sem limite no plano',
+    onChange: function onChange(e) {
+      return setLim(e.target.value);
+    }
+  }), btn('Salvar', function () {
+    return salvarLimite(lim);
+  }), lim !== '' ? btn('Usar o do plano', function () {
+    setLim('');
+    salvarLimite('');
+  }, true) : null, aviso ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      color: '#2DBF6A'
+    }
+  }, aviso) : null) : null);
+}
 function PlanosSection(_ref2) {
   var mobile = _ref2.mobile;
   var _useStore = useStore(PLAN_STORE),
@@ -350,7 +631,9 @@ function PlanosSection(_ref2) {
       fontSize: 12,
       color: 'var(--text-muted)'
     }
-  }, used.toLocaleString('pt-BR'), " de ", PLAN_LIMIT.toLocaleString('pt-BR'), " usadas \xB7 renova dia ", SB_ON ? diaRenova() : 10)) : null), /*#__PURE__*/React.createElement("div", {
+  }, used.toLocaleString('pt-BR'), " de ", PLAN_LIMIT.toLocaleString('pt-BR'), " usadas \xB7 renova dia ", SB_ON ? diaRenova() : 10)) : null), /*#__PURE__*/React.createElement(UsoIA, {
+    mobile: mobile
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: mobile ? '1fr' : 'repeat(2, minmax(0,1fr))',
