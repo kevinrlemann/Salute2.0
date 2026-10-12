@@ -2128,7 +2128,7 @@ function PaginaAnamnese(_ref12) {
     icone: "circle-check",
     cor: "#2DBF6A",
     titulo: 'Obrigado' + (d.paciente ? ', ' + d.paciente : '') + '!',
-    texto: "Recebemos suas respostas e a sua assinatura. Elas j\xE1 est\xE3o no seu prontu\xE1rio e a equipe vai ler antes do atendimento."
+    texto: "Recebemos suas respostas e a sua assinatura. Elas j\xE1 est\xE3o no seu prontu\xE1rio e a equipe vai ler antes do atendimento." + ((window.matchMedia && window.matchMedia('(max-width: 767px)').matches) ? ' Pode fechar esta p\xE1gina.' : '')
   }, d.codigo ? /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 13,
@@ -2419,7 +2419,7 @@ function PaginaEnvioDocs(_ref13) {
       background: 'rgba(255,255,255,.88)',
       padding: 18,
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+      gridTemplateColumns: window.matchMedia && window.matchMedia('(max-width: 767px)').matches ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(200px, 1fr))',
       gap: 10
     })
   }, /*#__PURE__*/React.createElement(OBtn, {
@@ -2435,7 +2435,7 @@ function PaginaEnvioDocs(_ref13) {
     onClick: function onClick() {
       return arqRef.current && arqRef.current.click();
     }
-  }, "Galeria ou arquivos"), /*#__PURE__*/React.createElement("input", {
+  }, (window.matchMedia && window.matchMedia('(max-width: 767px)').matches) ? 'Escolher arquivo' : 'Galeria ou arquivos'), /*#__PURE__*/React.createElement("input", {
     ref: camRef,
     type: "file",
     accept: "image/*",

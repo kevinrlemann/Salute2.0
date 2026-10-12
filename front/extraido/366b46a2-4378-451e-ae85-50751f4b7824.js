@@ -3832,13 +3832,14 @@ function MxDeslize(p){
   var ref = React.useRef({x: null, moveu: false});
   if (!p.ativo) return p.children;
   return React.createElement("div", {style:{position:'relative',overflow:'hidden'}},
+    p.onFixar ? React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#00a884',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-start',paddingLeft:18,fontSize:15,fontWeight:600}}, p.rotuloFixar || 'Fixar') : null,
     React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#D93838',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:18,fontSize:15,fontWeight:600}}, p.rotulo || 'Arquivar'),
     React.createElement("div", {
       onTouchStart: function(e){ ref.current = {x: e.touches[0].clientX, moveu: false}; },
-      onTouchMove: function(e){ if (ref.current.x == null) return; var d = e.touches[0].clientX - ref.current.x; if (Math.abs(d) > 8) ref.current.moveu = true; if (d < 0) setDx(Math.max(d, -160)); },
-      onTouchEnd: function(){ var d = dx; ref.current.x = null; setDx(0); if (d <= -120 && p.onDeslizar) p.onDeslizar(); },
+      onTouchMove: function(e){ if (ref.current.x == null) return; var d = e.touches[0].clientX - ref.current.x; if (Math.abs(d) > 8) ref.current.moveu = true; if (d < 0) setDx(Math.max(d, -160)); else if (d > 0 && p.onFixar) setDx(Math.min(d, 160)); },
+      onTouchEnd: function(){ var d = dx; ref.current.x = null; setDx(0); if (d <= -120 && p.onDeslizar) p.onDeslizar(); if (d >= 120 && p.onFixar) p.onFixar(); },
       onClickCapture: function(e){ if (ref.current.moveu) { e.stopPropagation(); e.preventDefault(); ref.current.moveu = false; } },
-      style:{position:'relative',background:'#fff',transform:'translateX(' + dx + 'px)',transition: dx ? 'none' : 'transform .2s ease'}}, p.children));
+      style:{position:'relative',background:'#111b21',transform:'translateX(' + dx + 'px)',transition: dx ? 'none' : 'transform .2s ease'}}, p.children));
 }
 function arquivarConversa(c){
   var it = INBOX.find(function(x){ return x.id === c.id; });
@@ -3986,6 +3987,39 @@ function MensagensWA(_ref10) {
       }
     }, label);
   };
+  // celular: conversas fixadas (só neste aparelho), menu de três pontos, linha Arquivadas e ordem da lista
+  var fixSt = React.useState(function () { try { var v = JSON.parse(localStorage.getItem('salute_conv_fixadas') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }),
+    fixadas = fixSt[0], setFixadas = fixSt[1];
+  var menuSt = React.useState(false), menuAberto = menuSt[0], setMenuAberto = menuSt[1];
+  var fixada = function (c) { return fixadas.indexOf(String(c.id)) >= 0; };
+  var alternarFixada = function (c) {
+    var k = String(c.id);
+    setFixadas(function (f) {
+      var n = f.indexOf(k) >= 0 ? f.filter(function (x) { return x !== k; }) : f.concat([k]);
+      try { localStorage.setItem('salute_conv_fixadas', JSON.stringify(n)); } catch (e) {}
+      return n;
+    });
+  };
+  var usaUlt = function (c) { return !!lastOf(c) && (!!CHAT_TOUCHED[keyOf(c)] || (SB_ON && mobile)); };
+  var LISTA_EXIB = mobile ? LIST.map(function (c, i) { return { c: c, i: i }; }).sort(function (a, b) { return (fixada(b.c) ? 1 : 0) - (fixada(a.c) ? 1 : 0) || a.i - b.i; }).map(function (x) { return x.c; }) : LIST;
+  var ARQ_N = ALL.filter(function (c) { return !!c.arq; }).length;
+  var botaoRedondo = { width: 40, height: 40, borderRadius: '50%', border: 0, background: WA.head, color: WA.text, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0 };
+  var itemMenu = { display: 'block', width: '100%', padding: '12px 14px', borderRadius: 10, border: 0, background: 'transparent', color: WA.text, fontFamily: 'inherit', fontSize: 15, textAlign: 'left', cursor: 'pointer' };
+  var MOB_TOPO = React.createElement("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 16px 8px' } },
+    React.createElement("span", { style: { position: 'relative', flexShrink: 0 } },
+      React.createElement("button", { type: "button", "aria-label": "Mais opções", "aria-expanded": menuAberto ? 'true' : 'false', onClick: function () { setMenuAberto(!menuAberto); }, style: botaoRedondo }, React.createElement(MIcon, { name: "ellipsis", size: 20 })),
+      menuAberto ? React.createElement("span", { style: { position: 'fixed', inset: 0, zIndex: 19 }, onClick: function () { setMenuAberto(false); } }) : null,
+      menuAberto ? React.createElement("span", { "data-overlay": "1", style: { position: 'absolute', top: 46, left: 0, zIndex: 20, minWidth: 220, padding: 6, borderRadius: 14, background: WA.head, boxShadow: '0 12px 30px -10px rgba(0,0,0,.6)', display: 'flex', flexDirection: 'column' } },
+        React.createElement("button", { type: "button", onClick: function () { setTab('p'); setMenuAberto(false); }, style: Object.assign({}, itemMenu, { fontWeight: !isTeam ? 600 : 400 }) }, 'Pacientes'),
+        React.createElement("button", { type: "button", onClick: function () { setTab('d'); setMenuAberto(false); }, style: Object.assign({}, itemMenu, { fontWeight: isTeam ? 600 : 400 }) }, 'Equipe'),
+        React.createElement("button", { type: "button", onClick: function () { setCrm(true); setMenuAberto(false); }, style: itemMenu }, 'CRM de leads'),
+        React.createElement("button", { type: "button", onClick: function () { setFl('arquivadas'); setMenuAberto(false); }, style: itemMenu }, 'Arquivadas')) : null),
+    React.createElement("span", { style: { flex: 1, textAlign: 'center', fontSize: 21, fontWeight: 700, color: WA.text, whiteSpace: 'nowrap' } }, isTeam ? 'Equipe' : 'Conversas'),
+    React.createElement("button", { type: "button", "aria-label": "Nova conversa", title: "Pesquisar ou começar uma conversa", onClick: function () { var i = document.querySelector('input[aria-label="Pesquisar conversa"]'); if (i) i.focus(); }, style: Object.assign({}, botaoRedondo, { background: WA.green, color: '#fff' }) }, React.createElement(MIcon, { name: "plus", size: 22 })));
+  var ARQ_LINHA = React.createElement("button", { type: "button", onClick: function () { setFl('arquivadas'); }, style: { width: '100%', display: 'flex', alignItems: 'center', gap: 14, height: 52, padding: '0 16px', border: 0, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', color: WA.text, fontSize: 15, fontWeight: 500, textAlign: 'left' } },
+    React.createElement(MIcon, { name: "archive", size: 19 }),
+    React.createElement("span", { style: { flex: 1 } }, 'Arquivadas'),
+    React.createElement("span", { style: { fontSize: 13, color: WA.green, fontWeight: 600 } }, ARQ_N));
   var list = /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -3995,7 +4029,7 @@ function MensagensWA(_ref10) {
       background: WA.panel,
       borderRight: mobile ? 0 : "1px solid ".concat(WA.line)
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, mobile ? MOB_TOPO : /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -4062,15 +4096,15 @@ function MensagensWA(_ref10) {
       overflowX: 'auto',
       scrollbarWidth: 'none'
     }
-  }, chip(!isTeam, 'Pacientes', function () {
+  }, !mobile ? chip(!isTeam, 'Pacientes', function () {
     return setTab('p');
-  }), chip(isTeam, 'Equipe', function () {
+  }) : null, !mobile ? chip(isTeam, 'Equipe', function () {
     return setTab('d');
-  }), mobile ? chip(fl === 'todas', 'Todas', function () {
+  }) : null, mobile ? chip(fl === 'todas', 'Todas', function () {
     return setFl('todas');
   }) : null, mobile ? chip(fl === 'esperando', 'Esperando (' + ALL.filter(function (c) { return !c.arq && precisaAtencao(c); }).length + ')', function () {
     return setFl('esperando');
-  }) : null, mobile ? chip(fl === 'arquivadas', 'Arquivadas', function () {
+  }) : null, mobile ? chip(fl === 'arquivadas', 'Arquivadas' + (ARQ_N ? ' (' + ARQ_N + ')' : ''), function () {
     return setFl('arquivadas');
   }) : null), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -4079,11 +4113,11 @@ function MensagensWA(_ref10) {
       scrollbarWidth: 'thin',
       scrollbarColor: '#374248 transparent'
     }
-  }, LIST.map(function (c) {
+  }, mobile && fl !== 'arquivadas' && ARQ_N ? ARQ_LINHA : null, LISTA_EXIB.map(function (c) {
     var on = c.id === sel,
       last = lastOf(c),
       u = unreadOf(c);
-    return React.createElement(MxDeslize, {key: c.id, ativo: mobile && !c.arq, rotulo: "Arquivar", onDeslizar: function () { arquivarConversa(c); }, children: React.createElement("button", {
+    return React.createElement(MxDeslize, {key: c.id, ativo: mobile && !c.arq, rotulo: "Arquivar", onDeslizar: function () { arquivarConversa(c); }, onFixar: mobile ? function () { alternarFixada(c); } : null, rotuloFixar: fixada(c) ? 'Desafixar' : 'Fixar', children: React.createElement("button", {
       key: c.id,
       type: "button",
       onClick: function onClick() {
@@ -4143,7 +4177,7 @@ function MensagensWA(_ref10) {
         color: u ? WA.green : WA.sub,
         flexShrink: 0
       }
-    }, last && CHAT_TOUCHED[keyOf(c)] ? last.t : c.t)), /*#__PURE__*/React.createElement("span", {
+    }, usaUlt(c) ? last.t : c.t)), /*#__PURE__*/React.createElement("span", {
       style: {
         display: 'flex',
         justifyContent: 'space-between',
@@ -4160,7 +4194,7 @@ function MensagensWA(_ref10) {
         fontSize: 14,
         color: WA.sub
       }
-    }, last && CHAT_TOUCHED[keyOf(c)] && last.me && !typingOf(c) && !last.deleted ? /*#__PURE__*/React.createElement(WaTicks, {
+    }, usaUlt(c) && last.me && !typingOf(c) && !last.deleted ? /*#__PURE__*/React.createElement(WaTicks, {
       s: last.s || 'read'
     }) : null, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -4172,7 +4206,7 @@ function MensagensWA(_ref10) {
       style: {
         color: WA.green
       }
-    }, "digitando...") : last && CHAT_TOUCHED[keyOf(c)] ? waPreview(last) : c.m)), c.equipe ? /*#__PURE__*/React.createElement("span", {
+    }, "digitando...") : usaUlt(c) ? (mobile && last.me ? 'Você: ' : '') + waPreview(last) : c.m)), c.equipe ? /*#__PURE__*/React.createElement("span", {
       title: "A IA passou esta conversa para a equipe",
       style: {
         flexShrink: 0,
@@ -4184,7 +4218,7 @@ function MensagensWA(_ref10) {
         fontWeight: 600,
         whiteSpace: 'nowrap'
       }
-    }, "Aguardando equipe") : null, u ? /*#__PURE__*/React.createElement("span", {
+    }, "Aguardando equipe") : null, (mobile && fixada(c)) ? React.createElement("span", { style: { flexShrink: 0, display: 'flex', color: WA.sub } }, React.createElement(MIcon, { name: "pin", size: 15 })) : null, u ? /*#__PURE__*/React.createElement("span", {
       style: {
         minWidth: 20,
         height: 20,
@@ -4516,7 +4550,11 @@ function MensagensWA(_ref10) {
   if (mobile) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       height: 'calc(100vh - 190px)',
-      minHeight: 520
+      minHeight: 520,
+      borderRadius: 0,
+      border: 0,
+      boxShadow: 'none',
+      margin: '0 -16px'
     })
   }, list), fichaEl);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
