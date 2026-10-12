@@ -15154,8 +15154,25 @@ Object.assign(window, {
   vozProcessar: vozProcessar,
   rnAcharPaciente: rnAcharPaciente
 });
+/* ---------- isolamento: com a clínica conectada, nenhum dado de demonstração fica em memória ---------- */
+function zerarDemonstracao(){
+  var zera = function(store, valor){ try { store.v = valor; } catch (e) {} };
+  if (typeof PAC !== 'undefined') PAC.length = 0;
+  if (typeof PAC_STORE !== 'undefined') zera(PAC_STORE, []);
+  if (typeof REC_STORE !== 'undefined') zera(REC_STORE, []);
+  if (typeof DESP_STORE !== 'undefined') zera(DESP_STORE, []);
+  if (typeof PROD_STORE !== 'undefined') zera(PROD_STORE, []);
+  if (typeof PROF_STORE !== 'undefined') zera(PROF_STORE, []);
+  if (typeof APPT_STORE !== 'undefined') zera(APPT_STORE, []);
+  if (typeof PROS !== 'undefined') PROS.length = 0;
+  if (typeof EQUIPE !== 'undefined') EQUIPE.length = 0;
+  if (typeof INBOX !== 'undefined') INBOX.length = 0;
+  if (typeof RN_CLINICA !== 'undefined') Object.keys(RN_CLINICA).forEach(function (k) { if (typeof RN_CLINICA[k] === 'string') RN_CLINICA[k] = ''; });
+  if (typeof NF_STORE !== 'undefined' && NF_STORE.v) Object.keys(NF_STORE.v).forEach(function (k) { if (typeof NF_STORE.v[k] === 'string') NF_STORE.v[k] = ''; });
+}
 function App() {
   var mobile = useIsMobile();
+  if (SB_ON && !window.__demoZerado) { window.__demoZerado = true; zerarDemonstracao(); }
   var _useAccess = useAccess(),
     member = _useAccess.member,
     can = _useAccess.can;
