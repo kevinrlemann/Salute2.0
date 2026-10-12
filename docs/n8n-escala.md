@@ -67,3 +67,17 @@ cerca de 180 mil mensagens/dia, picos de 20 a 40 execuções por segundo no hor�
 - **Os fluxos do n8n estão desligados**: todas as chamadas do banco para `kevinlemann1.app.n8n.cloud` voltam
   "webhook not registered" (404). Sem ativar os fluxos, nada é respondido pela IA no WhatsApp.
 - Os fluxos do n8n não estão no repositório (não confirmado o conteúdo de cada um).
+
+## Mapa de atualizações futuras: n8n mais eficaz para receber mais clínicas sem travar
+
+Marcações: [confirmado] já existe no banco/código; [inferido] dedução a validar; [não confirmado] depende de teste de carga.
+
+1. **Teste de carga com clínicas sintéticas** (50, 100 e 300 clínicas com profissionais e procedimentos de exemplo). Medir o tempo entre a mensagem e a resposta. [não confirmado]
+2. **Contexto da conversa em uma consulta só.** Hoje `n8n_contexto` e `n8n_ferramenta` chamam regras e cadastros a cada passo. Agrupar as leituras de agenda, procedimentos e profissionais em uma chamada por turno. [inferido]
+3. **Cache de cadastro por clínica** (procedimentos, profissionais, configuração) com validade curta e invalidação pela versão da configuração (`config_versao`). [inferido]
+4. **Fila justa por clínica.** Garantir que uma clínica com muitas mensagens não atrase as outras (limite de tarefas por clínica por ciclo). [inferido; a fila já é reivindicada por lote]
+5. **Alerta de atraso.** Avisar a equipe da Salute quando uma tarefa passa de X minutos na fila, e quando o n8n para de responder. [inferido]
+6. **Limite de custo de IA por clínica** conferido antes de cada resposta (já existe o limite mensal; falta o limite por hora para evitar pico). [inferido]
+7. **Versões do fluxo com volta rápida.** Antes de mudar o fluxo do WhatsApp, guardar a versão anterior e ter um botão de volta. [inferido]
+8. **Regra de agendamento sem reprocessar.** A regra de avaliação e primeira vez (`ia_regra_agendamento`) já é aplicada no banco; medir o custo dela quando houver muitas conversas. [não confirmado]
+9. **Painel de saúde do n8n** dentro do sistema da Salute: tarefas pendentes, tempo médio de resposta e erros por clínica. [inferido]
