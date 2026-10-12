@@ -716,6 +716,35 @@ function MxFeitoGlobal(){
   if (!f) return null;
   return React.createElement(MxFeito, {key: f.n, titulo: f.titulo, texto: f.texto, onFim: function(){ MX_FEITO.v = null; avisar(MX_FEITO); }});
 }
+/* ---------- celular: boas-vindas na primeira entrada (3 telas) e instalar como app ---------- */
+window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.mxInstalarEvt = e; });
+var MX_BV_SLIDES = [
+  {icone: 'calendar-check', titulo: 'Agenda cheia, sem trabalho', texto: 'A IA marca, lembra e confirma as consultas pelo WhatsApp.'},
+  {icone: 'message-circle', titulo: 'WhatsApp num lugar só', texto: 'Converse com pacientes e leads sem trocar de aplicativo.'},
+  {icone: 'sparkles', titulo: 'A Renata cuida do resto', texto: 'Pergunte o que quiser: agenda, caixa, estoque. Ela responde na hora.'}
+];
+function MxBoasVindas(p){
+  var st = React.useState({i: 0, dica: ''}), s = st[0];
+  var up = function(patch){ st[1](function(o){ return Object.assign({}, o, patch); }); };
+  var ultimo = s.i === MX_BV_SLIDES.length - 1;
+  var sl = MX_BV_SLIDES[s.i];
+  var instalar = function(){
+    var ev = window.mxInstalarEvt;
+    if (ev) { ev.prompt(); return; }
+    up({dica: /iPhone|iPad/.test(navigator.userAgent) ? 'No iPhone: toque em Compartilhar e depois em "Adicionar à Tela de Início".' : 'No menu do navegador, escolha "Instalar app" ou "Adicionar à tela inicial".'});
+  };
+  return React.createElement("div", {role:"dialog", "aria-label":"Boas-vindas", style:{position:'fixed',inset:0,zIndex:300,background:'linear-gradient(180deg,#0B4BEB 0%,#1FA8F5 100%)',color:'#fff',display:'flex',flexDirection:'column',padding:'calc(18px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom))'}},
+    React.createElement("div", {style:{display:'flex',justifyContent:'flex-end'}},
+      React.createElement("button", {type:"button", onClick: p.onFim, style:{border:0,background:'transparent',color:'#fff',fontFamily:'inherit',fontSize:16,fontWeight:500,cursor:'pointer',padding:'8px 4px'}}, 'Pular')),
+    React.createElement("div", {style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:20,textAlign:'center'}},
+      React.createElement("span", {style:{width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,.18)',display:'flex',alignItems:'center',justifyContent:'center'}}, React.createElement(OIcon, {name: sl.icone, size: 56})),
+      React.createElement("p", {style:{margin:0,fontSize:28,fontWeight:700,lineHeight:1.2}}, sl.titulo),
+      React.createElement("p", {style:{margin:0,fontSize:17,lineHeight:1.5,opacity:.92,maxWidth:320}}, sl.texto),
+      ultimo ? React.createElement("button", {type:"button", onClick: instalar, style:{border:'1.5px solid rgba(255,255,255,.8)',background:'transparent',color:'#fff',borderRadius:999,padding:'12px 22px',fontFamily:'inherit',fontSize:15,fontWeight:600,cursor:'pointer'}}, 'Instalar o app na tela inicial') : null,
+      ultimo && s.dica ? React.createElement("p", {style:{margin:0,fontSize:14,opacity:.9,maxWidth:320}}, s.dica) : null),
+    React.createElement("div", {style:{display:'flex',justifyContent:'center',gap:8,marginBottom:20}}, MX_BV_SLIDES.map(function(_, k){ return React.createElement("span", {key:k, style:{width: k === s.i ? 22 : 8, height:8, borderRadius:999, background: k === s.i ? '#fff' : 'rgba(255,255,255,.45)', transition:'width .2s'}}); })),
+    React.createElement("button", {type:"button", onClick: ultimo ? p.onFim : function(){ up({i: s.i + 1}); }, style:{width:'100%',boxSizing:'border-box',border:0,borderRadius:16,padding:'16px',background:'#fff',color:'#0A46E4',fontFamily:'inherit',fontSize:17,fontWeight:700,cursor:'pointer'}}, ultimo ? 'Começar' : 'Próximo'));
+}
 function MxRoot(p){
   var st = React.useState(null);
   var feito = st[0];
@@ -15187,6 +15216,11 @@ function App() {
   var _mxSt = React.useState(null),
     mx = _mxSt[0],
     setMx = _mxSt[1];
+  var _bvSt = React.useState(function () {
+    try { return mobile && !localStorage.getItem('salute_bv_vista'); } catch (e) { return false; }
+  }),
+    bv = _bvSt[0],
+    setBv = _bvSt[1];
   var _acaoSt = React.useState(false),
     acaoAberta = _acaoSt[0],
     setAcaoAberta = _acaoSt[1];
@@ -15331,7 +15365,12 @@ function App() {
     onFechar: function onFechar() {
       return setMx(null);
     }
-  }) : null, React.createElement(MxFeitoGlobal, null), acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
+  }) : null, React.createElement(MxFeitoGlobal, null), bv ? React.createElement(MxBoasVindas, {
+    onFim: function onFim() {
+      try { localStorage.setItem('salute_bv_vista', '1'); } catch (e) { /* navegador sem armazenamento: a tela volta na próxima entrada */ }
+      setBv(false);
+    }
+  }) : null, acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
     onClose: function onClose() {
       return setAcaoAberta(false);
     },

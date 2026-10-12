@@ -1,0 +1,16 @@
+{
+  "name": "Salute IA",
+  "short_name": "Salute",
+  "description": "Agenda, pacientes, financeiro, estoque e WhatsApp da sua clínica.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F7FC",
+  "theme_color": "#1F5EFF",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
