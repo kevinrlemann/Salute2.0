@@ -3978,7 +3978,7 @@ function MensagensWA(_ref10) {
     }
   }, chip(false, 'CRM', function () {
     return setCrm(true);
-  })), waIcon('message-square-plus', 'Nova conversa'), waIcon('ellipsis-vertical', 'Mais opções'))), /*#__PURE__*/React.createElement("div", {
+  })), waIcon('message-square-plus', 'Nova conversa'), waIcon('ellipsis-vertical', 'Mais opções'))), /*#__PURE__*/React.createElement(WaAvisoTeste, null), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '0 12px 8px'
     }
@@ -4480,6 +4480,50 @@ function MensagensWA(_ref10) {
       minHeight: 620
     })
   }, list, thread), fichaEl);
+}
+// aviso quando o Agente de IA está em modo teste (só quem enxerga a tabela, o administrador master, vê)
+function WaAvisoTeste() {
+  var _s = React.useState(null),
+    ag = _s[0],
+    setAg = _s[1];
+  React.useEffect(function () {
+    if (!SB_ON || !window.DB) return;
+    DB.ler(DB.sel('agente_ia', 'ia_ativa,modo_teste').limit(1)).then(function (r) {
+      setAg(r && r[0] || null);
+    })["catch"](function () {
+      setAg(null);
+    });
+  }, []);
+  if (!ag || !ag.ia_ativa || !ag.modo_teste) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    role: "alert",
+    style: {
+      margin: '0 12px 8px',
+      padding: '8px 12px',
+      borderRadius: 12,
+      background: 'rgba(229,72,77,.08)',
+      border: '1px solid rgba(229,72,77,.35)',
+      color: '#B42318',
+      fontSize: 12.5,
+      lineHeight: 1.4
+    }
+  }, /*#__PURE__*/React.createElement("b", null, "IA em modo teste: "), "ela responde, mas nada chega ao paciente. ", /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      if (window.RN_NAV) RN_NAV('perfil');
+    },
+    style: {
+      border: 0,
+      background: 'transparent',
+      color: '#B42318',
+      fontFamily: 'inherit',
+      fontSize: 12.5,
+      fontWeight: 700,
+      textDecoration: 'underline',
+      cursor: 'pointer',
+      padding: 0
+    }
+  }, "Desligar em Configura\xE7\xF5es \u203A Agente de IA"));
 }
 function MensagensScreen(props) {
   return MENSAGENS_VERSAO === 'v01' ? /*#__PURE__*/React.createElement(MensagensV01, props) : /*#__PURE__*/React.createElement(MensagensWA, props);

@@ -6402,6 +6402,25 @@ function AgenteIATab(_ref15) {
     team = _team[0];
   useStore(SESSAO);
   var topo = React.useRef(null);
+  // botão "Desligar o modo teste agora": grava só esta chave no banco, sem depender do Salvar nem da validação dos outros campos
+  var desligarTeste = function desligarTeste() {
+    var aplicar = function aplicar() {
+      setA(function (o) {
+        return Object.assign({}, o, {
+          modo_teste: false
+        });
+      });
+      setSalvo(function (o) {
+        return o ? Object.assign({}, o, {
+          modo_teste: false
+        }) : o;
+      });
+    };
+    if (!SB_ON || !a || !a.id) return aplicar();
+    DB.upd('agente_ia', a.id, {
+      modo_teste: false
+    }, 'Não foi possível desligar o modo teste').then(aplicar)["catch"](function () {});
+  };
   var perm = agPermissoes();
   var marcaSujo = function marcaSujo(k) {
     return function (v) {
@@ -6811,7 +6830,28 @@ function AgenteIATab(_ref15) {
     var resumo = [[a.ia_ativa && !a.automacoes_pausadas, 'Atendimento automático no WhatsApp', a.automacoes_pausadas ? 'pausado' : a.ia_ativa ? a.modo_teste ? 'ligado em modo teste' : 'ligado' : 'desligado'], [a.followup_ativo && a.followup_max > 0, 'Follow-up de leads', a.followup_ativo ? Math.min(a.followup_max, a.followup_atrasos_min.length) + ' mensagens no máximo' : 'desligado'], [nLemb > 0, 'Lembretes de consulta', nLemb ? nLemb + (nLemb === 1 ? ' lembrete' : ' lembretes') : 'desligados'], [a.ia_cria_agendamento, 'IA marca consultas', a.ia_cria_agendamento ? (AG_SINAIS.find(function (s) {
       return s[0] === a.politica_sinal;
     }) || AG_SINAIS[0])[1].toLowerCase() : 'não, só a equipe'], [a.transferencia_usuarios.length > 0, 'Transferência para a equipe', a.transferencia_usuarios.length ? a.transferencia_usuarios.length + (a.transferencia_usuarios.length === 1 ? ' pessoa recebe' : ' pessoas recebem') : 'ninguém escolhido']];
-    conteudo = [agH(AgAviso, {
+    conteudo = [a.modo_teste ? agH(AgAviso, {
+      key: "teste",
+      tipo: "perigo",
+      icone: "flask-conical"
+    }, agH("b", null, "Modo teste ligado: "), "a IA pensa e grava a resposta, mas NADA chega ao paciente no WhatsApp. ", agH("button", {
+      type: "button",
+      onClick: desligarTeste,
+      style: {
+        display: 'inline-block',
+        marginTop: 6,
+        height: 32,
+        padding: '0 12px',
+        borderRadius: 10,
+        border: 0,
+        background: '#B42318',
+        color: '#fff',
+        fontFamily: 'inherit',
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: 'pointer'
+      }
+    }, "Desligar o modo teste agora")) : null, agH(AgAviso, {
       key: "wa",
       tipo: "alerta",
       icone: "plug"
@@ -6837,6 +6877,15 @@ function AgenteIATab(_ref15) {
       }
     }), agH(AgChave, {
       grande: true,
+      icone: mobile ? null : "flask-conical",
+      titulo: "Modo teste",
+      desc: "Ligado: a IA responde, mas nada chega ao paciente. Desligue para as mensagens sa\xEDrem de verdade.",
+      on: a.modo_teste,
+      onChange: function onChange(v) {
+        return set('modo_teste', v);
+      }
+    }), agH(AgChave, {
+      grande: true,
       perigo: true,
       icone: mobile ? null : "octagon-pause",
       titulo: "Pausar todas as automa\xE7\xF5es",
@@ -6844,15 +6893,6 @@ function AgenteIATab(_ref15) {
       on: a.automacoes_pausadas,
       onChange: function onChange(v) {
         return set('automacoes_pausadas', v);
-      }
-    }), agH(AgChave, {
-      grande: true,
-      icone: mobile ? null : "flask-conical",
-      titulo: "Modo teste",
-      desc: "Use enquanto ajusta as regras: a IA funciona s\xF3 para testes da equipe e n\xE3o manda mensagens autom\xE1ticas para pacientes.",
-      on: a.modo_teste,
-      onChange: function onChange(v) {
-        return set('modo_teste', v);
       }
     })), agH("div", {
       key: "onde",
