@@ -6741,7 +6741,7 @@ function AgenteIATab(_ref15) {
       key: "wa",
       tipo: "alerta",
       icone: "plug"
-    }, agH("b", null, "O WhatsApp ainda n\xE3o est\xE1 ligado ao n8n."), " Tudo o que voc\xEA configurar aqui fica salvo e passa a valer assim que a integra\xE7\xE3o for ligada. Hoje, as regras de identidade e de assuntos j\xE1 valem para a Renata no sistema."), a.automacoes_pausadas ? agH(AgAviso, {
+    }, agH("b", null, "Como a IA entra no WhatsApp:"), " a mensagem do paciente chega pela conex\xE3o em Integra\xE7\xF5es, o n8n l\xEA estas regras e responde. Com o Atendimento autom\xE1tico desligado, s\xF3 a equipe responde. Em modo teste a IA pensa a resposta, mas nada sai para o paciente."), a.automacoes_pausadas ? agH(AgAviso, {
       key: "pausa",
       tipo: "perigo",
       icone: "octagon-pause"
