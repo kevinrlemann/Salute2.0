@@ -29,6 +29,13 @@ var NOTIF = makeStore({
 });
 var MSG_CONV = {}; // id da conversa -> registro do banco
 var MSG_LIDA = {}; // chave do chat -> carregado
+var MSG_CHAT_ABERTO = null; // chave do último chat aberto na tela (recarregado quando o app volta do segundo plano)
+// Celular: ao voltar do segundo plano depois de mais de 20 s, a lista de conversas e o chat aberto são recarregados
+if (typeof aoVoltarVisivel === 'function') aoVoltarVisivel(function () {
+  if (!SB_ON) return;
+  carregar('mensagens', true);
+  if (MSG_CHAT_ABERTO) carregarChat(MSG_CHAT_ABERTO)["catch"](function () {});
+});
 if (SB_ON) {
   INBOX.length = 0;
   EQUIPE.length = 0;
@@ -482,6 +489,7 @@ function atualizarMensagemChat(chave, n, tipoEvento) {
   });
 }
 function abrirChat(chave) {
+  MSG_CHAT_ABERTO = chave;
   if (!SB_ON || MSG_LIDA[chave]) return;
   MSG_LIDA[chave] = true;
   carregarChat(chave)["catch"](function () {

@@ -569,9 +569,11 @@ function useArqUrl(bucket, path) {
 
 /* ---------- Tempo real ---------- */
 var RT_CANAIS = {};
+var RT_DEFS = {}; // id -> {nome, tabelas, aoMudar}: para reassinar quando o app volta do segundo plano
 function tempoReal(nome, tabelas, aoMudar) {
   if (!SB_ON || !CLI()) return function () {};
   var id = nome + ':' + CLI();
+  RT_DEFS[id] = { nome: nome, tabelas: tabelas, aoMudar: aoMudar };
   if (RT_CANAIS[id]) SB.removeChannel(RT_CANAIS[id]);
   var ch = SB.channel(id);
   tabelas.forEach(function (t) {
@@ -586,12 +588,50 @@ function tempoReal(nome, tabelas, aoMudar) {
   });
   RT_CANAIS[id] = ch.subscribe();
   return function () {
+    delete RT_DEFS[id];
     if (RT_CANAIS[id]) {
       SB.removeChannel(RT_CANAIS[id]);
       delete RT_CANAIS[id];
     }
   };
 }
+/* Celular: quando o app volta do segundo plano (ou a internet volta), as assinaturas do Supabase
+   podem ter morrido sem aviso. Depois de mais de 20 s escondido, reassina todos os canais e avisa
+   quem registrou com aoVoltarVisivel (ex.: mensagens recarrega a lista e o chat aberto). Sem laço de polling. */
+var RT_AO_VOLTAR = [];
+var RT_ESCONDIDO_EM = 0;
+var RT_VOLTA_MIN_MS = 20000;
+function aoVoltarVisivel(fn) {
+  RT_AO_VOLTAR.push(fn);
+  return function () {
+    RT_AO_VOLTAR = RT_AO_VOLTAR.filter(function (f) { return f !== fn; });
+  };
+}
+function reassinarTempoReal(motivo) {
+  if (!SB_ON || !CLI()) return;
+  Object.keys(RT_DEFS).forEach(function (id) {
+    var d = RT_DEFS[id];
+    try { tempoReal(d.nome, d.tabelas, d.aoMudar); } catch (e) { console.warn('[tempo real] não reassinou', id, e); }
+  });
+  RT_AO_VOLTAR.forEach(function (f) {
+    try { f(motivo); } catch (e) { console.warn('[tempo real] ao voltar', e); }
+  });
+}
+function ehCelular() {
+  try { return !!window.__FORCE_MOBILE || window.matchMedia('(max-width: 767px)').matches; } catch (e) { return false; }
+}
+document.addEventListener('visibilitychange', function () {
+  if (!ehCelular()) return;
+  if (document.hidden) { RT_ESCONDIDO_EM = Date.now(); return; }
+  var ficou = RT_ESCONDIDO_EM ? Date.now() - RT_ESCONDIDO_EM : 0;
+  RT_ESCONDIDO_EM = 0;
+  if (ficou > RT_VOLTA_MIN_MS) reassinarTempoReal('visivel');
+});
+window.addEventListener('online', function () {
+  if (ehCelular()) reassinarTempoReal('online');
+});
+window.aoVoltarVisivel = aoVoltarVisivel;
+window.reassinarTempoReal = reassinarTempoReal;
 
 /* ---------- Carga de cada módulo (uma vez por clínica; recarrega quando pedido) ---------- */
 var CARGAS = {}; // nome -> função async que preenche os stores
