@@ -104,6 +104,7 @@ var estTela = function estTela() {
     // atendimento pela IA no WhatsApp: a clínica escolhe
     mostrarValor: g.ia_mostrar_valor !== false,
     agendaDireto: g.ia_agenda_procedimento_direto !== false,
+    primeiraVez: g.ia_primeira_vez_avaliacao !== false,
     avaliacao: g.ia_procedimento_avaliacao_id || ''
   };
 };
@@ -202,6 +203,7 @@ var ClinSvc = {
               tem_wifi_pacientes: !!est.wifi,
               ia_mostrar_valor: est.mostrarValor !== false,
               ia_agenda_procedimento_direto: est.agendaDireto !== false,
+              ia_primeira_vez_avaliacao: est.primeiraVez !== false,
               ia_procedimento_avaliacao_id: est.agendaDireto === false ? (est.avaliacao || null) : null,
               parcelas_maximas_credito: parseInt(parc, 10) || 1
             };
