@@ -475,7 +475,8 @@ function rnSnapshot() {
       }),
       atividadeMensal: 'Outubro 2026: consultas e reuniões nos dias marcados do calendário; hoje é dia 2'
     }),
-    pacientes: (SB_ON ? PAC.slice(0, 400) : PAC).map(function (p) {
+    totalPacientes: PAC.length,
+    pacientes: (SB_ON ? PAC.slice(0, 40) : PAC).map(function (p) {
       return {
         nome: p.nome,
         tipo: p.tipo,
@@ -495,7 +496,7 @@ function rnSnapshot() {
     }),
     agendaHoje: rnAgenda(TODAY_ISO),
     agendaAmanha: rnAgenda(rnIso(addD(TODAY, 1))),
-    conversasPacientes: INBOX.map(function (c) {
+    conversasPacientes: INBOX.slice(0, 12).map(function (c) {
       return {
         contato: c.n,
         ultimaMensagem: c.m,
@@ -503,7 +504,7 @@ function rnSnapshot() {
         naoLidas: c.u
       };
     }),
-    conversasEquipe: EQUIPE.map(function (c) {
+    conversasEquipe: EQUIPE.slice(0, 6).map(function (c) {
       return {
         membro: c.n,
         funcao: c.r,
@@ -555,9 +556,7 @@ function rnSnapshot() {
         return {
           nome: m.nome,
           area: m.uso,
-          perguntas: m.qs.map(function (q) {
-            return q.t;
-          }),
+          perguntas: m.qs.length,
           enviado: m.usos
         };
       }),
@@ -566,15 +565,7 @@ function rnSnapshot() {
           nome: u.nome,
           funcao: u.funcao,
           email: u.email,
-          acessos: u.dono ? 'acesso total' : moduleTree().filter(function (m) {
-            return u.acc.includes(m.id);
-          }).map(function (m) {
-            return m.label + (m.children.length ? ' (' + m.children.filter(function (c) {
-              return u.acc.includes(c.id);
-            }).map(function (c) {
-              return c.label;
-            }).join(', ') + ')' : '');
-          }).join('; ')
+          acessos: u.dono ? 'acesso total' : u.acc.length + ' permissões'
         };
       }),
       profissionais: PROF_STORE.v.map(function (p) {
@@ -589,32 +580,8 @@ function rnSnapshot() {
         whatsapp: wa.status === 'on' ? 'conectado no ' + wa.numero + ' pela ' + (wa.modo === 'oficial' ? 'API oficial' : 'API não oficial') + ' desde ' + wa.desde : 'desconectado',
         instagram: 'Beta, conexão em breve'
       },
-      saluteflix: (SB_ON ? FLIX_STORE.v : FLIX0).map(function (c) {
-        return {
-          titulo: c.t,
-          tipo: c.tipo,
-          categoria: c.cat,
-          duracao: c.dur,
-          progresso: c.prog + '%'
-        };
-      }),
-      saluteCast: CAST_STORE.v.map(function (e) {
-        return {
-          episodio: e.ep,
-          titulo: e.t,
-          convidado: e.conv,
-          duracao: e.dur
-        };
-      }),
-      parcerias: (SB_ON ? PARC_STORE.v : PARC0).map(function (p) {
-        return {
-          parceiro: p.nome,
-          categoria: p.cat,
-          beneficio: p.ben,
-          cupom: p.cupom || 'sem cupom',
-          oficial: p.of
-        };
-      }),
+      saluteflix: (SB_ON ? FLIX_STORE.v : FLIX0).length + ' conteúdos (SaluteFlix)',
+      parcerias: (SB_ON ? PARC_STORE.v : PARC0).length + ' parceiros',
       certificacoes: SELOS_STORE.v.map(function (c) {
         return c.nome;
       }),
@@ -629,7 +596,23 @@ function rnSnapshot() {
       planosDisponiveis: 'Inicial R$ 197/mês (gestão completa e WhatsApp, sem IA), Assistente R$ 397/mês (Renata dentro do sistema, 1.500 perguntas e 60 min de voz), IA Pro R$ 997/mês (IA atendendo no WhatsApp, 10 mil mensagens), Enterprise a partir de R$ 1.997/mês (sob consulta, várias unidades)'
     }
   };
-  return JSON.stringify(data);
+  return JSON.stringify(rnEnxugar(data));
+}
+// corta listas e textos longos do resumo: pedido menor chega mais rápido na IA e custa menos
+function rnEnxugar(x, prof) {
+  prof = prof || 0;
+  if (Array.isArray(x)) return x.slice(0, 30).map(function (i) {
+    return rnEnxugar(i, prof + 1);
+  });
+  if (x && typeof x === 'object') {
+    var o = {};
+    Object.keys(x).forEach(function (k) {
+      o[k] = rnEnxugar(x[k], prof + 1);
+    });
+    return o;
+  }
+  if (typeof x === 'string' && x.length > 400) return x.slice(0, 399) + '…';
+  return x;
 }
 
 /* ---------- respostas sem conexão com IA (modo demonstração) ---------- */
@@ -1054,6 +1037,45 @@ RENATA_TOOLS.push({
     };
   }
 });
+RENATA_TOOLS.push({
+  name: 'buscar_paciente',
+  description: 'Procura pacientes desta clínica por parte do nome ou telefone e devolve até 8 parecidos. Use antes de dados_paciente ou de qualquer ação quando o nome não estiver no JSON.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      texto: {
+        type: 'string',
+        description: 'Parte do nome ou do telefone'
+      }
+    },
+    required: ['texto']
+  },
+  execute: function execute(i) {
+    var t = rnNorm(i.texto).trim(),
+      dig = t.replace(/\D/g, '');
+    var palavras = t.split(/\s+/).filter(function (w) {
+      return w.length > 1;
+    });
+    var achados = PAC.filter(function (p) {
+      var n = rnNorm(p.nome);
+      return palavras.length && palavras.every(function (w) {
+        return n.includes(w);
+      }) || dig.length >= 4 && String(p.tel || '').replace(/\D/g, '').includes(dig);
+    });
+    if (!achados.length && typeof rnPacientesParecidos === 'function') achados = rnPacientesParecidos(i.texto);
+    return {
+      total: achados.length,
+      pacientes: achados.slice(0, 8).map(function (p) {
+        return {
+          nome: p.nome,
+          whatsapp: p.tel,
+          nascimento: p.nasc,
+          convenio: p.conv || 'Sem convênio'
+        };
+      })
+    };
+  }
+});
 var RENATA_RULES = function RENATA_RULES(voice) {
   // instruções da Renata (secretária virtual da equipe). Texto enxuto: pedido menor custa menos no ChatGPT.
   var R = ['Você é a Renata, secretária virtual da ' + RN_CLINICA.fantasia + ' dentro do sistema Salute IA. Está conversando com ' + rnQuem() + '. Hoje é ' + rnHojeTxt() + '.',
@@ -1069,7 +1091,7 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   '5d. NA DÚVIDA, NÃO EXECUTE. Só chame propor_* quando cada dado foi dito pela pessoa e você tem certeza do que entendeu. Se deduziu algo (nome, data, horário, valor), confirme esse dado antes.',
   '',
   'DADOS E RESPOSTAS',
-  '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas). Você pode consultar tudo que a pessoa tem acesso: agenda de qualquer período (agenda_periodo), pacientes e prontuário, financeiro, estoque, CRM (crm_leads) e preços (procedimentos_precos). Antes de dizer que não sabe, consulte a ferramenta certa. Calcule a partir dos dados.',
+  '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas); nunca cite outra clínica. O JSON traz só uma amostra de pacientes: para achar alguém, chame buscar_paciente. Responda direto, sem explicar o raciocínio nem pedir desculpas. Você pode consultar tudo que a pessoa tem acesso: agenda de qualquer período (agenda_periodo), pacientes e prontuário, financeiro, estoque, CRM (crm_leads) e preços (procedimentos_precos). Antes de dizer que não sabe, consulte a ferramenta certa. Calcule a partir dos dados.',
   '7. Conhecimento de mercado (estética e odontologia no Brasil) só quando pedirem, deixando claro que é referência de mercado e com números realistas.',
   '8. Português do Brasil sempre, mesmo que a pessoa use outra língua. Tom acolhedor e profissional, como uma colega. Comece pela resposta. Sem travessões. Não narre o uso das ferramentas. Valores R$ 1.234,56 e datas dd/mm/aaaa.',
   '9. Para abrir telas use abrir_tela; ficha, prontuário ou conversa de paciente, abrir_paciente. Confirme em uma frase.',
@@ -2865,6 +2887,9 @@ var RN_TOOL_LABEL = {
   propor_lancamento_financeiro: 'Preparando o lançamento',
   propor_movimentacao_estoque: 'Preparando a movimentação',
   financeiro_periodo: 'Consultando o financeiro',
+  buscar_paciente: 'Procurando o paciente',
+  agenda_periodo: 'Abrindo a agenda',
+  horarios_livres: 'Vendo horários livres',
   agenda_do_dia: 'Abrindo a agenda',
   dados_paciente: 'Lendo o prontuário',
   lancamentos: 'Buscando lançamentos',
@@ -2924,7 +2949,7 @@ function _rnClaudeApi() {
           all = '';
           round = 0;
         case 1:
-          if (!(round < 6)) {
+          if (!(round < 4)) {
             _context29.n = 33;
             break;
           }
@@ -8339,9 +8364,7 @@ function RenataSettings(_ref13) {
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: "eleven_flash_v2_5"
-  }, "Flash v2.5, mais r\xE1pido"), /*#__PURE__*/React.createElement("option", {
-    value: "eleven_multilingual_v2"
-  }, "Multilingual v2, mais expressivo"))), /*#__PURE__*/React.createElement("div", {
+  }, "Flash v2.5 (portugu\xEAs do Brasil garantido)"))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -13377,6 +13400,11 @@ function _vozOuvir() {
           } : {
             estado: 'ouvindo',
             ouvido: '',
+            // a última fala da Renata sobe e fica em cima enquanto a pessoa responde
+            anterior: VOZ.v.resposta ? {
+              quem: 'renata',
+              texto: rnPlain(VOZ.v.resposta)
+            } : null,
             resposta: '',
             rotulo: null,
             erro: null,
@@ -13805,7 +13833,13 @@ function VozRoot(_ref51) {
   }, "Parar")) : null;
   if (!v.aberto) return dita;
   var orbSt = v.estado === 'ouvindo' ? 'listening' : v.estado === 'pensando' ? 'thinking' : v.estado === 'falando' ? 'speaking' : 'idle';
-  var mostra = v.estado === 'ouvindo' || v.estado === 'pensando' ? v.ouvido : '';
+  var falandoAgora = v.estado === 'ouvindo' || v.estado === 'pensando';
+  var mostra = falandoAgora ? v.ouvido : '';
+  // fileira: em cima a fala anterior (apagada), embaixo a fala atual
+  var anterior = falandoAgora ? v.modo === 'confirmar' ? null : v.anterior : v.ouvido ? {
+    quem: 'eu',
+    texto: v.ouvido
+  } : null;
   var sem = !v.resposta && !mostra && v.estado === 'ouvindo';
   var btn = function btn(icon, label, onClick, on) {
     return /*#__PURE__*/React.createElement("button", {
@@ -13912,7 +13946,38 @@ function VozRoot(_ref51) {
       open: true
     });
     avisar(RN_STORE);
-  }), btn('x', 'Fechar', vozFechar)), mostra ? /*#__PURE__*/React.createElement("p", {
+  }), btn('x', 'Fechar', vozFechar)), anterior && anterior.texto ? /*#__PURE__*/React.createElement("div", {
+    key: anterior.quem + anterior.texto.slice(0, 20),
+    className: "voz-anterior",
+    style: {
+      display: 'flex',
+      gap: 8,
+      alignItems: 'flex-start',
+      paddingLeft: 10,
+      borderLeft: '2px solid rgba(31,94,255,.25)',
+      opacity: .72
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      flexShrink: 0,
+      fontSize: 10.5,
+      fontWeight: 700,
+      letterSpacing: .4,
+      textTransform: 'uppercase',
+      color: anterior.quem === 'renata' ? '#1F5EFF' : 'var(--text-muted)',
+      marginTop: 2
+    }
+  }, anterior.quem === 'renata' ? 'Renata' : 'Você'), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      lineHeight: 1.4,
+      color: 'var(--text-body)',
+      display: '-webkit-box',
+      WebkitLineClamp: 3,
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden'
+    }
+  }, anterior.texto)) : null, mostra ? /*#__PURE__*/React.createElement("p", {
     style: {
       margin: 0,
       fontSize: mobile ? 17 : 18,
@@ -13920,7 +13985,13 @@ function VozRoot(_ref51) {
       color: 'var(--text-strong)',
       lineHeight: 1.4
     }
-  }, mostra) : null, sem ? /*#__PURE__*/React.createElement("div", {
+  }, mostra) : falandoAgora && anterior ? /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      fontSize: 15,
+      color: 'var(--text-muted)'
+    }
+  }, v.estado === 'pensando' ? 'Pensando\u2026' : 'Pode falar\u2026') : null, sem ? /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -13937,13 +14008,7 @@ function VozRoot(_ref51) {
         background: 'rgba(31,94,255,.06)'
       }
     }, "\"", d, "\"");
-  })) : null, v.estado !== 'ouvindo' && v.estado !== 'pensando' && v.ouvido ? /*#__PURE__*/React.createElement("p", {
-    style: {
-      margin: 0,
-      fontSize: 13,
-      color: 'var(--text-muted)'
-    }
-  }, "Voc\xEA: ", v.ouvido) : null, v.resposta ? /*#__PURE__*/React.createElement("div", {
+  })) : null, v.resposta ? /*#__PURE__*/React.createElement("div", {
     className: "rn-md",
     style: {
       fontSize: 15,

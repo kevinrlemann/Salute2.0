@@ -89,6 +89,8 @@ export function paraOpenAI(p: { system?: unknown; messages: Mensagem[]; tools?: 
   return {
     messages: msgs,
     max_tokens: Math.min(p.max_tokens || MAX_RESPOSTA, MAX_RESPOSTA),
+    // respostas mais previsíveis e menos "criativas" (interpretação constante)
+    temperature: 0.3,
     stream: true,
     // o consumo (tokens) só vem no streaming quando pedido
     stream_options: { include_usage: true },

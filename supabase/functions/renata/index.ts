@@ -30,6 +30,8 @@ const CORS = {
 const VOZ_RESERVA = 'EXAVITQu4vr4xnSDxMaL';
 // vozes que a ElevenLabs recusou por plano (402): pula direto para a reserva por 30 minutos (economiza uma ida e volta por fala)
 const VOZ_PAGA = new Map<string, number>();
+// chave de IA por clínica, lembrada por 5 minutos (menos idas ao banco a cada pergunta)
+const IA_CACHE = new Map<string, { ate: number; ia: { key: string; propria: boolean } | null }>();
 const json = (obj: unknown, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 
 // o front ainda manda o nome do modelo do Claude; serve só para validar o pedido (o ChatGPT usa os seus)
@@ -105,21 +107,26 @@ Deno.serve(async (req) => {
       p_caracteres_voz: p.chars || 0, p_segundos: p.segs || 0,
     });
 
-  // chave da OpenAI desta clínica ou a padrão da Salute
-  const escolherIA = async () => {
-    const { data: propria } = await adm.from('segredos_integracao').select('id')
-      .eq('clinica_id', clinica).eq('provedor', 'openai').is('excluido_em', null).limit(1);
-    const key = await chave('openai', 'OPENAI_API_KEY');
-    return key ? { key, propria: !!(propria && propria.length) } : null;
+  // chave da OpenAI desta clínica ou a padrão da Salute (as duas consultas em paralelo, com cache)
+  const escolherIA = async (fresca = false) => {
+    const c = IA_CACHE.get(clinica);
+    if (!fresca && c && c.ate > Date.now()) return c.ia;
+    const [{ data: propria }, key] = await Promise.all([
+      adm.from('segredos_integracao').select('id').eq('clinica_id', clinica).eq('provedor', 'openai').is('excluido_em', null).limit(1),
+      chave('openai', 'OPENAI_API_KEY'),
+    ]);
+    const ia = key ? { key, propria: !!(propria && propria.length) } : null;
+    IA_CACHE.set(clinica, { ate: Date.now() + 5 * 60_000, ia });
+    return ia;
   };
 
   if (acao === 'status') {
-    const [ia, v] = await Promise.all([escolherIA(), chave('elevenlabs', 'ELEVENLABS_API_KEY')]);
+    const [ia, v] = await Promise.all([escolherIA(true), chave('elevenlabs', 'ELEVENLABS_API_KEY')]);
     return json({ claude: !!ia, ia: ia ? 'openai' : null, voz: !!v });
   }
 
   if (acao === 'testar') {
-    const ia = await escolherIA();
+    const ia = await escolherIA(true);
     if (!ia) return json({ ok: false, motivo: 'sem chave' });
     const r = await chamarOpenAI(ia.key, { max_tokens: 8, messages: [{ role: 'user', content: 'Responda apenas: ok' }] });
     const ok = r.ok;
@@ -130,9 +137,15 @@ Deno.serve(async (req) => {
   }
 
   if (acao === 'chat') {
-    const ia = await escolherIA();
-    if (!ia) return json({ erro: 'sem_chave' }, 412);
     const p = (corpo.payload || {}) as Record<string, unknown>;
+    const msgsCedo = Array.isArray(p.messages) ? p.messages : [];
+    // chave, regras da clínica e limite do mês buscados de uma vez só
+    const [ia, { data: regras }, { data: lim }] = await Promise.all([
+      escolherIA(),
+      adm.rpc('agente_ia_regras', { p_clinica: clinica, p_canal: 'assistente' }),
+      ehPerguntaNova(msgsCedo) ? adm.rpc('renata_limite_mes', { p_clinica: clinica }) : Promise.resolve({ data: null }),
+    ]);
+    if (!ia) return json({ erro: 'sem_chave' }, 412);
     if (!MODELOS.test(String(p.model || ''))) return json({ erro: 'Modelo inválido' }, 400);
     const msgs = Array.isArray(p.messages) ? p.messages : [];
     const tools = Array.isArray(p.tools) ? p.tools : undefined;
@@ -144,7 +157,6 @@ Deno.serve(async (req) => {
     // limite mensal: vale quando a clínica usa a chave da Salute (sem chave própria no cofre)
     const nova = ehPerguntaNova(msgs);
     if (!ia.propria && nova) {
-      const { data: lim } = await adm.rpc('renata_limite_mes', { p_clinica: clinica });
       const usadas = Number(lim?.usadas || 0);
       const limite = lim?.limite == null ? LIMITE_PADRAO : Number(lim.limite);
       if (!lim?.ilimitado && limite === 0) {
@@ -159,7 +171,6 @@ Deno.serve(async (req) => {
 
     // regras do Agente de IA da clínica vêm do banco e entram no começo das instruções
     // (o começo nunca é cortado quando o pedido precisa encolher)
-    const { data: regras } = await adm.rpc('agente_ia_regras', { p_clinica: clinica, p_canal: 'assistente' });
     const sisFront = typeof p.system === 'string' ? p.system
       : Array.isArray(p.system) ? p.system.map((b) => (b && typeof b === 'object' && 'text' in b ? String((b as { text: unknown }).text) : '')).join('\n') : '';
     const sistema = typeof regras === 'string' && regras ? regras + '\n\n' + sisFront : sisFront;
@@ -187,11 +198,13 @@ Deno.serve(async (req) => {
     const v = (cfg && cfg[0]) || {};
     const texto = String(corpo.texto || '').slice(0, 1600);
     const voz = String(corpo.voice_id || v.voice_id || 'RGymW84CSmfVugnA5tvA');
-    const modelo = String(corpo.modelo || v.modelo || 'eleven_flash_v2_5');
+    // sempre Flash v2.5 com o idioma forçado em português: o Multilingual adivinha o idioma e, em frases
+    // curtas, puxava sotaque de outro país. Estabilidade mínima 0,6 para a voz não mudar entre as falas.
+    const modelo = 'eleven_flash_v2_5';
     const falar = (id: string) => fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(id)}?output_format=mp3_44100_128`, {
       method: 'POST', headers: { 'xi-api-key': key, 'content-type': 'application/json', accept: 'audio/mpeg' },
-      body: JSON.stringify({ text: texto, model_id: modelo, ...(/v2_5/.test(modelo) ? { language_code: 'pt' } : {}),
-        voice_settings: { stability: Number(v.estabilidade ?? 0.45), similarity_boost: Number(v.similaridade ?? 0.8), style: Number(v.estilo ?? 0.2) } }),
+      body: JSON.stringify({ text: texto, model_id: modelo, language_code: 'pt',
+        voice_settings: { stability: Math.max(0.6, Number(v.estabilidade ?? 0.6)), similarity_boost: Number(v.similaridade ?? 0.8), style: Math.min(0.15, Number(v.estilo ?? 0.1)), use_speaker_boost: true } }),
     });
     const recusada = (VOZ_PAGA.get(voz) || 0) > Date.now() - 30 * 60_000;
     let r = await falar(recusada ? VOZ_RESERVA : voz);
