@@ -1394,7 +1394,7 @@ function AssinaturaPad(_ref6) {
     style: {
       display: 'block',
       width: '100%',
-      height: 150,
+      height: window.innerWidth < 720 ? 240 : 150,
       touchAction: 'none',
       cursor: 'crosshair'
     }
@@ -1474,6 +1474,21 @@ function AssinaturaSvg(_ref9) {
 
 /* ---------- Preenchimento: página do paciente, preencher junto, preencher para assinar e prévia ---------- */
 // modo: 'paciente' (link), 'presencial' (na clínica, com assinatura), 'equipe' (a clínica preenche e envia para assinar), 'previa'
+/* ---------- celular: anamnese com uma pergunta por tela e assinatura grande ---------- */
+function MxAnamWiz(p){
+  var total = p.perg.length, atual = p.perg[p.passo], q = atual.q, b = atual.b;
+  var ultimo = p.passo === total - 1;
+  var botao = function(principal){ return {flex:principal ? 2 : 1,border:principal ? 0 : '1.5px solid rgba(214,226,242,.9)',borderRadius:16,padding:'16px',background:principal ? '#1F5EFF' : '#fff',color:principal ? '#fff' : 'var(--text-strong)',fontFamily:'inherit',fontSize:17,fontWeight:600,cursor:'pointer'}; };
+  return React.createElement("div", {style:{display:'flex',flexDirection:'column',gap:16,padding:'8px 0 24px'}},
+    React.createElement("div", {style:{display:'flex',flexDirection:'column',gap:8}},
+      React.createElement("div", {style:{display:'flex',justifyContent:'space-between',gap:10,fontSize:13,color:'var(--text-muted)'}}, React.createElement("span", null, b.titulo), React.createElement("span", null, (p.passo + 1) + ' de ' + total)),
+      React.createElement("div", {style:{height:6,borderRadius:999,background:'rgba(31,94,255,.12)',overflow:'hidden'}}, React.createElement("span", {style:{display:'block',height:'100%',width: ((p.passo + 1) / total * 100) + '%',background:'#1F5EFF',borderRadius:999,transition:'width .2s'}}))),
+    React.createElement("div", {key: q.id, style:{background:'rgba(255,255,255,.92)',borderRadius:20,padding:18}},
+      React.createElement(CampoPergunta, {q: q, v: p.vals[q.id], faltando: p.faltando.includes(q.id), readOnly: false, onChange: function(nv){ p.setVals(function(x){ var n = Object.assign({}, x); n[q.id] = nv; return n; }); }})),
+    React.createElement("div", {style:{display:'flex',gap:10}},
+      p.passo > 0 ? React.createElement("button", {type:"button", onClick: function(){ p.setPasso(p.passo - 1); }, style: botao(false)}, 'Anterior') : null,
+      React.createElement("button", {type:"button", onClick: function(){ p.setPasso(p.passo + 1); }, style: botao(true)}, ultimo ? 'Ir para a assinatura' : 'Próximo')));
+}
 function AnamnesePreenchimento(_ref0) {
   var dados = _ref0.dados,
     token = _ref0.token,
@@ -1513,6 +1528,10 @@ function AnamnesePreenchimento(_ref0) {
     _React$useState10 = _slicedToArray(_React$useState1, 2),
     salvoEm = _React$useState10[0],
     setSalvoEm = _React$useState10[1];
+  var wizSt = React.useState(0), passo = wizSt[0], setPasso = wizSt[1];
+  var perg = [];
+  blocos.forEach(function (b) { b.qs.forEach(function (q) { perg.push({b: b, q: q}); }); });
+  var wiz = modo !== 'previa' && perg.length > 0 && typeof window !== 'undefined' && window.innerWidth < 720;
   var sujo = React.useRef(false),
     topo = React.useRef(null);
   var total = blocos.reduce(function (a, b) {
@@ -1672,6 +1691,7 @@ function AnamnesePreenchimento(_ref0) {
     };
   }();
   var paciente = modo === 'paciente';
+  if (wiz && passo < perg.length) return React.createElement(MxAnamWiz, {perg: perg, passo: passo, setPasso: setPasso, vals: vals, setVals: setVals, faltando: faltando});
   return /*#__PURE__*/React.createElement("div", {
     ref: topo,
     style: {
@@ -1784,12 +1804,12 @@ function AnamnesePreenchimento(_ref0) {
   }, /*#__PURE__*/React.createElement(OIcon, {
     name: "eye",
     size: 18
-  })), "Pr\xE9via: \xE9 assim que o paciente v\xEA. Nada do que voc\xEA marcar aqui \xE9 salvo.") : null, /*#__PURE__*/React.createElement(AnamneseForm, {
+  })), "Pr\xE9via: \xE9 assim que o paciente v\xEA. Nada do que voc\xEA marcar aqui \xE9 salvo.") : null, (wiz ? null : /*#__PURE__*/React.createElement(AnamneseForm, {
     blocos: blocos,
     vals: vals,
     setVals: setVals,
     faltando: faltando
-  }), pedeAss ? /*#__PURE__*/React.createElement("section", {
+  })), pedeAss && (!wiz || passo >= perg.length) ? /*#__PURE__*/React.createElement("section", {
     style: _objectSpread(_objectSpread({}, soft), {}, {
       background: 'rgba(255,255,255,.85)',
       padding: 18,
