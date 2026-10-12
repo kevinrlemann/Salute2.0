@@ -465,6 +465,22 @@ function _carregarChat() {
   }));
   return _carregarChat.apply(this, arguments);
 }
+/* atualiza só a mensagem que mudou no chat aberto (sem recarregar a conversa inteira) */
+function atualizarMensagemChat(chave, n, tipoEvento) {
+  if (!n || !n.id || tipoEvento === 'DELETE') return carregarChat(chave);
+  return DB.ler(DB.sel('mensagens', SEL_MSG).eq('id', n.id)).then(function (rows) {
+    return msgTela(rows || [], false);
+  }).then(function (novas) {
+    var atual = CHAT_STORE.v[chave];
+    if (!atual || !novas || !novas.length) return carregarChat(chave);
+    var nova = novas[0];
+    var lista = atual.some(function (m) { return m.id === nova.id; }) ? atual.map(function (m) { return m.id === nova.id ? nova : m; }) : atual.concat([nova]);
+    CHAT_STORE.v = _objectSpread(_objectSpread({}, CHAT_STORE.v), {}, _defineProperty({}, chave, lista));
+    avisar(CHAT_STORE);
+  })["catch"](function () {
+    return carregarChat(chave);
+  });
+}
 function abrirChat(chave) {
   if (!SB_ON || MSG_LIDA[chave]) return;
   MSG_LIDA[chave] = true;
@@ -537,7 +553,7 @@ function _aoMudarMensagens() {
             break;
           }
           _context13.n = 2;
-          return carregarChat(ch);
+          return atualizarMensagemChat(ch, n, ev.eventType);
         case 2:
           if (ev.eventType === 'INSERT' && n.direcao === 'recebida') {
             c = INBOX.find(function (x) {
