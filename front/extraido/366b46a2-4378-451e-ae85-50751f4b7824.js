@@ -3978,7 +3978,7 @@ function MensagensWA(_ref10) {
     }
   }, chip(false, 'CRM', function () {
     return setCrm(true);
-  })), waIcon('message-square-plus', 'Nova conversa'), waIcon('ellipsis-vertical', 'Mais opções'))), /*#__PURE__*/React.createElement(WaAvisoTeste, null), /*#__PURE__*/React.createElement("div", {
+  })))), /*#__PURE__*/React.createElement(WaAvisoTeste, null), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '0 12px 8px'
     }
@@ -4275,7 +4275,7 @@ function MensagensWA(_ref10) {
     MsgSvc.alternarIA(cur, ligar)["catch"](function (e) {
       avisoErro('Não foi possível mudar a IA desta conversa', e);
     });
-  }), mobile ? null : waIcon('search', 'Pesquisar na conversa', null, 20), waIcon('video', 'Chamada de vídeo', null, 21), waIcon('phone', 'Ligar', null, 20), waIcon('ellipsis-vertical', 'Mais opções', null, 20)), /*#__PURE__*/React.createElement(WaChat, {
+  })), /*#__PURE__*/React.createElement(WaChat, {
     key: keyOf(cur),
     chatKey: keyOf(cur),
     seed: seedOf(cur),
