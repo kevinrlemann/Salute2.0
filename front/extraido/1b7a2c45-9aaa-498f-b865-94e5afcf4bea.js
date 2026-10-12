@@ -265,6 +265,21 @@ var MOB_MAIS_ITENS = [{
   sub: 'Itens, alertas e entradas',
   icon: 'package'
 }, {
+  id: 'mx_cobrancas',
+  label: 'Cobranças',
+  sub: 'Quem está devendo, cobrar pelo WhatsApp',
+  icon: 'message-circle'
+}, {
+  id: 'mx_extrato',
+  label: 'Extrato do dia',
+  sub: 'Entrou, saiu e saldo do dia',
+  icon: 'receipt'
+}, {
+  id: 'mx_compras',
+  label: 'Lista de compras',
+  sub: 'Abaixo do mínimo e leitura de código',
+  icon: 'shopping-cart'
+}, {
   id: 'perfil',
   label: 'Configurações',
   sub: 'Clínica, equipe, integrações e plano',
@@ -414,6 +429,266 @@ var MOB_ACOES = [{
   sub: 'Dá baixa no estoque',
   icon: 'package-minus'
 }];
+/* ---------- celular: ações rápidas do + (Recebi, Paguei, Usei), cobranças, extrato do dia e lista de compras ---------- */
+var MX_BTN = {width:'100%',boxSizing:'border-box',border:0,borderRadius:16,padding:'16px',background:'#1F5EFF',color:'#fff',fontFamily:'inherit',fontSize:17,fontWeight:600,cursor:'pointer'};
+var MX_BTN_SEC = {width:'100%',boxSizing:'border-box',borderRadius:16,padding:'14px',background:'#fff',color:'var(--text-strong)',border:'1.5px solid rgba(214,226,242,.9)',fontFamily:'inherit',fontSize:16,fontWeight:500,cursor:'pointer'};
+var MX_CHIP = function(on){ return {border:0,borderRadius:999,padding:'10px 16px',fontFamily:'inherit',fontSize:15,fontWeight:500,cursor:'pointer',background:on?'#1F5EFF':'#fff',color:on?'#fff':'var(--text-strong)',boxShadow:'0 4px 10px -8px rgba(23,73,170,.5)'}; };
+var MX_CARD = {background:'#fff',borderRadius:18,padding:'14px 16px',boxShadow:'0 8px 18px -14px rgba(23,73,170,.45)',display:'flex',flexDirection:'column',gap:4};
+function mxNum(v){ return Number(String(v||'0').replace(',','.')) || 0; }
+function mxIso(n){ var d = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() + n); return isoOf(d); }
+function mxTela(p){
+  return React.createElement("div", {role:"dialog", "aria-label": p.titulo, style:{position:'fixed',inset:0,zIndex:300,background:'#F4F7FC',display:'flex',flexDirection:'column',overflow:'hidden'}},
+    React.createElement("div", {style:{display:'flex',alignItems:'center',gap:10,padding:'calc(12px + env(safe-area-inset-top)) 12px 10px'}},
+      React.createElement("button", {type:"button", onClick: p.onVoltar || p.onFechar, "aria-label": p.onVoltar ? 'Voltar' : 'Fechar', style:{width:40,height:40,borderRadius:'50%',border:0,background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'var(--text-strong)'}},
+        React.createElement(OIcon, {name: p.onVoltar ? 'chevron-left' : 'x', size: 20})),
+      React.createElement("p", {style:{margin:0,flex:1,fontSize:18,fontWeight:600,color:'var(--text-strong)'}}, p.titulo)),
+    React.createElement("div", {style:{flex:1,overflowY:'auto',padding:'8px 16px calc(24px + env(safe-area-inset-bottom))',display:'flex',flexDirection:'column',gap:14}}, p.children));
+}
+function MxTeclado(p){
+  var v = p.valor || '';
+  var teclas = ['1','2','3','4','5','6','7','8','9', p.decimal ? ',' : '', '0', '⌫'];
+  var toque = function(k){
+    if (k === '⌫') return p.onMudar(v.slice(0, -1));
+    if (k === ',') { if (v.indexOf(',') >= 0) return; return p.onMudar(v === '' ? '0,' : v + ','); }
+    var casas = v.indexOf(',') >= 0 ? v.length - v.indexOf(',') - 1 : -1;
+    if (casas >= 2 || v.replace(',', '').length >= 9) return;
+    p.onMudar(v === '0' ? k : v + k);
+  };
+  return React.createElement("div", null,
+    React.createElement("p", {style:{margin:'8px 0 14px',textAlign:'center',fontSize:44,fontWeight:700,color:'var(--text-strong)',minHeight:56}}, (p.prefixo ? p.prefixo + ' ' : '') + (v || '0')),
+    React.createElement("div", {style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}, teclas.map(function(k, i){
+      return k === '' ? React.createElement("span", {key: i}) : React.createElement("button", {key: i, type:"button", onClick: function(){ toque(k); }, style:{height:70,border:0,borderRadius:18,background:'#fff',fontSize:30,fontWeight:600,color:'var(--text-strong)',fontFamily:'inherit',cursor:'pointer',boxShadow:'0 6px 14px -10px rgba(23,73,170,.4)'}}, k);
+    })));
+}
+function MxFeito(p){
+  React.useEffect(function(){ var t = setTimeout(p.onFim, 4000); return function(){ clearTimeout(t); }; }, []);
+  return React.createElement("div", {role:"dialog", "aria-label":"Feito", style:{position:'fixed',inset:0,zIndex:300,background:'#F4F7FC',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,padding:24,textAlign:'center'}},
+    React.createElement("span", {style:{width:96,height:96,borderRadius:'50%',background:'linear-gradient(135deg,#0A46E4,#22C3F2)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 18px 40px -16px rgba(10,70,228,.6)',color:'#fff'}}, React.createElement(OIcon, {name:'check', size:44})),
+    React.createElement("p", {style:{margin:0,fontSize:28,fontWeight:700,color:'var(--text-strong)'}}, p.titulo || 'Feito'),
+    p.texto ? React.createElement("p", {style:{margin:0,fontSize:16,color:'var(--text-muted)',maxWidth:320}}, p.texto) : null,
+    React.createElement("button", {type:"button", onClick: p.onFim, style: Object.assign({}, MX_BTN, {width:'auto',marginTop:12,padding:'14px 28px',borderRadius:999})}, 'Fechar'));
+}
+function MxDinheiro(p){
+  var tipo = p.tipo, ctx = p.ctx;
+  var st = React.useState({passo:'valor', valor:'', quem:'', busca:'', forma:'', venc:TODAY_ISO, pago:false, salvando:false, erro:''});
+  var s = st[0];
+  var up = function(patch){ st[1](function(o){ return Object.assign({}, o, patch); }); };
+  var formas = (CAT.v.formas || []).filter(function(f){ return f.aceita && f.ativo; }).map(function(f){ return f.nome; });
+  if (!formas.length) formas = ['Pix', 'Cartão', 'Dinheiro'];
+  var forma = s.forma || formas[0];
+  var titulo = tipo === 'recebi' ? 'Recebi pagamento' : 'Paguei conta';
+  var v = mxNum(s.valor);
+  var voltar = s.passo === 'valor' ? null : function(){ up({passo: s.passo === 'confirma' ? 'quem' : 'valor', erro:''}); };
+  if (s.passo === 'valor') return mxTela({titulo: titulo + ' · 1 de 3', onFechar: ctx.fechar, children: [
+    React.createElement(MxTeclado, {key:'t', valor: s.valor, decimal: true, prefixo: 'R$', onMudar: function(x){ up({valor: x}); }}),
+    React.createElement("button", {key:'b', type:"button", disabled: v <= 0, onClick: function(){ up({passo:'quem'}); }, style: Object.assign({}, MX_BTN, {opacity: v <= 0 ? 0.45 : 1})}, 'Continuar')
+  ]});
+  if (s.passo === 'quem' && tipo === 'recebi') {
+    var lista = (PAC_STORE.v || []).filter(function(x){ return !s.busca || String(x.nome).toLowerCase().indexOf(s.busca.toLowerCase()) >= 0; }).slice(0, 25);
+    return mxTela({titulo: titulo + ' · 2 de 3', onFechar: ctx.fechar, onVoltar: voltar, children: [
+      React.createElement("input", {key:'i', value: s.busca, placeholder:'Buscar paciente', onChange: function(e){ up({busca: e.target.value}); }, style:{width:'100%',boxSizing:'border-box',padding:'14px 16px',borderRadius:14,border:'1.5px solid #fff',background:'#fff',fontSize:16,fontFamily:'inherit'}}),
+      React.createElement("div", {key:'l', style:{display:'flex',flexDirection:'column',gap:8}}, [React.createElement("button", {key:'-', type:"button", onClick: function(){ up({quem:'', passo:'confirma'}); }, style: Object.assign({}, MX_CARD, {border:0,textAlign:'left',cursor:'pointer',fontFamily:'inherit'})}, React.createElement("span", {style:{fontSize:15,color:'var(--text-muted)'}}, 'Sem paciente (venda avulsa)'))].concat(lista.map(function(x){
+        return React.createElement("button", {key: x.nome, type:"button", onClick: function(){ up({quem: x.nome, passo:'confirma'}); }, style: Object.assign({}, MX_CARD, {border:0,textAlign:'left',cursor:'pointer',fontFamily:'inherit'})}, React.createElement("span", {style:{fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, x.nome));
+      }))),
+      React.createElement("p", {key:'f', style:{margin:'4px 0 0',fontSize:14,color:'var(--text-muted)'}}, 'Forma de pagamento'),
+      React.createElement("div", {key:'c', style:{display:'flex',flexWrap:'wrap',gap:8}}, formas.map(function(f){ return React.createElement("button", {key:f, type:"button", onClick: function(){ up({forma:f}); }, style: MX_CHIP(f === forma)}, f); }))
+    ]});
+  }
+  if (s.passo === 'quem') {
+    return mxTela({titulo: titulo + ' · 2 de 3', onFechar: ctx.fechar, onVoltar: voltar, children: [
+      React.createElement("input", {key:'i', value: s.quem, placeholder:'Fornecedor (quem vou pagar)', onChange: function(e){ up({quem: e.target.value}); }, style:{width:'100%',boxSizing:'border-box',padding:'14px 16px',borderRadius:14,border:'1.5px solid #fff',background:'#fff',fontSize:16,fontFamily:'inherit'}}),
+      React.createElement("p", {key:'v', style:{margin:'4px 0 0',fontSize:14,color:'var(--text-muted)'}}, 'Vencimento'),
+      React.createElement("div", {key:'vc', style:{display:'flex',flexWrap:'wrap',gap:8}}, [['Hoje',0],['Em 7 dias',7],['Em 30 dias',30]].map(function(x){ return React.createElement("button", {key:x[0], type:"button", onClick: function(){ up({venc: mxIso(x[1])}); }, style: MX_CHIP(s.venc === mxIso(x[1]))}, x[0]); })),
+      React.createElement("button", {key:'p', type:"button", onClick: function(){ up({pago: !s.pago}); }, style: MX_CHIP(s.pago)}, s.pago ? '✓ Já paguei' : 'Ainda não paguei'),
+      React.createElement("p", {key:'f', style:{margin:'4px 0 0',fontSize:14,color:'var(--text-muted)'}}, 'Forma de pagamento'),
+      React.createElement("div", {key:'c', style:{display:'flex',flexWrap:'wrap',gap:8}}, formas.map(function(f){ return React.createElement("button", {key:f, type:"button", onClick: function(){ up({forma:f}); }, style: MX_CHIP(f === forma)}, f); })),
+      React.createElement("button", {key:'b', type:"button", disabled: !s.quem.trim(), onClick: function(){ up({passo:'confirma'}); }, style: Object.assign({}, MX_BTN, {opacity: s.quem.trim() ? 1 : 0.45})}, 'Continuar')
+    ]});
+  }
+  var salvar = function(){
+    var id = novoId();
+    up({salvando: true, erro: ''});
+    var feitoOk = function(){ ctx.feito(tipo === 'recebi' ? 'Recebimento salvo' : 'Pagamento salvo', brl(v) + (tipo === 'recebi' ? ' de ' + (s.quem || 'venda avulsa') : ' para ' + s.quem)); };
+    var falha = function(e){ up({salvando: false, erro: 'Não salvei. Confira e tente de novo.'}); if (window.avisoErro) avisoErro('Não foi possível salvar', e); };
+    if (tipo === 'recebi') {
+      var r = {id: id, dbId: id, data: TODAY_ISO, pac: s.quem || '', proc: '', pro: '', cat: 'Procedimentos', atend: 'Particular', total: v, desc: 0, forma: forma, parc: 1, venc: TODAY_ISO, status: 'Recebido'};
+      REC_STORE.v = [r].concat(REC_STORE.v); avisar(REC_STORE);
+      if (SB_ON) return FinSvc.criar('rec', r, {}).then(feitoOk, function(e){ REC_STORE.v = REC_STORE.v.filter(function(x){ return x !== r; }); avisar(REC_STORE); falha(e); });
+      return feitoOk();
+    }
+    var d = {id: id, dbId: id, desc: s.quem, cat: 'Outros', forn: s.quem, total: v, forma: forma, data: TODAY_ISO, venc: s.venc, parc: 1, status: s.pago ? 'Pago' : 'Pendente'};
+    DESP_STORE.v = [d].concat(DESP_STORE.v); avisar(DESP_STORE);
+    if (SB_ON) return FinSvc.criar('desp', d, {}).then(feitoOk, function(e){ DESP_STORE.v = DESP_STORE.v.filter(function(x){ return x !== d; }); avisar(DESP_STORE); falha(e); });
+    return feitoOk();
+  };
+  var resumo = [['Valor', brl(v)], [tipo === 'recebi' ? 'Paciente' : 'Fornecedor', s.quem || 'Venda avulsa'], ['Forma', forma]];
+  if (tipo === 'paguei') resumo.push(['Vencimento', s.venc === TODAY_ISO ? 'Hoje' : s.venc.split('-').reverse().join('/')], ['Situação', s.pago ? 'Já paguei' : 'A pagar']);
+  return mxTela({titulo: titulo + ' · 3 de 3', onFechar: ctx.fechar, onVoltar: voltar, children: [
+    React.createElement("div", {key:'r', style: Object.assign({}, MX_CARD, {gap:12})}, resumo.map(function(x){ return React.createElement("div", {key:x[0], style:{display:'flex',justifyContent:'space-between',gap:12,fontSize:16}}, React.createElement("span", {style:{color:'var(--text-muted)'}}, x[0]), React.createElement("span", {style:{color:'var(--text-strong)',fontWeight:600,textAlign:'right'}}, x[1])); })),
+    s.erro ? React.createElement("p", {key:'e', style:{margin:0,color:'#D93838',fontSize:15}}, s.erro) : null,
+    React.createElement("button", {key:'b', type:"button", disabled: s.salvando, onClick: salvar, style: Object.assign({}, MX_BTN, {opacity: s.salvando ? 0.6 : 1})}, s.salvando ? 'Salvando…' : 'Confirmar')
+  ]});
+}
+function MxUsei(p){
+  var ctx = p.ctx;
+  var st = React.useState({passo:'qtd', qtd:'', busca:'', prod:null, salvando:false, erro:''});
+  var s = st[0];
+  var up = function(patch){ st[1](function(o){ return Object.assign({}, o, patch); }); };
+  var q = Math.floor(mxNum(s.qtd));
+  var voltar = s.passo === 'qtd' ? null : function(){ up({passo: s.passo === 'confirma' ? 'produto' : 'qtd', erro:''}); };
+  if (s.passo === 'qtd') return mxTela({titulo: 'Usei material · 1 de 3', onFechar: ctx.fechar, children: [
+    React.createElement(MxTeclado, {key:'t', valor: s.qtd, decimal: false, onMudar: function(x){ up({qtd: x}); }}),
+    React.createElement("button", {key:'b', type:"button", disabled: q <= 0, onClick: function(){ up({passo:'produto'}); }, style: Object.assign({}, MX_BTN, {opacity: q <= 0 ? 0.45 : 1})}, 'Continuar')
+  ]});
+  if (s.passo === 'produto') {
+    var lista = (PROD_STORE.v || []).filter(function(x){ return !s.busca || String(x.nome).toLowerCase().indexOf(s.busca.toLowerCase()) >= 0; }).slice(0, 30);
+    return mxTela({titulo: 'Usei material · 2 de 3', onFechar: ctx.fechar, onVoltar: voltar, children: [
+      React.createElement("input", {key:'i', value: s.busca, placeholder:'Buscar produto', onChange: function(e){ up({busca: e.target.value}); }, style:{width:'100%',boxSizing:'border-box',padding:'14px 16px',borderRadius:14,border:'1.5px solid #fff',background:'#fff',fontSize:16,fontFamily:'inherit'}}),
+      React.createElement("div", {key:'l', style:{display:'flex',flexDirection:'column',gap:8}}, lista.map(function(x){
+        return React.createElement("button", {key: x.id || x.nome, type:"button", onClick: function(){ up({prod: x, passo:'confirma'}); }, style: Object.assign({}, MX_CARD, {border:0,textAlign:'left',cursor:'pointer',fontFamily:'inherit'})},
+          React.createElement("span", {style:{fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, x.nome),
+          React.createElement("span", {style:{fontSize:13,color: x.qtd < x.min ? '#D93838' : 'var(--text-muted)'}}, 'Em estoque: ' + x.qtd + ' ' + (x.un || '') + (x.qtd < x.min ? ' · abaixo do mínimo' : '')));
+      }))
+    ]});
+  }
+  var prod = s.prod;
+  var salvar = function(){
+    if (q > prod.qtd) return up({erro: 'Só tem ' + prod.qtd + ' ' + (prod.un || '') + ' em estoque.'});
+    up({salvando: true, erro: ''});
+    var feitoOk = function(){ ctx.feito('Uso registrado', q + ' ' + prod.nome + ' baixado do estoque'); };
+    if (SB_ON) {
+      return EstSvc.lancar(prod, {tipo: 'baixa', motivo: 'Uso em procedimento', qtd: q, obs: ''}).then(feitoOk, function(e){ up({salvando: false, erro: 'Não salvei. Tente de novo.'}); if (window.avisoErro) avisoErro('Não foi possível dar baixa', e); });
+    }
+    PROD_STORE.v = PROD_STORE.v.map(function(x){ return x === prod ? Object.assign({}, x, {qtd: x.qtd - q}) : x; });
+    avisar(PROD_STORE);
+    return feitoOk();
+  };
+  return mxTela({titulo: 'Usei material · 3 de 3', onFechar: ctx.fechar, onVoltar: voltar, children: [
+    React.createElement("div", {key:'r', style: Object.assign({}, MX_CARD, {gap:10})},
+      React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Vou dar baixa de'),
+      React.createElement("span", {style:{fontSize:22,fontWeight:700,color:'var(--text-strong)'}}, q + ' ' + (prod.un || 'un') + ' de ' + prod.nome),
+      React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Sobra no estoque: ' + Math.max(prod.qtd - q, 0))),
+    s.erro ? React.createElement("p", {key:'e', style:{margin:0,color:'#D93838',fontSize:15}}, s.erro) : null,
+    React.createElement("button", {key:'b', type:"button", disabled: s.salvando, onClick: salvar, style: Object.assign({}, MX_BTN, {opacity: s.salvando ? 0.6 : 1})}, s.salvando ? 'Salvando…' : 'Confirmar baixa')
+  ]});
+}
+function MxCobrancas(p){
+  var ctx = p.ctx;
+  var pend = (REC_STORE.v || []).filter(function(r){ return r.status === 'Pendente' && (r.total - (r.desc || 0)) > 0; });
+  var cobrar = function(r){
+    var pac = (PAC_STORE.v || []).find(function(x){ return x.nome === r.pac; });
+    var digitos = pac && pac.tel ? String(pac.tel).replace(/\D/g, '') : '';
+    if (digitos.length < 10) return ctx.feito('Sem WhatsApp', 'Cadastre o WhatsApp de ' + (r.pac || 'quem deve') + ' para cobrar daqui.');
+    var nome = String(r.pac || '').split(' ')[0];
+    var msg = 'Olá' + (nome ? ', ' + nome : '') + '! Passando para lembrar do pagamento de ' + brl(r.total - (r.desc || 0)) + (r.procedimento || r.proc ? ' referente a ' + (r.proc || r.procedimento) : '') + '. Qualquer dúvida, é só responder. Obrigada!';
+    window.open('https://wa.me/55' + digitos + '?text=' + encodeURIComponent(msg), '_blank');
+  };
+  var marcar = function(r){
+    var novo = Object.assign({}, r, {status: 'Recebido'});
+    REC_STORE.v = REC_STORE.v.map(function(x){ return x === r ? novo : x; });
+    avisar(REC_STORE);
+    if (SB_ON) FinSvc.status('rec', r, 'Recebido').catch(function(e){ if (window.avisoErro) avisoErro('Não foi possível marcar como recebido', e); });
+  };
+  return mxTela({titulo: 'Cobranças', onFechar: ctx.fechar, children: [
+    React.createElement("p", {key:'t', style:{margin:0,fontSize:15,color:'var(--text-muted)'}}, pend.length ? pend.length + ' a receber. Cobrar abre o WhatsApp com a mensagem pronta.' : 'Ninguém está devendo no momento.'),
+    pend.map(function(r){
+      return React.createElement("div", {key: r.id, style: MX_CARD},
+        React.createElement("span", {style:{fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, r.pac || 'Venda avulsa'),
+        React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, brl(r.total - (r.desc || 0)) + ' · vence ' + (r.venc || r.data || '').split('-').reverse().join('/')),
+        React.createElement("div", {style:{display:'flex',gap:8,marginTop:8}},
+          React.createElement("button", {type:"button", onClick: function(){ cobrar(r); }, style: Object.assign({}, MX_BTN, {width:'auto',flex:1,padding:'12px',fontSize:15})}, 'Cobrar no WhatsApp'),
+          React.createElement("button", {type:"button", onClick: function(){ marcar(r); }, style: Object.assign({}, MX_BTN_SEC, {width:'auto',padding:'12px',fontSize:15})}, 'Recebi')));
+    })
+  ]});
+}
+function MxExtrato(p){
+  var ctx = p.ctx;
+  var st = React.useState(TODAY_ISO);
+  var dia = st[0];
+  var mudaDia = function(n){ var d = new Date(dia + 'T12:00:00'); d.setDate(d.getDate() + n); st[1](isoOf(d)); };
+  var entra = (REC_STORE.v || []).filter(function(r){ return r.data === dia && r.status === 'Recebido'; });
+  var sai = (DESP_STORE.v || []).filter(function(d){ return d.data === dia && d.status === 'Pago'; });
+  var tEntra = entra.reduce(function(a, r){ return a + (r.total - (r.desc || 0)); }, 0);
+  var tSai = sai.reduce(function(a, d){ return a + d.total; }, 0);
+  return mxTela({titulo: 'Extrato do dia', onFechar: ctx.fechar, children: [
+    React.createElement("div", {key:'d', style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      React.createElement("button", {type:"button", "aria-label":"Dia anterior", onClick: function(){ mudaDia(-1); }, style:{width:40,height:40,borderRadius:'50%',border:0,background:'#fff',cursor:'pointer'}}, React.createElement(OIcon, {name:'chevron-left', size:18})),
+      React.createElement("span", {style:{fontSize:17,fontWeight:600,color:'var(--text-strong)'}}, dia === TODAY_ISO ? 'Hoje' : dia.split('-').reverse().join('/')),
+      React.createElement("button", {type:"button", "aria-label":"Próximo dia", onClick: function(){ mudaDia(1); }, style:{width:40,height:40,borderRadius:'50%',border:0,background:'#fff',cursor:'pointer'}}, React.createElement(OIcon, {name:'chevron-right', size:18}))),
+    React.createElement("div", {key:'r', style: Object.assign({}, MX_CARD, {gap:6})},
+      React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Saldo do dia'),
+      React.createElement("span", {style:{fontSize:28,fontWeight:700,color: tEntra - tSai >= 0 ? '#0A46E4' : '#D93838'}}, brl(tEntra - tSai)),
+      React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Entrou ' + brl(tEntra) + ' · saiu ' + brl(tSai))),
+    React.createElement("div", {key:'l', style: MX_CARD},
+      React.createElement("span", {style:{fontSize:14,fontWeight:600,color:'var(--text-muted)'}}, 'Recebidos'),
+      entra.length ? entra.map(function(r){ return React.createElement("div", {key: r.id, style:{display:'flex',justifyContent:'space-between',gap:12,padding:'10px 0',borderTop:'1px solid rgba(214,226,242,.9)'}}, React.createElement("span", {style:{fontSize:15,color:'var(--text-strong)'}}, r.pac || 'Venda avulsa'), React.createElement("span", {style:{fontSize:15,fontWeight:600,color:'#0A46E4'}}, '+ ' + brl(r.total - (r.desc || 0)))); }) : React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Nada recebido neste dia.'),
+      React.createElement("span", {style:{fontSize:14,fontWeight:600,color:'var(--text-muted)',marginTop:8}}, 'Pagamentos'),
+      sai.length ? sai.map(function(d){ return React.createElement("div", {key: d.id, style:{display:'flex',justifyContent:'space-between',gap:12,padding:'10px 0',borderTop:'1px solid rgba(214,226,242,.9)'}}, React.createElement("span", {style:{fontSize:15,color:'var(--text-strong)'}}, d.forn || d.desc || 'Despesa'), React.createElement("span", {style:{fontSize:15,fontWeight:600,color:'#D93838'}}, '− ' + brl(d.total))); }) : React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Nenhum pagamento neste dia.'))
+  ]});
+}
+function MxCompras(p){
+  var ctx = p.ctx;
+  var st = React.useState({codigo:'', achado:'', erro:''});
+  var s = st[0];
+  var up = function(patch){ st[1](function(o){ return Object.assign({}, o, patch); }); };
+  var baixos = (PROD_STORE.v || []).filter(function(x){ return x.qtd < x.min; });
+  var buscarCodigo = function(codigo){
+    var c = String(codigo || '').trim();
+    if (!c) return;
+    if (!SB_ON) return up({achado: '', erro: 'Leitura de código funciona com a clínica conectada.'});
+    DB.ler(DB.sel('produtos', 'id,nome,quantidade_atual,estoque_minimo').eq('codigo_barras', c).is('excluido_em', null)).then(function(rs){
+      if (!rs || !rs.length) return up({achado: '', erro: 'Nenhum produto com o código ' + c + '.'});
+      up({achado: rs[0].nome + ' · em estoque: ' + rs[0].quantidade_atual, erro: ''});
+    }, function(){ up({erro: 'Não consegui buscar o código. Tente de novo.'}); });
+  };
+  var lerCamera = function(){
+    if (!('BarcodeDetector' in window) || !navigator.mediaDevices) return up({erro: 'Este aparelho não lê código pela câmera. Digite o código abaixo.'});
+    var det = new BarcodeDetector({formats: ['ean_13', 'ean_8', 'code_128', 'qr_code']});
+    navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function(stream){
+      var v = document.createElement('video'); v.setAttribute('playsinline', ''); v.srcObject = stream; v.play();
+      var tentativas = 0;
+      var ciclo = function(){
+        det.detect(v).then(function(codes){
+          if (codes.length) { stream.getTracks().forEach(function(t){ t.stop(); }); up({codigo: codes[0].rawValue}); return buscarCodigo(codes[0].rawValue); }
+          if (++tentativas < 60) return setTimeout(ciclo, 250);
+          stream.getTracks().forEach(function(t){ t.stop(); }); up({erro: 'Não achei código. Aproxime e tente de novo.'});
+        }, function(){ stream.getTracks().forEach(function(t){ t.stop(); }); up({erro: 'Não consegui ler pela câmera.'}); });
+      };
+      ciclo();
+    }, function(){ up({erro: 'Permita o uso da câmera para ler o código.'}); });
+  };
+  return mxTela({titulo: 'Lista de compras', onFechar: ctx.fechar, children: [
+    React.createElement("div", {key:'c', style: MX_CARD},
+      React.createElement("span", {style:{fontSize:15,fontWeight:600,color:'var(--text-strong)'}}, 'Ler código do produto'),
+      React.createElement("input", {value: s.codigo, placeholder:'Digite ou cole o código de barras', inputMode:'numeric', onChange: function(e){ up({codigo: e.target.value}); }, style:{width:'100%',boxSizing:'border-box',padding:'12px 14px',borderRadius:12,border:'1.5px solid rgba(214,226,242,.9)',fontSize:16,fontFamily:'inherit'}}),
+      React.createElement("div", {style:{display:'flex',gap:8}},
+        React.createElement("button", {type:"button", onClick: function(){ buscarCodigo(s.codigo); }, style: Object.assign({}, MX_BTN, {width:'auto',flex:1,padding:'12px',fontSize:15})}, 'Buscar'),
+        React.createElement("button", {type:"button", onClick: lerCamera, style: Object.assign({}, MX_BTN_SEC, {width:'auto',flex:1,padding:'12px',fontSize:15})}, 'Ler com a câmera')),
+      s.achado ? React.createElement("span", {style:{fontSize:15,color:'#0A46E4'}}, s.achado) : null,
+      s.erro ? React.createElement("span", {style:{fontSize:14,color:'#D93838'}}, s.erro) : null),
+    React.createElement("span", {key:'t', style:{fontSize:14,fontWeight:600,color:'var(--text-muted)'}}, baixos.length ? 'Abaixo do mínimo (' + baixos.length + ')' : 'Nada abaixo do mínimo'),
+    baixos.map(function(x){
+      var falta = Math.max(x.min - x.qtd, 1);
+      return React.createElement("div", {key: x.id || x.nome, style: MX_CARD},
+        React.createElement("span", {style:{fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, x.nome),
+        React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Tem ' + x.qtd + ' · mínimo ' + x.min + ' · comprar ' + falta + ' ' + (x.un || '')));
+    })
+  ]});
+}
+function MxRoot(p){
+  var st = React.useState(null);
+  var feito = st[0];
+  if (feito) return React.createElement(MxFeito, {titulo: feito.titulo, texto: feito.texto, onFim: p.onFechar});
+  var ctx = {feito: function(titulo, texto){ st[1]({titulo: titulo, texto: texto}); }, fechar: p.onFechar};
+  var id = p.id;
+  if (id === 'recebi' || id === 'paguei') return React.createElement(MxDinheiro, {tipo: id, ctx: ctx});
+  if (id === 'usei') return React.createElement(MxUsei, {ctx: ctx});
+  if (id === 'mx_cobrancas') return React.createElement(MxCobrancas, {ctx: ctx});
+  if (id === 'mx_extrato') return React.createElement(MxExtrato, {ctx: ctx});
+  if (id === 'mx_compras') return React.createElement(MxCompras, {ctx: ctx});
+  return null;
+}
+
 function AcaoSheet(props) {
   return /*#__PURE__*/React.createElement("div", {
     "data-overlay": "1",
@@ -14867,6 +15142,9 @@ function App() {
     id: 'painel'
   }).id;
   // celular: barra com 5 itens (Início, Agenda, + Novo, Conversas, Mais); o "+" abre a gaveta de ações
+  var _mxSt = React.useState(null),
+    mx = _mxSt[0],
+    setMx = _mxSt[1];
   var _acaoSt = React.useState(false),
     acaoAberta = _acaoSt[0],
     setAcaoAberta = _acaoSt[1];
@@ -14898,10 +15176,12 @@ function App() {
   });
   var navSelecionar = function navSelecionar(id) {
     if (id === 'acao') return setAcaoAberta(true);
+    if (String(id).indexOf('mx_') === 0) return setMx(id);
     return navegar(id);
   };
   var rotaMobAtiva = ['pacientes', 'gestao', 'perfil', 'mais'].indexOf(route) >= 0 ? 'mais' : route;
   var navegar = function navegar(id) {
+    if (String(id).indexOf('mx_') === 0) return setMx(id);
     if (!can(id)) {
       setBloq(id);
       return;
@@ -15004,13 +15284,19 @@ function App() {
     onNew: function onNew() {
       return setNovo(true);
     }
-  })), acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
+  })), mx ? React.createElement(MxRoot, {
+    id: mx,
+    onFechar: function onFechar() {
+      return setMx(null);
+    }
+  }) : null, acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
     onClose: function onClose() {
       return setAcaoAberta(false);
     },
     onEscolher: function onEscolher(id) {
       setAcaoAberta(false);
       if (id === 'agendar') return setNovo(true);
+      if (id === 'recebi' || id === 'paguei' || id === 'usei') return setMx(id);
       return navegar('gestao');
     }
   }) : null, /*#__PURE__*/React.createElement(XDialog, {
