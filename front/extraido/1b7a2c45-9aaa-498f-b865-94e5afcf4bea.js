@@ -957,7 +957,7 @@ function rnSnapshot() {
         naoLidas: c.u
       };
     }),
-    conversasEquipe: EQUIPE.slice(0, 6).map(function (c) {
+    conversasEquipe: SB_ON ? [] : EQUIPE.slice(0, 6).map(function (c) {
       return {
         membro: c.n,
         funcao: c.r,
@@ -1264,22 +1264,29 @@ function rnCore(q, pq) {
       return c.n + ' (' + c.u + ')';
     }).join(', '), ". O WhatsApp est\xE1 ").concat(WA_STORE.v.status === 'on' ? 'conectado no ' + WA_STORE.v.numero : 'desconectado', ".");
   }
-  if (rnHas(q, 'economiz', ' ia ', 'renata fez', 'inteligencia')) return "A IA economizou **27 horas** no \xFAltimo m\xEAs: atendeu 412 conversas e fez 64 agendamentos sozinha (+11,5% vs m\xEAs anterior).";
-  if (rnHas(q, 'genero', 'homens', 'mulheres', 'sexo')) {
+  if (SB_ON && rnHas(q, 'economiz', ' ia ', 'renata fez', 'inteligencia')) { var _pi = rnPainelDB().iaEconomizou; return 'A IA economizou **' + _pi.horas + ' horas** em ' + rnPainelDB().periodo + ': atendeu ' + _pi.conversas + ' conversas e fez ' + _pi.agendamentosFeitosPelaIA + ' agendamentos sozinha (' + _pi.variacao + ').'; }
+  if (!SB_ON && rnHas(q, 'economiz', ' ia ', 'renata fez', 'inteligencia')) return "A IA economizou **27 horas** no \xFAltimo m\xEAs: atendeu 412 conversas e fez 64 agendamentos sozinha (+11,5% vs m\xEAs anterior).";
+  if (SB_ON && rnHas(q, 'genero', 'homens', 'mulheres', 'sexo')) { var _pg = rnPainelDB().genero; return 'No painel: **' + _pg.homens + ' homens** e **' + _pg.mulheres + ' mulheres** entre ' + _pg.pacientes + ' pacientes' + (_pg.semInformacao ? ' (' + _pg.semInformacao + ' sem informação de sexo)' : '') + '.'; }
+  if (!SB_ON && rnHas(q, 'genero', 'homens', 'mulheres', 'sexo')) {
     var _f1 = PAC.filter(function (p) {
       return p.sexo === 'Feminino';
     }).length;
     return "No painel: homens 35% e mulheres 15%. Entre os ".concat(PAC.length, " pacientes cadastrados na lista, ").concat(_f1, " s\xE3o mulheres e ").concat(PAC.length - _f1, " homens.");
   }
-  if (rnHas(q, 'atendimentos por dia', 'por dia', 'dia da semana', 'melhor dia')) return "Nos \xFAltimos 14 dias foram **131 atendimentos**, m\xE9dia de 9,4 por dia. O melhor dia foi 30/09 (14) e o mais fraco 27/09 (2, domingo).\n\nNa semana, quarta \xE9 o dia mais forte (47) e s\xE1bado o mais fraco (27).";
-  if (rnHas(q, 'atendimento')) return "Foram **48 atendimentos** nesta semana (+0,8% vs m\xEAs anterior) e 131 nos \xFAltimos 14 dias.";
-  if (rnHas(q, 'recentes')) return "Pacientes recentes: ".concat(PATIENTS.slice(0, 4).map(function (p) {
+  if (SB_ON && rnHas(q, 'atendimentos por dia', 'por dia', 'dia da semana', 'melhor dia')) return 'Os atendimentos por dia estão na tela **Painel**. Eu não trouxe esses números aqui agora, para não errar.';
+  if (!SB_ON && rnHas(q, 'atendimentos por dia', 'por dia', 'dia da semana', 'melhor dia')) return "Nos \xFAltimos 14 dias foram **131 atendimentos**, m\xE9dia de 9,4 por dia. O melhor dia foi 30/09 (14) e o mais fraco 27/09 (2, domingo).\n\nNa semana, quarta \xE9 o dia mais forte (47) e s\xE1bado o mais fraco (27).";
+  if (SB_ON && rnHas(q, 'atendimento')) { var _pa = rnPainelDB().atendimentos; return 'Foram **' + _pa.total + ' atendimentos** em ' + rnPainelDB().periodo + ' (' + _pa.variacao + ').'; }
+  if (!SB_ON && rnHas(q, 'atendimento')) return "Foram **48 atendimentos** nesta semana (+0,8% vs m\xEAs anterior) e 131 nos \xFAltimos 14 dias.";
+  if (SB_ON && rnHas(q, 'recentes')) return 'Os pacientes recentes estão na tela **Pacientes** e no **Painel**. Não trouxe a lista aqui agora.';
+  if (!SB_ON && rnHas(q, 'recentes')) return "Pacientes recentes: ".concat(PATIENTS.slice(0, 4).map(function (p) {
     return p.name + ' (' + p.proc + ')';
   }).join(', '), ".");
-  if (rnHas(q, 'paciente')) return "A cl\xEDnica tem **102 pacientes** (48 novos e 54 antigos), +12,8% no \xFAltimo m\xEAs. Na lista de cadastro est\xE3o: ".concat(PAC.map(function (p) {
+  if (SB_ON && rnHas(q, 'paciente')) { var _pp = rnPainelDB().totalPacientes; return 'A clínica tem **' + _pp.valor + ' pacientes** (' + _pp.novos + ' novos e ' + _pp.antigos + ' antigos), ' + _pp.variacao + ' em ' + rnPainelDB().periodo + '. Para achar alguém, pergunte pelo nome.'; }
+  if (!SB_ON && rnHas(q, 'paciente')) return "A cl\xEDnica tem **102 pacientes** (48 novos e 54 antigos), +12,8% no \xFAltimo m\xEAs. Na lista de cadastro est\xE3o: ".concat(PAC.map(function (p) {
     return p.nome;
   }).join(', '), ".");
-  if (rnHas(q, 'agendamento')) return "S\xE3o **254 agendamentos** no m\xEAs (56 novos e 43 retornos), +1,9% no \xFAltimo m\xEAs. Hoje h\xE1 ".concat(rnAgenda(TODAY_ISO).total, " na agenda.");
+  if (SB_ON && rnHas(q, 'agendamento')) { var _pm = rnPainelDB().agendamentosMes; return 'São **' + _pm.valor + ' agendamentos** em ' + rnPainelDB().periodo + ' (' + _pm.novos + ' novos e ' + _pm.retornos + ' retornos), ' + _pm.variacao + '. Hoje há ' + rnAgenda(TODAY_ISO).total + ' na agenda.'; }
+  if (!SB_ON && rnHas(q, 'agendamento')) return "S\xE3o **254 agendamentos** no m\xEAs (56 novos e 43 retornos), +1,9% no \xFAltimo m\xEAs. Hoje h\xE1 ".concat(rnAgenda(TODAY_ISO).total, " na agenda.");
   if (rnHas(q, 'anamnese')) return "Modelos de anamnese cadastrados:\n".concat(rnL((ANAM_STORE.v || ANAM0).map(function (m) {
     return "".concat(m.nome, " (").concat(m.uso, ", ").concat(m.qs.length, " perguntas)");
   })));
