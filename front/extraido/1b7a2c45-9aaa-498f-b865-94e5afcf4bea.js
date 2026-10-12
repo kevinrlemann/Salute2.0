@@ -35,8 +35,16 @@ var ROUTES = {
     get title() {
       return SB_ON ? saudacao() : 'Bom dia, Dra. Camila';
     },
-    mobileTitle: 'Painel',
+    mobileTitle: 'Início',
     subtitle: 'Seu progresso esta semana está ótimo.',
+    // celular: a aba Início (resumo do dia); computador: o Painel de sempre
+    C: function C(p) {
+      return p.mobile ? /*#__PURE__*/React.createElement(InicioScreen, p) : /*#__PURE__*/React.createElement(PainelScreen, p);
+    }
+  },
+  indicadores: {
+    title: 'Indicadores',
+    mobileTitle: 'Indicadores',
     C: PainelScreen
   },
   pacientes: {
@@ -58,8 +66,453 @@ var ROUTES = {
   perfil: {
     title: 'Configurações',
     C: ConfigScreen
+  },
+  mais: {
+    title: 'Mais',
+    mobileTitle: 'Mais',
+    C: MaisScreen
   }
 };
+
+/* ---------- celular · aba Início (resumo do dia, busca, atalhos e atividade) ---------- */
+function InicioScreen(props) {
+  var onNavigate = props.onNavigate,
+    onNew = props.onNew;
+  var _b = React.useState(''),
+    busca = _b[0],
+    setBusca = _b[1];
+  var hoje = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : '';
+  var agenda = typeof APPT_STORE !== 'undefined' && APPT_STORE.v ? APPT_STORE.v.filter(function (a) {
+    return a.date === hoje && a.status !== 'cancelado';
+  }) : [];
+  var ordenada = agenda.slice().sort(function (a, b) {
+    return String(a.ini || a.h || '').localeCompare(String(b.ini || b.h || ''));
+  });
+  var proxima = ordenada[0];
+  var nomeProx = proxima ? proxima.pac || proxima.pacNome || 'Paciente' : '';
+  var horaProx = proxima ? proxima.ini && typeof BR !== 'undefined' ? BR.hm(proxima.ini) : String(proxima.h != null ? proxima.h : '') : '';
+  var nome = typeof rnPrimeiroNome === 'function' ? rnPrimeiroNome() : '';
+  var hora = new Date().getHours();
+  var saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  var atalho = function atalho(icone, rotulo, onClick) {
+    return /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: onClick,
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        minWidth: 72,
+        minHeight: 44,
+        border: 0,
+        background: 'transparent',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        color: 'var(--text-strong)',
+        fontSize: 13,
+        fontWeight: 500
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 52,
+        height: 52,
+        borderRadius: 18,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(255,255,255,.8)',
+        border: '1.5px solid rgba(255,255,255,.95)',
+        color: '#1F5EFF'
+      }
+    }, /*#__PURE__*/React.createElement(RIcon, {
+      name: icone,
+      size: 20
+    })), rotulo);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+      padding: '4px 0 96px'
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      fontSize: 15,
+      color: 'var(--text-muted)'
+    }
+  }, saud + (nome ? ', ' + nome : '') + '.'), /*#__PURE__*/React.createElement("form", {
+    onSubmit: function onSubmit(e) {
+      e.preventDefault();
+      onNavigate && onNavigate('pacientes');
+    },
+    role: "search"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "search",
+    value: busca,
+    placeholder: "Buscar paciente ou telefone",
+    "aria-label": "Buscar paciente ou telefone",
+    onChange: function onChange(e) {
+      return setBusca(e.target.value);
+    },
+    onFocus: function onFocus() {
+      return onNavigate && onNavigate('pacientes');
+    },
+    style: {
+      boxSizing: 'border-box',
+      width: '100%',
+      minHeight: 48,
+      padding: '0 16px',
+      borderRadius: 16,
+      border: '1.5px solid rgba(255,255,255,.95)',
+      background: 'rgba(255,255,255,.8)',
+      fontFamily: 'inherit',
+      fontSize: 16,
+      color: 'var(--text-strong)'
+    }
+  })), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      return onNavigate && onNavigate('agenda');
+    },
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+      padding: '16px 18px',
+      borderRadius: 22,
+      border: '1.5px solid rgba(255,255,255,.95)',
+      background: 'linear-gradient(160deg,#0A2A8F,#0B4BEB 55%,#7B4BC4 130%)',
+      color: '#fff',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      textAlign: 'left'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      opacity: .85
+    }
+  }, 'Hoje · ' + ordenada.length + (ordenada.length === 1 ? ' consulta' : ' consultas')), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22,
+      fontWeight: 700
+    }
+  }, proxima ? 'Próxima às ' + horaProx : 'Nenhuma consulta hoje'), proxima ? /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      opacity: .9
+    }
+  }, nomeProx + ' · tocar para ver a agenda') : /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      opacity: .9
+    }
+  }, 'Tocar para abrir a agenda')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      overflowX: 'auto',
+      paddingBottom: 2
+    }
+  }, atalho('calendar-plus', 'Agendar', function () {
+    return onNew && onNew();
+  }), atalho('banknote', 'Recebi', function () {
+    return onNavigate && onNavigate('gestao');
+  }), atalho('message-circle', 'Conversas', function () {
+    return onNavigate && onNavigate('mensagens');
+  }), atalho('package', 'Estoque', function () {
+    return onNavigate && onNavigate('gestao');
+  }), atalho('sparkles', 'Renata', function () {
+    RN_STORE.v = Object.assign({}, RN_STORE.v, {
+      open: true
+    });
+    avisar(RN_STORE);
+  })), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      return onNavigate && onNavigate('indicadores');
+    },
+    style: {
+      minHeight: 48,
+      borderRadius: 16,
+      border: '1.5px solid rgba(31,94,255,.25)',
+      background: 'transparent',
+      color: '#1F5EFF',
+      fontFamily: 'inherit',
+      fontSize: 15,
+      fontWeight: 600,
+      cursor: 'pointer'
+    }
+  }, 'Ver indicadores'));
+}
+/* ---------- celular · aba Mais (lista com ícone e seta, como o perfil do Payno) ---------- */
+var MOB_MAIS_ITENS = [{
+  id: 'pacientes',
+  label: 'Pacientes',
+  sub: 'Lista, ficha e prontuário',
+  icon: 'users'
+}, {
+  id: 'gestao',
+  label: 'Financeiro',
+  sub: 'Recebidos, pagamentos e a receber',
+  icon: 'wallet'
+}, {
+  id: 'gestao',
+  label: 'Estoque',
+  sub: 'Itens, alertas e entradas',
+  icon: 'package'
+}, {
+  id: 'perfil',
+  label: 'Configurações',
+  sub: 'Clínica, equipe, integrações e plano',
+  icon: 'settings'
+}];
+function MaisScreen(props) {
+  var onNavigate = props.onNavigate;
+  var linha = function linha(it, i) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: it.label,
+      type: "button",
+      onClick: function onClick() {
+        return onNavigate && onNavigate(it.id);
+      },
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        width: '100%',
+        minHeight: 64,
+        padding: '10px 14px',
+        border: 0,
+        borderTop: i ? '1px solid rgba(214,226,242,.7)' : 0,
+        background: 'transparent',
+        textAlign: 'left',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(31,94,255,.08)',
+        color: '#1F5EFF',
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement(RIcon, {
+      name: it.icon,
+      size: 19
+    })), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'block',
+        fontSize: 16,
+        fontWeight: 600,
+        color: 'var(--text-strong)'
+      }
+    }, it.label), /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'block',
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, it.sub)), /*#__PURE__*/React.createElement(RIcon, {
+      name: "chevron-right",
+      size: 18
+    }));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14,
+      padding: '4px 0 96px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderRadius: 20,
+      background: 'rgba(255,255,255,.7)',
+      border: '1.5px solid rgba(255,255,255,.95)',
+      overflow: 'hidden'
+    }
+  }, MOB_MAIS_ITENS.map(linha)), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      RN_STORE.v = Object.assign({}, RN_STORE.v, {
+        open: true
+      });
+      avisar(RN_STORE);
+    },
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 14,
+      width: '100%',
+      minHeight: 64,
+      padding: '10px 14px',
+      borderRadius: 20,
+      border: '1.5px solid rgba(255,255,255,.95)',
+      background: 'linear-gradient(160deg,#0A2A8F,#0B4BEB 60%,#7B4BC4 140%)',
+      color: '#fff',
+      cursor: 'pointer',
+      fontFamily: 'inherit',
+      textAlign: 'left'
+    }
+  }, /*#__PURE__*/React.createElement(RIcon, {
+    name: "sparkles",
+    size: 20
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 16,
+      fontWeight: 600
+    }
+  }, "Renata IA"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 13,
+      opacity: .85
+    }
+  }, "Pergunte ou fale: agenda, cadastro, cobran\u00e7as")), /*#__PURE__*/React.createElement(RIcon, {
+    name: "chevron-right",
+    size: 18
+  })));
+}
+// gaveta do botão "+" (celular): as ações do dia, cada uma leva à tela certa
+var MOB_ACOES = [{
+  id: 'agendar',
+  label: 'Agendar consulta',
+  sub: 'Escolha o paciente, o horário e o profissional',
+  icon: 'calendar-plus'
+}, {
+  id: 'recebi',
+  label: 'Recebi pagamento',
+  sub: 'Valor, forma e paciente',
+  icon: 'banknote'
+}, {
+  id: 'paguei',
+  label: 'Paguei conta',
+  sub: 'Fornecedor, valor e vencimento',
+  icon: 'receipt'
+}, {
+  id: 'usei',
+  label: 'Usei material',
+  sub: 'Dá baixa no estoque',
+  icon: 'package-minus'
+}];
+function AcaoSheet(props) {
+  return /*#__PURE__*/React.createElement("div", {
+    "data-overlay": "1",
+    onClick: props.onClose,
+    style: {
+      position: 'fixed',
+      inset: 0,
+      zIndex: 600,
+      background: 'rgba(10,20,40,.35)',
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    role: "dialog",
+    "aria-label": "Novo",
+    onClick: function onClick(e) {
+      return e.stopPropagation();
+    },
+    style: {
+      width: '100%',
+      maxWidth: 520,
+      boxSizing: 'border-box',
+      padding: '12px 16px calc(16px + env(safe-area-inset-bottom))',
+      borderRadius: '24px 24px 0 0',
+      background: '#fff',
+      boxShadow: '0 -20px 40px -24px rgba(23,73,170,.5)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 40,
+      height: 4,
+      borderRadius: 999,
+      background: 'rgba(120,130,150,.4)',
+      margin: '0 auto 12px'
+    }
+  }), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '0 0 10px',
+      fontSize: 17,
+      fontWeight: 600,
+      color: 'var(--text-strong)'
+    }
+  }, "O que voc\u00ea quer fazer?"), MOB_ACOES.map(function (a) {
+    return /*#__PURE__*/React.createElement("button", {
+      key: a.id,
+      type: "button",
+      onClick: function onClick() {
+        return props.onEscolher(a.id);
+      },
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        width: '100%',
+        minHeight: 64,
+        padding: '10px 6px',
+        border: 0,
+        borderTop: '1px solid rgba(214,226,242,.7)',
+        background: 'transparent',
+        textAlign: 'left',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(31,94,255,.08)',
+        color: '#1F5EFF',
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement(RIcon, {
+      name: a.icon,
+      size: 19
+    })), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'block',
+        fontSize: 16,
+        fontWeight: 600,
+        color: 'var(--text-strong)'
+      }
+    }, a.label), /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: 'block',
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, a.sub)));
+  })));
+}
 
 /* =====================================================================
    RENATA IA · base de conhecimento da clínica (dados de demonstração)
@@ -14406,6 +14859,41 @@ function App() {
   var route = can(route0) ? route0 : (permitidos[0] || {
     id: 'painel'
   }).id;
+  // celular: barra com 5 itens (Início, Agenda, + Novo, Conversas, Mais); o "+" abre a gaveta de ações
+  var _acaoSt = React.useState(false),
+    acaoAberta = _acaoSt[0],
+    setAcaoAberta = _acaoSt[1];
+  var MOB_NAV = [{
+    id: 'painel',
+    label: 'Início',
+    icon: 'house'
+  }, {
+    id: 'agenda',
+    label: 'Agenda',
+    icon: 'calendar-days'
+  }, {
+    id: 'acao',
+    label: 'Novo',
+    icon: 'plus'
+  }, {
+    id: 'mensagens',
+    label: 'Conversas',
+    icon: 'messages-square'
+  }, {
+    id: 'mais',
+    label: 'Mais',
+    icon: 'ellipsis'
+  }];
+  var mobNavItems = MOB_NAV.map(function (n) {
+    return n.id === 'acao' || n.id === 'mais' || can(n.id) ? n : _objectSpread(_objectSpread({}, n), {}, {
+      locked: true
+    });
+  });
+  var navSelecionar = function navSelecionar(id) {
+    if (id === 'acao') return setAcaoAberta(true);
+    return navegar(id);
+  };
+  var rotaMobAtiva = ['pacientes', 'gestao', 'perfil', 'mais'].indexOf(route) >= 0 ? 'mais' : route;
   var navegar = function navegar(id) {
     if (!can(id)) {
       setBloq(id);
@@ -14489,9 +14977,9 @@ function App() {
   var r = ROUTES[route];
   var Screen = r.C;
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(AppShell, {
-    items: navItems,
-    active: bloq || route,
-    onNavigate: navegar,
+    items: mobile ? mobNavItems : navItems,
+    active: bloq || (mobile ? rotaMobAtiva : route),
+    onNavigate: mobile ? navSelecionar : navegar,
     banner: /*#__PURE__*/React.createElement(AvisoSuporte, {
       mobile: mobile
     }),
@@ -14509,7 +14997,16 @@ function App() {
     onNew: function onNew() {
       return setNovo(true);
     }
-  })), /*#__PURE__*/React.createElement(XDialog, {
+  })), acaoAberta && mobile ? /*#__PURE__*/React.createElement(AcaoSheet, {
+    onClose: function onClose() {
+      return setAcaoAberta(false);
+    },
+    onEscolher: function onEscolher(id) {
+      setAcaoAberta(false);
+      if (id === 'agendar') return setNovo(true);
+      return navegar('gestao');
+    }
+  }) : null, /*#__PURE__*/React.createElement(XDialog, {
     open: novo,
     onClose: function onClose() {
       return setNovo(false);
