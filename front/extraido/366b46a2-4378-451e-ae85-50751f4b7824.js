@@ -826,6 +826,38 @@ function WaTicks(_ref4) {
     strokeLinejoin: "round"
   }));
 }
+/* botão da IA no cabeçalho da conversa: roxo = a IA responde aqui; cinza = pausada, só a equipe responde */
+var waIaBotao = function waIaBotao(c, onToggle) {
+  var ligada = c.ia !== false;
+  return /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    title: ligada ? 'A IA responde nesta conversa. Tocar para pausar' : 'IA pausada nesta conversa. Tocar para ligar',
+    "aria-label": ligada ? 'Pausar IA nesta conversa' : 'Ligar IA nesta conversa',
+    "aria-pressed": ligada,
+    onClick: function onClick() {
+      return onToggle(!ligada);
+    },
+    style: {
+      height: 32,
+      padding: '0 10px 0 8px',
+      borderRadius: 999,
+      border: '1.5px solid ' + (ligada ? 'rgba(167,139,250,.6)' : 'rgba(134,150,160,.45)'),
+      background: ligada ? 'rgba(167,139,250,.16)' : 'transparent',
+      color: ligada ? '#a78bfa' : WA.sub,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 5,
+      fontFamily: 'inherit',
+      fontSize: 12,
+      fontWeight: 700,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement(MIcon, {
+    name: ligada ? 'sparkles' : 'pause',
+    size: 15
+  }), ligada ? 'IA' : 'IA off');
+};
 var waIcon = function waIcon(name, label, onClick) {
   var size = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 22;
   return /*#__PURE__*/React.createElement("button", {
@@ -4232,7 +4264,18 @@ function MensagensWA(_ref10) {
       overflow: 'hidden',
       textOverflow: 'ellipsis'
     }
-  }, typingOf(cur) ? 'digitando...' : cur.r ? cur.r : mobile ? 'online · ver ficha' : 'online · clique para ver a ficha'))), mobile ? null : waIcon('search', 'Pesquisar na conversa', null, 20), waIcon('video', 'Chamada de vídeo', null, 21), waIcon('phone', 'Ligar', null, 20), waIcon('ellipsis-vertical', 'Mais opções', null, 20)), /*#__PURE__*/React.createElement(WaChat, {
+  }, typingOf(cur) ? 'digitando...' : cur.r ? cur.r : mobile ? 'online · ver ficha' : 'online · clique para ver a ficha'))), isTeam ? null : waIaBotao(cur, function (ligar) {
+    // a lista de conversas é republicada e a tela se redesenha sozinha (useStore(MSG_LISTA))
+    if (!SB_ON) {
+      cur.ia = ligar;
+      MSG_LISTA.v = MSG_LISTA.v + 1;
+      avisar(MSG_LISTA);
+      return;
+    }
+    MsgSvc.alternarIA(cur, ligar)["catch"](function (e) {
+      avisoErro('Não foi possível mudar a IA desta conversa', e);
+    });
+  }), mobile ? null : waIcon('search', 'Pesquisar na conversa', null, 20), waIcon('video', 'Chamada de vídeo', null, 21), waIcon('phone', 'Ligar', null, 20), waIcon('ellipsis-vertical', 'Mais opções', null, 20)), /*#__PURE__*/React.createElement(WaChat, {
     key: keyOf(cur),
     chatKey: keyOf(cur),
     seed: seedOf(cur),

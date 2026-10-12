@@ -767,6 +767,22 @@ var MsgSvc = {
       }, _callee3, null, [[1, 20]]);
     }))();
   },
+  // liga ou pausa a IA só nesta conversa (o lead ligado acompanha pelo gatilho do banco)
+  alternarIA: function alternarIA(c, ativa) {
+    if (!SB_ON || !ehUuid(c.id)) return Promise.reject(new Error('Disponível só com o sistema conectado.'));
+    return DB.upd('conversas', c.id, {
+      ia_ativa: ativa,
+      ia_pausada_em: ativa ? null : agoraIso(),
+      ia_pausada_por: ativa ? null : UID()
+    }, 'Não foi possível mudar a IA desta conversa').then(function () {
+      if (MSG_CONV[c.id]) MSG_CONV[c.id].ia_ativa = ativa;
+      c.ia = ativa;
+      publicarInbox(Object.keys(MSG_CONV).map(function (k) {
+        return convTela(MSG_CONV[k]);
+      }));
+      return ativa;
+    });
+  },
   // figurinha recebida pelo WhatsApp vira figurinha da clínica, para reenviar depois
   salvarFigurinha: function salvarFigurinha(m) {
     if (!SB_ON || !ehUuid(m.id)) return Promise.reject(new Error('Disponível só com o WhatsApp conectado.'));
