@@ -105,6 +105,7 @@ var estTela = function estTela() {
     mostrarValor: g.ia_mostrar_valor !== false,
     agendaDireto: g.ia_agenda_procedimento_direto !== false,
     primeiraVez: g.ia_primeira_vez_avaliacao !== false,
+    consultaAgendamentos: g.ia_consulta_agendamentos !== false,
     avaliacao: g.ia_procedimento_avaliacao_id || ''
   };
 };
@@ -204,6 +205,7 @@ var ClinSvc = {
               ia_mostrar_valor: est.mostrarValor !== false,
               ia_agenda_procedimento_direto: est.agendaDireto !== false,
               ia_primeira_vez_avaliacao: est.primeiraVez !== false,
+              ia_consulta_agendamentos: est.consultaAgendamentos !== false,
               ia_procedimento_avaliacao_id: est.agendaDireto === false ? (est.avaliacao || null) : null,
               parcelas_maximas_credito: parseInt(parc, 10) || 1
             };
