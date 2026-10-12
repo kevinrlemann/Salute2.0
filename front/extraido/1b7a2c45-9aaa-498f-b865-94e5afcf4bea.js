@@ -1088,7 +1088,7 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   '5. Se não entender, diga o que entendeu e pergunte só o que ficou em dúvida. Nunca invente dado, número, nome ou horário.',
   '5b. Cumprimentos ("bom dia", "boa tarde", "boa noite", "oi", "olá") são só cumprimentos: nunca viram data, dia da semana, nome ou resposta a uma pergunta. Responda o cumprimento e retome o assunto se houver um.',
   '5c. Por voz, nomes e palavras podem chegar escritos errado (Giulya pode vir como Júlia ou Julio; "bom dia" parecido com "domingo"). Se algo não fizer sentido no contexto, diga o que entendeu e confirme. Quando a ferramenta avisar dúvida ou nomes parecidos, pergunte qual é; nunca escolha sozinha.',
-  '5d. NA DÚVIDA, NÃO EXECUTE. Só chame propor_* quando cada dado foi dito pela pessoa e você tem certeza do que entendeu. Se deduziu algo (nome, data, horário, valor), confirme esse dado antes.',
+  '5d. Só chame propor_* quando cada dado foi dito pela pessoa. Se deduziu algo (nome parecido, data, horário, valor), confirme SÓ esse dado, uma vez. NUNCA pergunte "posso preparar?", "posso continuar?" ou "confirmo?" antes de chamar a propor_*: a própria propor_* mostra o cartão com a pergunta de confirmação. Nunca repita uma pergunta que a pessoa já respondeu: use a resposta e siga.',
   '',
   'DADOS E RESPOSTAS',
   '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas); nunca cite outra clínica. O JSON traz só uma amostra de pacientes: para achar alguém, chame buscar_paciente. Responda direto, sem explicar o raciocínio nem pedir desculpas. Você pode consultar tudo que a pessoa tem acesso: agenda de qualquer período (agenda_periodo), pacientes e prontuário, financeiro, estoque, CRM (crm_leads) e preços (procedimentos_precos). Antes de dizer que não sabe, consulte a ferramenta certa. Calcule a partir dos dados.',
@@ -1101,7 +1101,9 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   '11. UMA PERGUNTA POR VEZ. Se faltar informação, pergunte só o próximo dado, em uma frase curta, e espere a resposta. Nunca junte duas perguntas na mesma frase. Não repita o que a pessoa já disse.',
   '12. Ordem das perguntas. Receita: valor, paciente, procedimento, profissional, forma de pagamento, se já recebeu ou vai receber, data. Despesa: valor, descrição, categoria, fornecedor, forma de pagamento, se já pagou ou vai pagar, data. Estoque: entrada ou baixa, produto, quantidade, e na entrada valor total, fornecedor e forma; na baixa o motivo. Agendamento: paciente, procedimento, profissional, dia, horário.',
   '13. Nunca suponha valor, data, forma, profissional, categoria, fornecedor ou motivo. "Hoje" só se a pessoa disser.',
-  '14. Com tudo em mãos, chame a propor_* e faça UMA pergunta de confirmação resumindo o essencial. Ex.: "Lanço R$ 300,00 recebidos da Mariana no Pix hoje?"',
+  '13b. Telefone: os dois primeiros dígitos ditos são o DDD ("19 99493-0755" = (19) 99493-0755). Nunca troque nem invente o DDD; se vier sem DDD, pergunte.',
+  '14. Com tudo em mãos, chame a propor_* NA HORA e faça UMA pergunta de confirmação resumindo o essencial. Ex.: "Lanço R$ 300,00 recebidos da Mariana no Pix hoje?". Depois do sim, não pergunte de novo.',
+  '14b. Pedido com duas ações (ex.: cadastrar e agendar, cadastrar e enviar anamnese): com o WhatsApp em mãos, chame propor_agendamento passando o campo whatsapp, que cadastra e agenda num cartão só. Se uma parte já foi feita, vá direto para a próxima sem perguntar o que a pessoa já pediu.',
   '15. Agendamentos só em hora cheia ou meia hora. Sem horário ou com conflito, consulte horarios_livres e ofereça até 3 opções.',
   '16. Se uma ferramenta devolver erro ou pedir dado, explique em uma frase e pergunte apenas o primeiro dado que falta.',
   '17. Mapeamento aberto: ajustar_ponto_mapa muda quantidade, unidade, produto ou comentário de um ponto pelo número, sem confirmação.',
@@ -2272,6 +2274,52 @@ function rnStopSpeak() {
   try {
     if (RN_PLAYER && !RN_PLAYER.paused) RN_PLAYER.pause();
   } catch (e) {}
+}
+// fala a primeira frase assim que ela chega no streaming, sem esperar o texto inteiro;
+// o resto é falado em seguida, quando o texto completo termina de chegar
+var RN_ABREV = /\b(dra|dr|sra|sr|srta|prof|av|r|n|tel|obs|ex)\.$/i;
+function rnFalaCedo(aoComecar) {
+  var primeira = '',
+    terminouPrimeira = false,
+    resto = null,
+    depois = null;
+  var seguir = function seguir() {
+    if (!terminouPrimeira || resto === null) return;
+    var r = resto;
+    resto = null;
+    if (r.trim()) rnSpeak(r, depois);else depois && depois();
+  };
+  return {
+    comecou: function comecou() {
+      return !!primeira;
+    },
+    texto: function texto(t) {
+      if (primeira) return;
+      t = String(t || '');
+      if (/(^|\n)\s*(?:[-•*]|\d+[.)])\s/.test(t)) return; // lista: espera o texto todo
+      var re = /[.!?](?=\s)/g,
+        m;
+      while (m = re.exec(t)) {
+        var cand = t.slice(0, m.index + 1);
+        if (cand.length < 20 || RN_ABREV.test(cand) || /\d$/.test(cand.slice(0, -1)) && /^\d/.test(t.slice(m.index + 2))) continue;
+        primeira = cand;
+        break;
+      }
+      if (!primeira) return;
+      aoComecar && aoComecar();
+      rnSpeak(primeira, function () {
+        terminouPrimeira = true;
+        seguir();
+      });
+    },
+    fim: function fim(completo, cb) {
+      depois = cb;
+      completo = String(completo || '');
+      if (!primeira) return rnSpeak(rnVoice(completo).now, cb);
+      resto = completo.indexOf(primeira) === 0 ? completo.slice(primeira.length) : completo;
+      seguir();
+    }
+  };
 }
 function rnSpeak(_x, _x2) {
   return _rnSpeak.apply(this, arguments);
@@ -8512,7 +8560,7 @@ function RenataVoiceMode(_ref16) {
   };
   var handle = /*#__PURE__*/function () {
     var _ref17 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4(q) {
-      var _v, ans, v;
+      var _v, ans, v, cedo;
       return _regenerator().w(function (_context4) {
         while (1) switch (_context4.n) {
           case 0:
@@ -8530,10 +8578,15 @@ function RenataVoiceMode(_ref16) {
             R.rest = null;
             setState('thinking');
             setSaid('');
+            window.__rnCedo = rnFalaCedo(function () {
+              if (R.alive && !R.err) setState('speaking');
+            });
             _context4.n = 2;
             return ask(q, true);
           case 2:
             ans = _context4.v;
+            cedo = window.__rnCedo;
+            window.__rnCedo = null;
             if (!(!R.alive || R.err)) {
               _context4.n = 3;
               break;
@@ -8549,7 +8602,7 @@ function RenataVoiceMode(_ref16) {
           case 4:
             v = rnVoice(ans);
             R.rest = v.rest ? v : null;
-            speak(v.now, v.nowShow);
+            if (cedo && cedo.comecou()) speak(ans, v.nowShow, cedo);else speak(v.now, v.nowShow);
           case 5:
             return _context4.a(2);
         }
@@ -8559,16 +8612,17 @@ function RenataVoiceMode(_ref16) {
       return _ref17.apply(this, arguments);
     };
   }();
-  var speak = function speak(text, show) {
+  var speak = function speak(text, show, cedo) {
     var tok = ++R.tok;
     setSaid(show || text);
     setState('speaking');
-    rnSpeak(text, function () {
+    var fim = function fim() {
       if (R.tok !== tok || !R.alive) return;
       stopBarge();
       setHeard('');
       setTimeout(listen, 120);
-    });
+    };
+    if (cedo) cedo.fim(text, fim);else rnSpeak(text, fim);
     if (RN_BARGE && !R.muted) setTimeout(function () {
       if (R.tok === tok && R.alive) startBarge(tok, text);
     }, 350);
@@ -9590,6 +9644,7 @@ function RenataChat(_ref22) {
               signal: ctl.signal,
               onText: function onText(t) {
                 setBusy(null);
+                if (isVoice && window.__rnCedo) window.__rnCedo.texto(t);
                 upd(t);
               },
               onTool: function onTool(lbl) {
@@ -11079,12 +11134,17 @@ RENATA_TOOLS.push({
   }()
 }, {
   name: 'propor_agendamento',
-  description: 'Prepara, SEM gravar, um agendamento para a pessoa confirmar. Confere conflito de horário e o funcionamento da clínica. Se o paciente não existir, ofereça cadastrar antes.',
+  description: 'Prepara, SEM gravar, um agendamento para a pessoa confirmar. Confere conflito de horário e o funcionamento da clínica. Se o paciente não existir, peça o WhatsApp e chame de novo com o campo whatsapp: cadastra e agenda num cartão só.',
   inputSchema: {
     type: 'object',
     properties: {
       paciente: {
-        type: 'string'
+        type: 'string',
+        description: 'Nome completo do paciente'
+      },
+      whatsapp: {
+        type: 'string',
+        description: 'Só para paciente ainda não cadastrado: WhatsApp com DDD. Cadastra e agenda de uma vez.'
       },
       data: {
         type: 'string',
@@ -11317,8 +11377,105 @@ RENATA_TOOLS.push({
         }
       }, _callee10);
     }));
-    function execute(_x23) {
+    function agendarExistente(_x23) {
       return _execute2.apply(this, arguments);
+    }
+    // paciente ainda não cadastrado: com o WhatsApp em mãos, o cartão cadastra e agenda de uma vez
+    function execute(i) {
+      var rp = rnAcharPaciente(i.paciente);
+      if (!rp.erro || !i.whatsapp) return agendarExistente(i);
+      if (!rnPode('pacientes')) return Promise.resolve(rnSemAcesso('pacientes'));
+      var nome = String(i.paciente || '').trim().replace(/\s+/g, ' ').split(' ').map(function (w) {
+        return /^(da|de|do|das|dos|e)$/i.test(w) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      }).join(' ');
+      if (nome.split(' ').length < 2) return Promise.resolve({
+        erro: 'Qual é o nome completo do paciente?'
+      });
+      var tel = BR.tel(i.whatsapp);
+      if (!tel) return Promise.resolve({
+        erro: 'Qual é o WhatsApp com DDD?'
+      });
+      var dup = PAC.find(function (p) {
+        return BR.tel(p.tel) === tel;
+      });
+      if (dup) return Promise.resolve({
+        erro: 'Esse WhatsApp já é do paciente ' + dup.nome + ' nesta clínica. Pergunte se é a mesma pessoa ou peça outro número.'
+      });
+      var d = {
+        nome: nome,
+        tel: BR.telTela(tel),
+        cpf: '',
+        nasc: '',
+        sexo: '',
+        email: '',
+        tipo: 'Particular',
+        conv: '',
+        empresa: ''
+      };
+      // entra na lista só enquanto o cartão é montado; some se der erro
+      var stub = {
+        nome: nome,
+        tel: d.tel,
+        dbId: null,
+        conv: 'Sem convênio',
+        tipo: 'Particular'
+      };
+      var tirar = function tirar() {
+        var k = PAC.indexOf(stub);
+        if (k >= 0) PAC.splice(k, 1);
+      };
+      PAC.push(stub);
+      return Promise.resolve(agendarExistente(i)).then(function (card) {
+        var a = RN_PENDING.v;
+        if (!card || card.erro || !a || a.registro !== 'agendamento') {
+          tirar();
+          return card;
+        }
+        a.titulo = 'CADASTRO E AGENDAMENTO';
+        a.rows = [{
+          icon: 'user-plus',
+          c: '#2DBF6A',
+          t: 'Cadastrar · ' + nome,
+          s: d.tel,
+          v: 'Particular'
+        }].concat(a.rows);
+        a.resumo = 'Cadastrar **' + nome + '** (' + d.tel + ') e ' + String(a.resumo || '').replace(/^Agendar \*\*[^*]+\*\* para/, 'agendar para').replace(/^Agendar/, 'agendar');
+        a.dados = _objectSpread(_objectSpread({}, a.dados), {}, {
+          whatsapp: d.tel,
+          paciente_novo: true
+        });
+        var run0 = a.run;
+        a.run = function () {
+          tirar();
+          if (!SB_ON) {
+            PAC_STORE.v = [].concat(_toConsumableArray(PAC_STORE.v), [_objectSpread(_objectSpread({}, d), {}, {
+              conv: 'Sem convênio'
+            })]);
+            avisar(PAC_STORE);
+            return run0();
+          }
+          return PacSvc.criar(d, 'renata_ia').then(function (np) {
+            stub.dbId = np.dbId;
+            if (np.nome) stub.nome = np.nome;
+            return run0();
+          }).then(function (r) {
+            r = r || {};
+            r.texto = 'Pronto! Cadastrei ' + nome + ' e ' + String(r.texto || '').replace(/^Pronto! /, '').replace(/^Agendei/, 'agendei');
+            r.gerados = [{
+              tabela: 'pacientes',
+              id: stub.dbId
+            }].concat(r.gerados || []);
+            return r;
+          });
+        };
+        rnSetPending(a);
+        return _objectSpread(_objectSpread({}, card), {}, {
+          resumo: rnPlain(a.resumo)
+        });
+      }, function (e) {
+        tirar();
+        throw e;
+      });
     }
     return execute;
   }()
@@ -11739,7 +11896,7 @@ RENATA_TOOLS.push({
           case 2:
             np = _context15.v;
             return _context15.a(2, {
-              texto: 'Pronto! Cadastrei ' + nome + '. Quer que eu já agende ou envie a anamnese?',
+              texto: 'Pronto! Cadastrei ' + nome + '.',
               gerados: [{
                 tabela: 'pacientes',
                 id: np.dbId
@@ -13516,7 +13673,7 @@ function vozProcessar(_x29) {
 }
 function _vozProcessar() {
   _vozProcessar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee41(q) {
-    var local, r, hist, ctl, id, pend, depois, _t34;
+    var local, r, hist, ctl, id, pend, depois, cedo, _t34;
     return _regenerator().w(function (_context42) {
       while (1) switch (_context42.p = _context42.n) {
         case 0:
@@ -13526,6 +13683,11 @@ function _vozProcessar() {
             resposta: '',
             rotulo: null
           });
+          cedo = vozFalaLigada() ? rnFalaCedo(function () {
+            if (VOZ.v.aberto && VOZ.v.estado === 'pensando') vozSet({
+              estado: 'falando'
+            });
+          }) : null;
           local = rnComandoLocal(q);
           if (!local) {
             _context42.n = 1;
@@ -13552,6 +13714,7 @@ function _vozProcessar() {
             voice: true,
             signal: ctl.signal,
             onText: function onText(t) {
+              if (cedo) cedo.texto(t);
               return vozSet({
                 resposta: t,
                 rotulo: null
@@ -13623,7 +13786,7 @@ function _vozProcessar() {
               vozAutoFechar();
             }
           };
-          if (vozFalaLigada() && r.text) rnSpeak(rnVoice(r.text).now, depois);else depois();
+          if (cedo && r.text) cedo.fim(r.text, depois);else if (vozFalaLigada() && r.text) rnSpeak(rnVoice(r.text).now, depois);else depois();
         case 8:
           return _context42.a(2);
       }
