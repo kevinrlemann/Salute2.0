@@ -10386,6 +10386,8 @@ function RnActionCard(_ref21) {
 }
 function RenataChat(_ref22) {
   var mobile = _ref22.mobile;
+  // a Renata busca pacientes e o contexto na lista deles: carrega ao abrir (antes ela só via quem já tivesse aberto a tela)
+  React.useEffect(function () { if (SB_ON) carregar('pacientes'); }, [CLI()]);
   var _useStore9 = useStore(RN_STORE),
     _useStore0 = _slicedToArray(_useStore9, 2),
     st = _useStore0[0],
