@@ -15,6 +15,7 @@
 // O envio das respostas continua com o n8n (n8n_envio_preflight monta o pedido para cada provedor).
 // =====================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { Image } from 'https://deno.land/x/imagescript@1.3.0/mod.ts';
 import { lerContatos, lerEstado, lerEventos, lerFotoUrl, lerQr, nomeArquivo, pedidoContatos, pedidoDesconectar, pedidoEstado, pedidoFoto, pedidoMidia, pedidosConectar, provedorDe, type Evento, type Inst, type Pedido } from './provedores.ts';
 
 const CORS = {
@@ -116,34 +117,76 @@ async function levarFotoAoPaciente(clinicaId: unknown, conversaId: string, fotoP
   }
 }
 
-// foto de perfil do contato: se a conversa ainda não tem, pede ao provedor e guarda no bucket "mensagens"
-async function guardarFoto(inst: Record<string, unknown>, conversaId: string, telefone: string): Promise<boolean> {
+// foto de perfil do contato (200 x 200, bucket privado "mensagens"). Busca quando a conversa não tem foto ou
+// quando o banco pediu (foto_buscar: mais de 7 dias e não trocada pela clínica). Até 3 tentativas com intervalo
+// crescente; falha final fica em silêncio (só no registro da entrada). Responde ao provedor antes: roda em waitUntil.
+const FOTO_LADO = 200;
+async function reduzirFoto(bytes: Uint8Array): Promise<{ bytes: Uint8Array; mime: string }> {
   try {
-    const { data: cv } = await adm.from('conversas').select('foto_contato_path').eq('id', conversaId).maybeSingle();
-    if (cv?.foto_contato_path) { await levarFotoAoPaciente(inst.clinica_id, conversaId, cv.foto_contato_path); return true; }
+    const img = await Image.decode(bytes);
+    const lado = Math.min(img.width, img.height);
+    const recorte = img.crop(Math.floor((img.width - lado) / 2), Math.floor((img.height - lado) / 2), lado, lado);
+    const menor = recorte.resize(FOTO_LADO, FOTO_LADO);
+    return { bytes: await menor.encodeJPEG(82), mime: 'image/jpeg' };
+  } catch {
+    return { bytes, mime: 'image/jpeg' }; // formato que a biblioteca não lê: guarda a original
+  }
+}
+async function registrarFoto(entradaId: string | undefined, resultado: string) {
+  if (!entradaId) return;
+  try {
+    const { data } = await adm.from('entrada_webhook').select('payload_redigido').eq('id', entradaId).maybeSingle();
+    const cap = { ...((data?.payload_redigido as Record<string, unknown> | null)?.capturado as Record<string, unknown> || {}), foto: resultado };
+    await adm.from('entrada_webhook').update({ payload_redigido: { ...(data?.payload_redigido as Record<string, unknown> || {}), capturado: cap } }).eq('id', entradaId);
+  } catch { /* registro é melhor esforço */ }
+}
+async function guardarFoto(inst: Record<string, unknown>, conversaId: string, telefone: string, forcar = false, entradaId?: string): Promise<boolean> {
+  try {
+    const { data: cv } = await adm.from('conversas').select('foto_contato_path, foto_editada_manualmente').eq('id', conversaId).maybeSingle();
+    if (cv?.foto_editada_manualmente) { await registrarFoto(entradaId, 'mantida_pela_clinica'); return !!cv.foto_contato_path; }
+    if (cv?.foto_contato_path && !forcar) { await levarFotoAoPaciente(inst.clinica_id, conversaId, cv.foto_contato_path); return true; }
     const prov = provedorDe(inst.provedor_nao_oficial as string);
     if (prov !== 'evolution' || !inst.api_url || !inst.nome_instancia) return false;
     const { data: seg } = await adm.rpc('ler_segredo', { p_clinica: inst.clinica_id, p_provedor: 'whatsapp_nao_oficial' });
     if (!seg) return false;
     const ped = pedidoFoto(prov, { api_url: String(inst.api_url), nome_instancia: String(inst.nome_instancia) }, String(seg), telefone);
     if (!ped) return false;
-    const info = await chamar(ped);
-    const url = info.ok ? lerFotoUrl(info.dados) : null;
-    if (!url) return false; // sem foto pública ou privacidade do contato: fica sem foto
-    const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!r.ok) return false;
-    const bytes = new Uint8Array(await r.arrayBuffer());
-    if (!bytes.length || bytes.length > 2_000_000) return false;
-    const mime = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
-    if (!mime.startsWith('image/')) return false;
+    const agora = new Date().toISOString();
+    let bytes: Uint8Array | null = null; let semFoto = false;
+    for (const espera of [0, 2_000, 6_000]) {
+      if (espera) await new Promise((r) => setTimeout(r, espera));
+      const info = await chamar(ped);
+      if (info.ok && !lerFotoUrl(info.dados)) { semFoto = true; break; } // sem foto pública ou privacidade do contato
+      const url = info.ok ? lerFotoUrl(info.dados) : null;
+      if (!url) continue;
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+        if (!r.ok) continue;
+        const mime = (r.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
+        const b = new Uint8Array(await r.arrayBuffer());
+        if (b.length && b.length <= 2_000_000 && mime.startsWith('image/')) { bytes = b; break; }
+      } catch { /* tenta de novo */ }
+    }
+    if (semFoto) {
+      // marca a data para não perguntar de novo por 7 dias; a tela mostra o avatar padrão
+      await adm.from('conversas').update({ foto_contato_atualizada_em: agora }).eq('id', conversaId);
+      await registrarFoto(entradaId, 'sem_foto');
+      return !!cv?.foto_contato_path;
+    }
+    if (!bytes) { await registrarFoto(entradaId, 'falhou'); return !!cv?.foto_contato_path; }
+    const red = await reduzirFoto(bytes);
     const path = `${inst.clinica_id}/contatos/${conversaId}.jpg`;
-    const up = await adm.storage.from('mensagens').upload(path, bytes, { contentType: mime, upsert: true });
-    if (up.error) { console.warn('[whatsapp] foto não guardada'); return false; }
-    await adm.from('conversas').update({ foto_contato_path: path }).eq('id', conversaId);
+    const up = await adm.storage.from('mensagens').upload(path, red.bytes, { contentType: red.mime, upsert: true });
+    if (up.error) { console.warn('[whatsapp] foto não guardada'); await registrarFoto(entradaId, 'falhou_storage'); return false; }
+    // o caminho é o mesmo de antes: a tela recebe a conversa pelo tempo real e assina a URL de novo
+    await adm.from('conversas').update({ foto_contato_path: path, foto_contato_atualizada_em: agora }).eq('id', conversaId);
     await levarFotoAoPaciente(inst.clinica_id, conversaId, path);
+    await registrarFoto(entradaId, 'ok');
+    console.log('[whatsapp] foto guardada', conversaId.slice(0, 8), red.bytes.length, 'bytes');
     return true;
   } catch (e) {
     console.warn('[whatsapp] foto', (e as Error).name);
+    await registrarFoto(entradaId, 'erro');
     return false;
   }
 }
@@ -240,7 +283,7 @@ async function tratarEdicao(inst: Record<string, unknown>, ev: Evento): Promise<
 async function aplicarNomeAgenda(clinicaId: unknown, conversa: { id: string; nome_contato: string | null; lead_id: string | null }, nome: string) {
   if (!nome || conversa.nome_contato === nome) return false;
   const antigo = conversa.nome_contato;
-  await adm.from('conversas').update({ nome_contato: nome }).eq('id', conversa.id);
+  await adm.from('conversas').update({ nome_contato: nome, nome_editado_manualmente: true }).eq('id', conversa.id);
   if (conversa.lead_id) {
     // o lead só muda se ainda estiver com o nome automático (telefone, "Contato ..." ou o nome do WhatsApp)
     const { data: lead } = await adm.from('leads').select('id, nome, telefone').eq('id', conversa.lead_id).maybeSingle();
@@ -347,7 +390,7 @@ async function webhook(req: Request, id: string, token: string) {
     const { midia, anuncio, campos_contexto, alvo: _alvo, ...evento } = ev;
     const { data, error } = await adm.rpc('n8n_ingerir_evento', { p_provedor: prov, p_instancia_ref: inst.id, p_evento: evento, p_token: token });
     if (error) { console.warn('[whatsapp] ingestão falhou', error.code); continue; }
-    const res = (data || {}) as { ok?: boolean; mensagem_id?: string; conversa_id?: string };
+    const res = (data || {}) as { ok?: boolean; mensagem_id?: string; conversa_id?: string; entrada_id?: string; foto_buscar?: boolean };
     if (res.ok) gravados++;
     if (res.ok && midia && res.mensagem_id && res.conversa_id) midias.push(guardarMidia(inst, prov, ev, res.mensagem_id, res.conversa_id));
     // veio de um anúncio (click-to-WhatsApp): guarda os dados do anúncio na conversa e ajusta a origem do lead
@@ -356,7 +399,7 @@ async function webhook(req: Request, id: string, token: string) {
     if (res.ok && campos_contexto && res.conversa_id && !ev.de_mim) midias.push(guardarDiagnostico(res.conversa_id, campos_contexto));
     // contato que escreveu: busca a foto de perfil (uma vez por conversa) e o nome salvo na agenda do aparelho
     if (res.ok && res.conversa_id && ev.tipo === 'mensagem' && !ev.de_mim && ev.telefone) {
-      midias.push(guardarFoto(inst, res.conversa_id, ev.telefone).then(() => undefined));
+      if (res.foto_buscar !== false) midias.push(guardarFoto(inst, res.conversa_id, ev.telefone, res.foto_buscar === true, res.entrada_id).then(() => undefined));
       midias.push(guardarNomeAgenda(inst, res.conversa_id, ev.telefone, ev.nome));
     }
   }
