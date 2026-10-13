@@ -136,6 +136,24 @@ function InicioScreen(props) {
       size: 20
     })), rotulo);
   };
+  // botão de linha inteira (Financeiro, Estoque e Ver indicadores), todos com a mesma borda, altura e fonte
+  var botaoLinha = function botaoLinha(rotulo, onClick) {
+    return /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: onClick,
+      style: {
+        minHeight: 48,
+        borderRadius: 16,
+        border: '1.5px solid rgba(31,94,255,.25)',
+        background: 'transparent',
+        color: '#1F5EFF',
+        fontFamily: 'inherit',
+        fontSize: 15,
+        fontWeight: 600,
+        cursor: 'pointer'
+      }
+    }, rotulo);
+  };
   return /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -239,23 +257,22 @@ function InicioScreen(props) {
       open: true
     });
     avisar(RN_STORE);
-  })), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    onClick: function onClick() {
-      return onNavigate && onNavigate('indicadores');
-    },
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
-      minHeight: 48,
-      borderRadius: 16,
-      border: '1.5px solid rgba(31,94,255,.25)',
-      background: 'transparent',
-      color: '#1F5EFF',
-      fontFamily: 'inherit',
-      fontSize: 15,
-      fontWeight: 600,
-      cursor: 'pointer'
+      display: 'grid',
+      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      gap: 10
     }
-  }, 'Ver indicadores'));
+  }, botaoLinha('Financeiro', function () {
+    // mesmo caminho do item Financeiro da aba Mais
+    window.__gestaoAreaPedida = 'financeiro';
+    return onNavigate && onNavigate('gestao');
+  }), botaoLinha('Estoque', function () {
+    window.__gestaoAreaPedida = 'estoque';
+    return onNavigate && onNavigate('gestao');
+  })), botaoLinha('Ver indicadores', function () {
+    return onNavigate && onNavigate('indicadores');
+  }));
 }
 /* ---------- celular · aba Mais (lista com ícone e seta, como o perfil do Payno) ---------- */
 var MOB_MAIS_ITENS = [{
