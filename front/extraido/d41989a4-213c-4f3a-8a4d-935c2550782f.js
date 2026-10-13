@@ -607,7 +607,9 @@ function useAccess() {
   return {
     member: m,
     can: function can(id) {
-      return (!meus || meus.includes(id)) && (!m || m.dono || m.acc.includes(id));
+      // telas do celular que vivem dentro de um módulo: a permissão é a do módulo (Indicadores = Painel)
+      var mod = {indicadores: 'painel'}[id] || id;
+      return (!meus || meus.includes(mod)) && (!m || m.dono || m.acc.includes(mod));
     }
   };
 }

@@ -15208,6 +15208,8 @@ function zerarDemonstracao(){
   if (typeof PROF_STORE !== 'undefined') zera(PROF_STORE, []);
   if (typeof APPT_STORE !== 'undefined') zera(APPT_STORE, []);
   if (typeof PROS !== 'undefined') PROS.length = 0;
+  // o catálogo real pode já ter chegado antes desta limpeza: refaz as listas da agenda a partir dele
+  if (typeof hidratarCatalogos === 'function') { try { hidratarCatalogos(); } catch (e) {} }
   if (typeof EQUIPE !== 'undefined') EQUIPE.length = 0;
   if (typeof INBOX !== 'undefined') INBOX.length = 0;
   if (typeof RN_CLINICA !== 'undefined') Object.keys(RN_CLINICA).forEach(function (k) { if (typeof RN_CLINICA[k] === 'string') RN_CLINICA[k] = ''; });

@@ -1651,6 +1651,8 @@ function mesGrade(ref) {
     bold: bold
   };
 }
+// quando o catálogo da clínica muda (ou carrega), as listas da agenda acompanham; a ordem das cargas deixa de importar
+if (SB_ON && CAT && CAT.subs) { var _assinarCat = function () { hidratarCatalogos(); }; if (typeof CAT.subs.add === 'function') CAT.subs.add(_assinarCat); else CAT.subs.push(_assinarCat); }
 Object.assign(window, {
   substituir: substituir,
   substituirObj: substituirObj,
