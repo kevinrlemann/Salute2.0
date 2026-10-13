@@ -1393,6 +1393,8 @@ CARGAS.agenda = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(fun
         rows = _context20.v;
         APPT_STORE.v = rows.map(agTela);
         avisar(APPT_STORE);
+        AG_JANELA.em = Date.now();
+        if (!AG_JANELA.volta && typeof aoVoltarVisivel === 'function') AG_JANELA.volta = aoVoltarVisivel(function () { agendaAtualizar('voltou'); });
         tempoReal('agenda', ['agendamentos'], /*#__PURE__*/function () {
           var _ref8 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee19(t, ev) {
             var id, r, resto;
@@ -1431,6 +1433,32 @@ CARGAS.agenda = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(fun
     }
   }, _callee20);
 }));
+// busca de novo toda a janela carregada (sem laço): ao abrir a Agenda ou o Início depois de 30 s e ao voltar
+// do segundo plano. Garante que uma consulta marcada pela IA apareça mesmo se o tempo real tiver caído.
+var AG_ATUALIZANDO = null;
+function agendaAtualizar(motivo, forcar) {
+  if (!SB_ON || !AG_JANELA.de || CARGA.v.agenda !== 'ok') return Promise.resolve();
+  if (!forcar && AG_JANELA.em && Date.now() - AG_JANELA.em < 30000) return Promise.resolve();
+  if (AG_ATUALIZANDO) return AG_ATUALIZANDO;
+  AG_JANELA.em = Date.now();
+  var de = AG_JANELA.de, ate = AG_JANELA.ate;
+  AG_ATUALIZANDO = DB.tudo(function () {
+    return DB.sel('agendamentos', AG_SELECT).gte('inicio', de.toISOString()).lt('inicio', ate.toISOString()).order('inicio').order('id');
+  }).then(function (rows) {
+    var fora = APPT_STORE.v.filter(function (a) {
+      var t = a.ini ? new Date(a.ini) : null;
+      return t && (t < de || t >= ate);
+    });
+    APPT_STORE.v = fora.concat(rows.map(agTela));
+    avisar(APPT_STORE);
+  })["catch"](function (e) {
+    console.warn('[agenda] não atualizou', motivo, e);
+  }).then(function () {
+    AG_ATUALIZANDO = null;
+  });
+  return AG_ATUALIZANDO;
+}
+window.agendaAtualizar = agendaAtualizar;
 // mês fora da janela carregada: busca e junta
 function agendaGarantirMes(_x6) {
   return _agendaGarantirMes.apply(this, arguments);
@@ -1492,7 +1520,9 @@ function agendaDoDia(d) {
       id: a.id,
       hi: BR.hm(a.ini),
       hf: BR.hm(a.fim),
-      proc: a.proc
+      proc: a.proc,
+      origem: a.origem,
+      status: a.status
     };
   }).filter(function (s) {
     return s.col >= 0;

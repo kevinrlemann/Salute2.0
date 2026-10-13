@@ -4533,7 +4533,7 @@ function MensagensWA(_ref10) {
       }
     })), fichaEl);
   }
-  if (SB_ON && carga !== 'ok') return /*#__PURE__*/React.createElement(CargaEstado, {
+  if (SB_ON && carga !== 'ok' && !(INBOX.length && carga === 'carregando')) return /*#__PURE__*/React.createElement(CargaEstado, {
     estado: carga,
     onRetry: function onRetry() {
       return carregar('mensagens', true);

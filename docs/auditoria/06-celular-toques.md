@@ -87,6 +87,10 @@ mexe no computador. Anotado para outra rodada (ver auditoria 03, L12).
 Os cinco atalhos do Início passaram a ficar em grade fixa de 5 colunas, com o texto em duas linhas,
 para nenhum ficar escondido na rolagem lateral. Confirmado.
 
+Atualização 2026-10-13: os cinco atalhos e o cartão "Falar com a Renata" saíram do Início (a Renata já
+fica no topo). Ficaram só Financeiro, Estoque e Indicadores. A aba Mais passou a abrir Configurações, e
+Cobranças, Extrato, Notas e Lista de compras ficam dentro de Financeiro e Estoque. Ver `docs/plano-celular-velocidade.md`.
+
 ## 5. Tempo real ao voltar para a tela (celular)
 
 Antes: as assinaturas do Supabase morriam quando o app ficava em segundo plano e a lista só mudava

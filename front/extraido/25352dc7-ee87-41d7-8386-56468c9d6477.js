@@ -1568,7 +1568,26 @@ function PainelScreen(_ref14) {
       color: 'var(--text-strong)',
       fontWeight: 600
     }
-  }, D ? D.mulheres : '15%'))), /*#__PURE__*/React.createElement("div", {
+  }, D ? D.mulheres : '15%')), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 8,
+      color: 'var(--text-muted)'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 8,
+      height: 8,
+      borderRadius: '50%',
+      background: '#B8C4D6'
+    }
+  }), "N\xE3o informado ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--text-strong)',
+      fontWeight: 600
+    }
+  }, D ? D.semGenero : '50%'))), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       display: 'flex',

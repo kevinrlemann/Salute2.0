@@ -586,7 +586,20 @@ function tempoReal(nome, tabelas, aoMudar) {
       return aoMudar(t, p);
     });
   });
-  RT_CANAIS[id] = ch.subscribe();
+  // se o Supabase avisar erro, tempo esgotado ou queda, reassina sozinho (3 s, depois 6, 12... até 30 s)
+  var tentativas = 0;
+  RT_CANAIS[id] = ch.subscribe(function (status) {
+    if (status === 'SUBSCRIBED') { tentativas = 0; return; }
+    if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
+    if (RT_CANAIS[id] !== ch || !RT_DEFS[id]) return; // canal já trocado ou desligado de propósito
+    var espera = Math.min(30000, 3000 * Math.pow(2, tentativas++));
+    setTimeout(function () {
+      if (RT_CANAIS[id] !== ch || !RT_DEFS[id]) return;
+      var d = RT_DEFS[id];
+      try { tempoReal(d.nome, d.tabelas, d.aoMudar); } catch (e) { console.warn('[tempo real] não reassinou', id, e); }
+      RT_AO_VOLTAR.forEach(function (f) { try { f('reconexao:' + d.nome); } catch (e) {} });
+    }, espera);
+  });
   return function () {
     delete RT_DEFS[id];
     if (RT_CANAIS[id]) {
@@ -1289,6 +1302,13 @@ function _carregarContexto() {
           carregar('catalogos');
           carregar('equipe');
           carregar('notificacoes');
+          // pré-carga do que a pessoa abre primeiro: conversas e agenda (o banco só devolve o que ela pode ver)
+          (function () {
+            var mods = clinica && clinica.modulos;
+            var tem = function tem(m) { return !mods || mods.indexOf(m) >= 0; };
+            if (tem('mensagens') && CARGAS.mensagens) carregar('mensagens');
+            if (tem('agenda') && CARGAS.agenda) carregar('agenda');
+          })();
           if (!suporte) SB.from('perfis_usuario').update(perfil.clinica_ativa_id !== clinica.id ? {
             clinica_ativa_id: clinica.id,
             ultimo_acesso_em: agoraIso()
@@ -1449,6 +1469,7 @@ function _sair() {
         case 4:
           _context22.p = 4;
           _context22.n = 5;
+          if (window.msgCacheLimpar) msgCacheLimpar();
           return SB.auth.signOut();
         case 5:
           _context22.n = 7;

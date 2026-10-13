@@ -278,7 +278,10 @@ function painelTela(r) {
       icon: 'sparkles',
       title: 'IA economizou seu tempo',
       value: horas + 'h',
-      trend: tr(ia.conversas || 0, ia.conversas_anterior || 0),
+      // é uma estimativa: conversas atendidas pela IA × minutos por conversa (Configurações); o rótulo diz isso
+      trend: _objectSpread(_objectSpread({}, tr(ia.conversas || 0, ia.conversas_anterior || 0)), {}, {
+        label: 'conversas vs mês anterior · estimativa de ' + (ia.minutos_por_conversa || 5) + ' min cada'
+      }),
       breakdown: [{
         label: 'Conversas',
         value: ia.conversas || 0
@@ -310,6 +313,8 @@ function painelTela(r) {
     total: total,
     homens: total ? Math.round(gen.masculino / total * 100) + '%' : '0%',
     mulheres: total ? Math.round(gen.feminino / total * 100) + '%' : '0%',
+    // quem não tem sexo no cadastro entra como "Não informado" (antes sumia da conta)
+    semGenero: total ? Math.round(Math.max(0, total - (gen.masculino || 0) - (gen.feminino || 0)) / total * 100) + '%' : '0%',
     // gauge usa proporção real: masculino e feminino como porcentagens do total
     gaugeHomens: total ? Math.round(gen.masculino / total * 100) : 0,
     gaugeMulheres: total ? Math.round(gen.feminino / total * 100) : 0,

@@ -158,6 +158,7 @@ function publicarInbox(list) {
   }));
   MSG_LISTA.v = MSG_LISTA.v + 1;
   avisar(MSG_LISTA);
+  msgCacheSalvar();
 }
 // assina as fotos das conversas (uma vez por caminho) e publica a lista de novo
 function assinarFotos(convs) {
@@ -196,49 +197,88 @@ function pedirFoto(c) {
     }));
   })["catch"](function () {});
 }
-CARGAS.mensagens = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
-  var _yield$Promise$all, _yield$Promise$all2, convs, canais, figs;
-  return _regenerator().w(function (_context) {
-    while (1) switch (_context.n) {
-      case 0:
-        _context.n = 1;
-        return carregar('catalogos');
-      case 1:
-        _context.n = 2;
-        return Promise.all([DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), lead:leads!conversas_lead_id_fkey(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
-          ascending: false,
-          nullsFirst: false
-        }).limit(1000)), DB.ler(DB.sel('canais_equipe', 'id,nome,tipo,funcao,criado_em,participantes:participantes_canal(usuario_id,ultima_leitura_em,excluido_em)').order('criado_em'))["catch"](function () {
-          return [];
-        }), DB.ler(SB.from('figurinhas').select('id,rotulo,emoji,cor_fundo,imagem_path,ordem,clinica_id').is('excluido_em', null).order('ordem'))["catch"](function () {
-          return [];
-        })]);
-      case 2:
-        _yield$Promise$all = _context.v;
-        _yield$Promise$all2 = _slicedToArray(_yield$Promise$all, 3);
-        convs = _yield$Promise$all2[0];
-        canais = _yield$Promise$all2[1];
-        figs = _yield$Promise$all2[2];
-        FIGS = figs;
-        assinarFigurinhas(figs);
-        convs.forEach(function (c) {
-          MSG_CONV[c.id] = c;
-        });
-        publicarInbox(convs.map(convTela));
-        assinarFotos(convs);
-        // até 20 conversas sem foto por carga; o servidor busca a foto uma vez
-        convs.filter(function (c) {
-          return !c.foto_contato_path && c.telefone;
-        }).slice(0, 20).forEach(pedirFoto);
-        _context.n = 3;
-        return carregarCanais(canais);
-      case 3:
-        tempoReal('mensagens', ['mensagens', 'conversas', 'mensagens_equipe', 'reacoes_mensagem', 'canais_equipe', 'transferencias_humanas'], aoMudarMensagens);
-      case 4:
-        return _context.a(2);
-    }
-  }, _callee);
-}));
+/* Cópia local da lista de conversas e das últimas mensagens dos chats abertos (só neste aparelho, por
+   clínica e usuário; apagada ao sair). Serve para a tela abrir na hora; o banco é consultado em seguida. */
+var MSG_CACHE_V = 1;
+var __msgCacheTimer = null;
+function msgCacheChave() {
+  return 'salute:mensagens:' + CLI() + ':' + UID();
+}
+function msgCacheSalvar() {
+  if (!SB_ON || !CLI()) return;
+  clearTimeout(__msgCacheTimer);
+  __msgCacheTimer = setTimeout(function () {
+    try {
+      var chats = {};
+      Object.keys(CHAT_STORE.v).filter(function (k) {
+        return k.indexOf('conv:') === 0 && Array.isArray(CHAT_STORE.v[k]);
+      }).slice(-15).forEach(function (k) {
+        chats[k] = CHAT_STORE.v[k].slice(-60);
+      });
+      localStorage.setItem(msgCacheChave(), JSON.stringify({ v: MSG_CACHE_V, t: Date.now(), inbox: INBOX.slice(0, 200), chats: chats }));
+    } catch (e) {}
+  }, 800);
+}
+function msgCacheRestaurar() {
+  if (!SB_ON || !CLI() || INBOX.length) return false;
+  try {
+    var c = JSON.parse(localStorage.getItem(msgCacheChave()) || 'null');
+    if (!c || c.v !== MSG_CACHE_V || !Array.isArray(c.inbox) || !c.inbox.length) return false;
+    var velho = Date.now() - (c.t || 0) > 50 * 60000; // links das fotos valem 1 h
+    substituir(INBOX, c.inbox.map(function (x) {
+      return velho ? _objectSpread(_objectSpread({}, x), {}, { foto: null }) : x;
+    }));
+    CHAT_STORE.v = _objectSpread(_objectSpread({}, c.chats || {}), CHAT_STORE.v);
+    MSG_LISTA.v = MSG_LISTA.v + 1;
+    avisar(MSG_LISTA);
+    avisar(CHAT_STORE);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+function msgCacheLimpar() {
+  try {
+    Object.keys(localStorage).filter(function (k) {
+      return k.indexOf('salute:mensagens:') === 0;
+    }).forEach(function (k) {
+      localStorage.removeItem(k);
+    });
+  } catch (e) {}
+}
+window.msgCacheLimpar = msgCacheLimpar;
+// A lista aparece assim que as conversas chegam. Catálogos, canais da equipe, figurinhas e fotos vêm em paralelo.
+CARGAS.mensagens = function () {
+  carregar('catalogos');
+  msgCacheRestaurar();
+  return DB.ler(DB.sel('conversas', '*, paciente:pacientes(nome), lead:leads!conversas_lead_id_fkey(nome), transf:transferencias_humanas(id,status)').order('ultima_mensagem_em', {
+    ascending: false,
+    nullsFirst: false
+  }).limit(1000)).then(function (convs) {
+    convs.forEach(function (c) {
+      MSG_CONV[c.id] = c;
+    });
+    publicarInbox(convs.map(convTela));
+    tempoReal('mensagens', ['mensagens', 'conversas', 'mensagens_equipe', 'reacoes_mensagem', 'canais_equipe', 'transferencias_humanas'], aoMudarMensagens);
+    assinarFotos(convs);
+    // até 20 conversas sem foto por carga; o servidor busca a foto uma vez
+    convs.filter(function (c) {
+      return !c.foto_contato_path && c.telefone;
+    }).slice(0, 20).forEach(pedirFoto);
+    // segundo plano: canais da equipe e figurinhas
+    Promise.all([DB.ler(DB.sel('canais_equipe', 'id,nome,tipo,funcao,criado_em,participantes:participantes_canal(usuario_id,ultima_leitura_em,excluido_em)').order('criado_em'))["catch"](function () {
+      return [];
+    }), DB.ler(SB.from('figurinhas').select('id,rotulo,emoji,cor_fundo,imagem_path,ordem,clinica_id').is('excluido_em', null).order('ordem'))["catch"](function () {
+      return [];
+    })]).then(function (r) {
+      FIGS = r[1];
+      assinarFigurinhas(r[1]);
+      return carregarCanais(r[0]);
+    })["catch"](function (e) {
+      console.warn('[mensagens] canais/figurinhas', e);
+    });
+  });
+};
 function carregarCanais(_x) {
   return _carregarCanais.apply(this, arguments);
 }
@@ -465,6 +505,7 @@ function _carregarChat() {
           MSG_LIDA[chave] = true;
           CHAT_STORE.v = _objectSpread(_objectSpread({}, CHAT_STORE.v), {}, _defineProperty({}, chave, lista));
           avisar(CHAT_STORE);
+          msgCacheSalvar();
         case 10:
           return _context12.a(2);
       }
@@ -484,6 +525,7 @@ function atualizarMensagemChat(chave, n, tipoEvento) {
     var lista = atual.some(function (m) { return m.id === nova.id; }) ? atual.map(function (m) { return m.id === nova.id ? nova : m; }) : atual.concat([nova]);
     CHAT_STORE.v = _objectSpread(_objectSpread({}, CHAT_STORE.v), {}, _defineProperty({}, chave, lista));
     avisar(CHAT_STORE);
+    msgCacheSalvar();
   })["catch"](function () {
     return carregarChat(chave);
   });

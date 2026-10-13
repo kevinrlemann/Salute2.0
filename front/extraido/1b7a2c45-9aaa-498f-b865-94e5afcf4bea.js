@@ -75,13 +75,18 @@ var ROUTES = {
   }
 };
 
-/* ---------- celular · aba Início (resumo do dia, busca, atalhos e atividade) ---------- */
+/* ---------- celular · aba Início (resumo do dia, busca e três atalhos: Financeiro, Estoque, Indicadores) ---------- */
 function InicioScreen(props) {
-  var onNavigate = props.onNavigate,
-    onNew = props.onNew;
+  var onNavigate = props.onNavigate;
   var _b = React.useState(''),
     busca = _b[0],
     setBusca = _b[1];
+  // a agenda vem do banco (mesma carga da aba Agenda); sem ela o cartão "Hoje" mostraria zero por engano
+  useStore(APPT_STORE);
+  var cargaAg = useCarga('agenda');
+  React.useEffect(function () {
+    if (SB_ON && cargaAg === 'ok' && window.agendaAtualizar) agendaAtualizar('inicio');
+  }, [cargaAg]);
   var hoje = typeof TODAY_ISO !== 'undefined' ? TODAY_ISO : '';
   var agenda = typeof APPT_STORE !== 'undefined' && APPT_STORE.v ? APPT_STORE.v.filter(function (a) {
     return a.date === hoje && a.status !== 'cancelado';
@@ -89,70 +94,75 @@ function InicioScreen(props) {
   var ordenada = agenda.slice().sort(function (a, b) {
     return String(a.ini || a.h || '').localeCompare(String(b.ini || b.h || ''));
   });
-  var proxima = ordenada[0];
+  // próxima consulta: a primeira que ainda não começou (ou a última em andamento), não a primeira do dia
+  var agoraMs = Date.now();
+  var proxima = ordenada.find(function (a) {
+    return a.ini ? new Date(a.ini).getTime() >= agoraMs - 15 * 60000 : true;
+  }) || null;
   var nomeProx = proxima ? proxima.pac || proxima.pacNome || 'Paciente' : '';
-  var horaProx = proxima ? proxima.ini && typeof BR !== 'undefined' ? BR.hm(proxima.ini) : String(proxima.h != null ? proxima.h : '') : '';
+  var horaProx = proxima ? proxima.ini && typeof BR !== 'undefined' ? BR.hm(proxima.ini) : String(proxima.h != null ? String(proxima.h).padStart(2, '0') + ':' + String(proxima.m || 0).padStart(2, '0') : '') : '';
+  var carregandoAg = SB_ON && cargaAg !== 'ok' && cargaAg !== 'erro';
   var nome = typeof rnPrimeiroNome === 'function' ? rnPrimeiroNome() : '';
   var hora = new Date().getHours();
   var saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
-  var atalho = function atalho(icone, rotulo, onClick) {
+  // cartão de linha inteira (Financeiro, Estoque e Indicadores): ícone, nome, explicação curta e seta
+  var cartao = function cartao(icone, rotulo, sub, onClick) {
     return /*#__PURE__*/React.createElement("button", {
       type: "button",
       onClick: onClick,
       style: {
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        gap: 6,
-        minWidth: 0,
+        gap: 14,
         width: '100%',
-        minHeight: 44,
-        padding: 0,
-        border: 0,
-        background: 'transparent',
+        minHeight: 68,
+        padding: '12px 14px',
+        borderRadius: 20,
+        border: '1.5px solid rgba(255,255,255,.95)',
+        background: 'rgba(255,255,255,.8)',
+        color: 'var(--text-strong)',
         cursor: 'pointer',
         fontFamily: 'inherit',
-        color: 'var(--text-strong)',
-        fontSize: 12.5,
-        fontWeight: 500,
-        lineHeight: 1.2,
-        textAlign: 'center',
-        flexShrink: 0
+        textAlign: 'left',
+        boxSizing: 'border-box'
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        width: 52,
-        height: 52,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(255,255,255,.8)',
-        border: '1.5px solid rgba(255,255,255,.95)',
-        color: '#1F5EFF'
+        background: 'rgba(31,94,255,.1)',
+        color: '#1F5EFF',
+        flexShrink: 0
       }
     }, /*#__PURE__*/React.createElement(RIcon, {
       name: icone,
-      size: 20
-    })), rotulo);
-  };
-  // botão de linha inteira (Financeiro, Estoque e Ver indicadores), todos com a mesma borda, altura e fonte
-  var botaoLinha = function botaoLinha(rotulo, onClick) {
-    return /*#__PURE__*/React.createElement("button", {
-      type: "button",
-      onClick: onClick,
+      size: 22
+    })), /*#__PURE__*/React.createElement("span", {
       style: {
-        minHeight: 48,
-        borderRadius: 16,
-        border: '1.5px solid rgba(31,94,255,.25)',
-        background: 'transparent',
-        color: '#1F5EFF',
-        fontFamily: 'inherit',
-        fontSize: 15,
-        fontWeight: 600,
-        cursor: 'pointer'
+        flex: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2
       }
-    }, rotulo);
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 16,
+        fontWeight: 600
+      }
+    }, rotulo), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        color: 'var(--text-muted)'
+      }
+    }, sub)), /*#__PURE__*/React.createElement(RIcon, {
+      name: "chevron-right",
+      size: 18
+    }));
   };
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -219,60 +229,31 @@ function InicioScreen(props) {
       fontSize: 13,
       opacity: .85
     }
-  }, 'Hoje · ' + ordenada.length + (ordenada.length === 1 ? ' consulta' : ' consultas')), /*#__PURE__*/React.createElement("span", {
+  }, carregandoAg ? 'Hoje' : 'Hoje · ' + ordenada.length + (ordenada.length === 1 ? ' consulta' : ' consultas')), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 22,
       fontWeight: 700
     }
-  }, proxima ? 'Próxima às ' + horaProx : 'Nenhuma consulta hoje'), proxima ? /*#__PURE__*/React.createElement("span", {
+  }, carregandoAg ? 'Carregando sua agenda' : proxima ? 'Próxima às ' + horaProx : ordenada.length ? 'Consultas de hoje encerradas' : 'Nenhuma consulta hoje'), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 14,
       opacity: .9
     }
-  }, nomeProx + ' · tocar para ver a agenda') : /*#__PURE__*/React.createElement("span", {
+  }, carregandoAg ? 'Buscando as consultas de hoje' : proxima ? nomeProx + ' · tocar para ver a agenda' : 'Tocar para abrir a agenda')), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
-      opacity: .9
-    }
-  }, 'Tocar para abrir a agenda')), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-      gap: 4,
-      paddingBottom: 2
-    }
-  }, atalho('calendar-plus', 'Agendar consulta', function () {
-    // mesmo formulário de agendamento de todos os pontos de entrada
-    if (window.abrirNovoAgendamento) return window.abrirNovoAgendamento({});
-    return onNew && onNew();
-  }), atalho('banknote', 'Recebi pagamento', function () {
-    return onNavigate && onNavigate('mx_recebi');
-  }), atalho('message-circle', 'Ver conversas', function () {
-    return onNavigate && onNavigate('mensagens');
-  }), atalho('package', 'Ver estoque', function () {
-    window.__gestaoAreaPedida = 'estoque';
-    return onNavigate && onNavigate('gestao');
-  }), atalho('sparkles', 'Falar com Renata', function () {
-    RN_STORE.v = Object.assign({}, RN_STORE.v, {
-      open: true
-    });
-    avisar(RN_STORE);
-  })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+      display: 'flex',
+      flexDirection: 'column',
       gap: 10
     }
-  }, botaoLinha('Financeiro', function () {
-    // mesmo caminho do item Financeiro da aba Mais
+  }, cartao('wallet', 'Financeiro', 'Recebidos, pagamentos e cobranças', function () {
     window.__gestaoAreaPedida = 'financeiro';
     return onNavigate && onNavigate('gestao');
-  }), botaoLinha('Estoque', function () {
+  }), cartao('package', 'Estoque', 'Itens, alertas e entradas', function () {
     window.__gestaoAreaPedida = 'estoque';
     return onNavigate && onNavigate('gestao');
-  })), botaoLinha('Ver indicadores', function () {
+  }), cartao('chart-column', 'Indicadores', 'Pacientes, agenda, funil e canais do mês', function () {
     return onNavigate && onNavigate('indicadores');
-  }));
+  })));
 }
 /* ---------- celular · aba Mais (lista com ícone e seta, como o perfil do Payno) ---------- */
 var MOB_MAIS_ITENS = [{
@@ -15314,8 +15295,13 @@ function App() {
   });
   var navSelecionar = function navSelecionar(id) {
     if (id === 'acao') return setAcaoAberta(true);
+    if (id === 'mais') return navegar('perfil'); // três pontinhos: abre as Configurações direto
     if (String(id).indexOf('mx_') === 0) return setMx(id);
     return navegar(id);
+  };
+  // telas do celular (Cobranças, Extrato, Notas, Compras) abertas de dentro do Financeiro e do Estoque
+  window.abrirTelaCelular = function (id) {
+    setMx(id);
   };
   var rotaMobAtiva = ['pacientes', 'gestao', 'perfil', 'mais'].indexOf(route) >= 0 ? 'mais' : route;
   var navegar = function navegar(id) {
