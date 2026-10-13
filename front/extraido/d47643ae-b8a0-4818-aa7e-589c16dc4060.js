@@ -118,14 +118,14 @@ var cs=React.useState(null),calMes=cs[0],setCalMes=cs[1];
 React.useEffect(function(){ if(calMes&&SB_ON&&typeof agendaGarantirMes==='function') agendaGarantirMes(calMes); },[calMes]);
 React.useEffect(function(){ if(!calMes) return; var esc=function(e){ if(e.key==='Escape'){ e.stopPropagation(); setCalMes(null); } }; document.addEventListener('keydown',esc,true); return function(){ document.removeEventListener('keydown',esc,true); }; },[!!calMes]);
 var botaoRedondo=function(rotulo,icone,fn,cor){ return React.createElement("button",{type:"button","aria-label":rotulo,title:rotulo,onClick:fn,style:{width:34,height:34,borderRadius:'50%',border:'1.5px solid rgba(255,255,255,.95)',background:'rgba(255,255,255,.6)',color:cor||'var(--text-strong)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0,flexShrink:0}},React.createElement(OIcon,{name:icone,size:17})); };
-var calendario=calMes?React.createElement("div",{"data-overlay":"1",onClick:function(){ setCalMes(null); },style:{position:'fixed',inset:0,zIndex:Z.dialogo,background:'rgba(10,20,40,.35)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}},
+var calendario=calMes?ReactDOM.createPortal(React.createElement("div",{"data-overlay":"1",onClick:function(){ setCalMes(null); },style:{position:'fixed',inset:0,zIndex:Z.dialogo,background:'rgba(10,20,40,.35)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}},
 React.createElement("div",{role:"dialog","aria-label":"Escolher dia",onClick:function(e){ e.stopPropagation(); },style:{width:'100%',maxWidth:420,boxSizing:'border-box',padding:16,borderRadius:24,background:'#fff',display:'flex',flexDirection:'column',gap:12,boxShadow:'0 20px 40px -24px rgba(23,73,170,.5)'}},
 React.createElement("div",{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:6}},
 botaoRedondo('Mês anterior','chevron-left',function(){ setCalMes(new Date(calMes.getFullYear(),calMes.getMonth()-1,1)); }),
 React.createElement("span",{style:{fontSize:18,fontWeight:500,color:'var(--text-strong)',textAlign:'center'}},MESL[calMes.getMonth()].charAt(0).toUpperCase()+MESL[calMes.getMonth()].slice(1)+' de '+calMes.getFullYear()),
 botaoRedondo('Próximo mês','chevron-right',function(){ setCalMes(new Date(calMes.getFullYear(),calMes.getMonth()+1,1)); })),
 React.createElement(MonthCal,{month:calMes,sel:day,mobile:true,counts:p.counts,names:p.names||function(){ return []; },onPick:function(d){ p.setDay(d); if(p.setStart) p.setStart(d); setCalMes(null); }}),
-React.createElement("button",{type:"button",onClick:function(){ setCalMes(null); },style:{width:'100%',boxSizing:'border-box',borderRadius:16,padding:'14px',border:'1.5px solid rgba(214,226,242,.9)',background:'#fff',color:'var(--text-strong)',fontFamily:'inherit',fontSize:16,fontWeight:600,cursor:'pointer'}},'Fechar'))):null;
+React.createElement("button",{type:"button",onClick:function(){ setCalMes(null); },style:{width:'100%',boxSizing:'border-box',borderRadius:16,padding:'14px',border:'1.5px solid rgba(214,226,242,.9)',background:'#fff',color:'var(--text-strong)',fontFamily:'inherit',fontSize:16,fontWeight:600,cursor:'pointer'}},'Fechar'))),document.body):null;
 var confirmar=function(s){
   if(!s.id) return;
   setConf(function(o){ var n=Object.assign({},o); n[s.id]=true; return n; });
