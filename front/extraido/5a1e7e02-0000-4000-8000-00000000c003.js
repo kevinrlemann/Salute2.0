@@ -1380,7 +1380,8 @@ var agTela = function agTela(r) {
     reservaExpiraEm: r.reserva_expira_em || null
   };
 };
-var AG_SELECT = '*, paciente:pacientes(nome), procedimento:procedimentos(nome), status:status_agendamento(chave,nome,cor), tipo:tipos_agendamento(chave,nome,cor)';
+// só as colunas que a tela usa (auditoria de performance): menos bytes por consulta na janela de 390 dias
+var AG_SELECT = 'id,paciente_id,profissional_id,procedimento_id,status_agendamento_id,tipo_agendamento_id,inicio,fim,cor,observacoes,horario_duplicado,origem,conversa_id,lead_id,status_pagamento,sinal_valor,sinal_comprovante_em,reserva_expira_em,versao, paciente:pacientes(nome), procedimento:procedimentos(nome), status:status_agendamento(chave,nome,cor), tipo:tipos_agendamento(chave,nome,cor)';
 CARGAS.agenda = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee20() {
   var de, ate, rows;
   return _regenerator().w(function (_context20) {

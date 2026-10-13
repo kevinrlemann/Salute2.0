@@ -587,17 +587,24 @@ function tempoReal(nome, tabelas, aoMudar) {
     });
   });
   // se o Supabase avisar erro, tempo esgotado ou queda, reassina sozinho (3 s, depois 6, 12... até 30 s)
-  var tentativas = 0;
+  // Tentativas ficam por canal (RT_TENTATIVAS), porque cada reassinatura cria um canal novo. Quem registrou
+  // aoVoltarVisivel só é avisado quando a assinatura volta de verdade (SUBSCRIBED depois de uma queda), uma vez:
+  // avisar a cada tentativa fazia a lista de conversas ser recarregada 3 ou 4 vezes por tela (auditoria de performance).
   RT_CANAIS[id] = ch.subscribe(function (status) {
-    if (status === 'SUBSCRIBED') { tentativas = 0; return; }
+    if (status === 'SUBSCRIBED') {
+      var caiu = (RT_TENTATIVAS[id] || 0) > 0;
+      RT_TENTATIVAS[id] = 0;
+      if (caiu) RT_AO_VOLTAR.forEach(function (f) { try { f('reconexao:' + nome); } catch (e) {} });
+      return;
+    }
     if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT' && status !== 'CLOSED') return;
     if (RT_CANAIS[id] !== ch || !RT_DEFS[id]) return; // canal já trocado ou desligado de propósito
-    var espera = Math.min(30000, 3000 * Math.pow(2, tentativas++));
+    var n = RT_TENTATIVAS[id] = (RT_TENTATIVAS[id] || 0) + 1;
+    var espera = Math.min(60000, 3000 * Math.pow(2, Math.min(n - 1, 5)));
     setTimeout(function () {
       if (RT_CANAIS[id] !== ch || !RT_DEFS[id]) return;
       var d = RT_DEFS[id];
       try { tempoReal(d.nome, d.tabelas, d.aoMudar); } catch (e) { console.warn('[tempo real] não reassinou', id, e); }
-      RT_AO_VOLTAR.forEach(function (f) { try { f('reconexao:' + d.nome); } catch (e) {} });
     }, espera);
   });
   return function () {
@@ -612,6 +619,7 @@ function tempoReal(nome, tabelas, aoMudar) {
    podem ter morrido sem aviso. Depois de mais de 20 s escondido, reassina todos os canais e avisa
    quem registrou com aoVoltarVisivel (ex.: mensagens recarrega a lista e o chat aberto). Sem laço de polling. */
 var RT_AO_VOLTAR = [];
+var RT_TENTATIVAS = {}; // id do canal -> quedas seguidas
 var RT_ESCONDIDO_EM = 0;
 var RT_VOLTA_MIN_MS = 20000;
 function aoVoltarVisivel(fn) {

@@ -1,7 +1,8 @@
 # Publicação do front no Netlify (saluteia.site), ligada à branch "producao".
 # Arquivos estáticos: sem build. As rotas (/painel, /agenda, ...) abrem o index.html.
 [build]
-  publish = "front"
+  # front/site é gerado por tools/site.py a partir de front/index.html: index.html pequeno + scripts em assets/ com cache
+  publish = "front/site"
   command = ""
 
 [[redirects]]
@@ -12,6 +13,12 @@
 # P0-05: cabeçalhos de segurança. A CSP limita para onde a página pode mandar dados (connect-src),
 # impede o site de ser aberto dentro de outro (frame-ancestors) e bloqueia plugins e <base>.
 # Scripts continuam com 'unsafe-inline' e blob: porque o pacote do Claude Design monta os scripts assim.
+# Scripts e fontes do app: o nome do arquivo muda quando o conteúdo muda, então podem ficar em cache por um ano.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[headers]]
   for = "/*"
   [headers.values]

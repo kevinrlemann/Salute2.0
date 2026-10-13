@@ -16,12 +16,12 @@ de IA "Renata" (texto e voz), que consulta dados e propõe ações que a equipe 
 - Banco/Auth/Storage/Edge Functions: **somente** o Supabase "Salute IA novo visual" (`gbhsslyoybqjvjznlave`).
 - "Salute CRM" (`pigfhkmtqyatuaudpgyy`) é legado: só leitura.
 - Repositório: `kevinrlemann/Salute2.0` (público). É a fonte da verdade do front e das migrations.
-- Publicação: branch `producao` → Netlify (site `saluteia.site`, pasta `front/`, ver `netlify.toml`) e o artifact
+- Publicação: branch `producao` → Netlify (site `saluteia.site`, pasta `front/site/` gerada por `tools/site.py`, ver `netlify.toml`) e o artifact
   https://claude.ai/artifact/WtotK7P4yu9qhf9VWrAqhA. `deploy/netlify/` está desatualizado: não usar.
 
 ## Stack (confirmado)
 
-- Front: bundle único exportado do Claude Design (`front/index.html`), React 18.3.1 (build development), JSX já
+- Front: bundle único exportado do Claude Design (`front/index.html`), React 18.3.1 (build de produção desde 2026-10-13), JSX já
   compilado por Babel (helpers do regenerator), supabase-js 2.117.2, design system `SaluteProjetoDesigner`,
   ícones Lucide 0.468.0 via unpkg e gerador de QR local. Sem build tool e sem npm no front.
 - Back: Supabase (Postgres 17, RLS em todas as tabelas, Auth, Storage, Realtime) + edge function `renata` (Deno).
@@ -32,7 +32,8 @@ de IA "Renata" (texto e voz), que consulta dados e propõe ações que a equipe 
 ## Estrutura de pastas
 
 ```
-front/index.html            página publicada (bundle: scripts gzip+base64 no manifest)
+front/index.html            pacote único (bundle: scripts gzip+base64 no manifest); é o que vai para o artifact
+front/site/                 gerado por tools/site.py: index.html pequeno + assets/ (scripts e fontes com cache de 1 ano); é o que o Netlify publica
 front/config.js             URL do Supabase + chave pública anon (pública por design)
 front/extraido/             scripts decodificados: é AQUI que se edita; depois reempacota
 supabase/functions/renata/  index.ts (ações status/chat/testar/voz/transcrever), openai.ts, testes/
@@ -47,6 +48,7 @@ setup/environment-setup.sh  rtk + OmniRoute nas sessões de nuvem
 ```bash
 python3 -I tools/unbundle.py front/index.html front/extraido   # decodificar
 python3 -I tools/rebundle.py front/index.html front/extraido   # reempacotar só o que mudou
+python3 -I tools/site.py front/index.html front/site           # gerar o site do Netlify (index pequeno + assets/ com cache); SEMPRE depois do rebundle
 node --check front/extraido/<arquivo>.js                       # sintaxe de cada script editado
 node --experimental-strip-types --test supabase/functions/renata/testes/openai.test.mts
 git push origin main:producao                                  # publicar (SÓ com comando do fundador)
