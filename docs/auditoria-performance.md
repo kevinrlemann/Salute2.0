@@ -38,7 +38,7 @@ sem rede (modo "demo"). Site real medido com `curl` a partir do sandbox.
 | Medida | Antes | Depois | Como |
 |---|---|---|---|
 | index.html (bruto / gzip) | 1.561.924 / 1.169.313 B | pacote: 1.276.052 / 953.508 B · site: 35.500 B + assets 3,0 MB (gzip ≈ 831 KB, em cache por 1 ano) | `ls`, `gzip -c` |
-| Site real, download completo | 0,59 a 1,35 s (1,16 MB, HTTP/2) | a medir após publicar (index 35 KB + assets em cache) | `curl -w` |
+| Site real, download completo | 0,59 a 1,35 s (1,16 MB, HTTP/2) | index 0,33 a 0,86 s (11 KB em brotli); assets 901 KB em brotli na primeira visita, depois servidos do cache (`cache-control: immutable` confirmado) | `curl -w` após publicar (commit 00709d3) |
 | React/ReactDOM | development (1.190.158 B) | production.min (142.586 B) | arquivos no pacote |
 | Memória JS após abrir (demo) | 25 MB | 19 MB (pacote) · 11 MB (site) | `performance.memory` |
 | Maior tarefa longa na abertura (demo) | 281 ms | 99 ms | PerformanceObserver longtask |
