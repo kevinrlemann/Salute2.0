@@ -263,6 +263,161 @@ function PlanosAdicionais(_ref) {
     }, (a.planos || []).map(nomePlano).join(', ')));
   }));
 }
+/* ---------- armazenamento usado pela clínica: arquivos (Storage) + texto das conversas e cadastros ---------- */
+function armFmt(bytes, forcaGb) {
+  var b = Number(bytes || 0);
+  var gb = b / 1073741824;
+  if (forcaGb || gb >= 1) return (gb >= 100 ? gb.toFixed(0) : gb >= 10 ? gb.toFixed(1) : gb.toFixed(2)).replace('.', ',') + ' GB';
+  var mb = b / 1048576;
+  if (mb >= 1) return (mb >= 100 ? mb.toFixed(0) : mb.toFixed(1)).replace('.', ',') + ' MB';
+  return Math.max(1, Math.round(b / 1024)) + ' KB';
+}
+function Armazenamento(_ref) {
+  var mobile = _ref.mobile;
+  var _st = React.useState(null),
+    dados = _st[0],
+    setDados = _st[1];
+  var _er = React.useState(false),
+    erro = _er[0],
+    setErro = _er[1];
+  React.useEffect(function () {
+    if (!SB_ON) {
+      setDados({
+        total_bytes: 1181000000,
+        arquivos_bytes: 1160000000,
+        arquivos: 842,
+        dados_bytes: 21000000,
+        tipos: [{ tipo: 'Mídias do WhatsApp (fotos, áudios, vídeos e documentos)', arquivos: 610, bytes: 912000000 }, { tipo: 'Documentos e prontuários de pacientes', arquivos: 148, bytes: 201000000 }, { tipo: 'Fotos de pacientes', arquivos: 71, bytes: 38000000 }, { tipo: 'Fotos de perfil dos contatos', arquivos: 13, bytes: 9000000 }, { tipo: 'Conversas do WhatsApp (texto das mensagens)', arquivos: 9120, bytes: 14000000, unidade: 'mensagens' }, { tipo: 'Cadastros e registros (pacientes, agenda, prontuário, financeiro)', arquivos: null, bytes: 7000000 }]
+      });
+      return;
+    }
+    DB.rpc('armazenamento_uso', {
+      p_clinica: CLI()
+    }, 'Não foi possível calcular o armazenamento').then(function (r) {
+      setDados(r || null);
+    })["catch"](function () {
+      setErro(true);
+    });
+  }, []);
+  if (erro || !dados) return null;
+  var total = Number(dados.total_bytes || 0);
+  var tipos = (dados.tipos || []).filter(function (t) {
+    return Number(t.bytes || 0) > 0 || t.unidade;
+  });
+  var n = function n(x) {
+    return Number(x || 0).toLocaleString('pt-BR');
+  };
+  var card = function card(titulo, valor, sub, destaque) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: titulo,
+      style: {
+        flex: 1,
+        minWidth: mobile ? 'calc(50% - 5px)' : 150,
+        padding: '12px 14px',
+        borderRadius: 16,
+        background: destaque ? 'linear-gradient(160deg,#0A2A8F,#0B4BEB 60%,#7B4BC4 140%)' : 'rgba(255,255,255,.65)',
+        border: '1.5px solid rgba(255,255,255,.95)',
+        color: destaque ? '#fff' : 'var(--text-strong)'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+      }
+    }, titulo), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 24,
+        fontWeight: 700,
+        letterSpacing: '-0.02em',
+        marginTop: 2
+      }
+    }, valor), sub ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+      }
+    }, sub) : null);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+      padding: mobile ? 14 : 18,
+      borderRadius: 20,
+      background: 'rgba(255,255,255,.5)',
+      border: '1.5px solid rgba(255,255,255,.95)'
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h4", {
+    style: {
+      margin: 0,
+      fontSize: 16,
+      fontWeight: 600,
+      color: 'var(--text-strong)'
+    }
+  }, "Armazenamento usado"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '3px 0 0',
+      fontSize: 12.5,
+      color: 'var(--text-muted)'
+    }
+  }, "Tudo o que esta cl\xEDnica guarda no sistema: arquivos (fotos, \xE1udios, v\xEDdeos, documentos) e o texto das conversas e dos cadastros. Calculado agora, no banco.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      flexWrap: 'wrap'
+    }
+  }, card('Total', armFmt(total, true), total < 1073741824 ? 'o mesmo que ' + armFmt(total) : 'em GB', true), card('Arquivos', armFmt(dados.arquivos_bytes), n(dados.arquivos) + (Number(dados.arquivos) === 1 ? ' arquivo' : ' arquivos')), card('Conversas e cadastros', armFmt(dados.dados_bytes), 'texto guardado no banco')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8
+    }
+  }, tipos.map(function (t) {
+    var b = Number(t.bytes || 0);
+    var pct = total ? Math.round(b / total * 100) : 0;
+    return /*#__PURE__*/React.createElement("div", {
+      key: t.tipo,
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        gap: 12,
+        fontSize: 12.5
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--text-strong)',
+        minWidth: 0
+      }
+    }, t.tipo + (t.arquivos != null ? ' · ' + n(t.arquivos) + ' ' + (t.unidade || (Number(t.arquivos) === 1 ? 'arquivo' : 'arquivos')) : '')), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--text-muted)',
+        whiteSpace: 'nowrap',
+        fontWeight: 600
+      }
+    }, armFmt(b) + ' · ' + pct + '%')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        height: 6,
+        borderRadius: 999,
+        background: 'rgba(214,226,242,.8)',
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: Math.max(pct, b > 0 ? 1 : 0) + '%',
+        height: '100%',
+        borderRadius: 999,
+        background: '#1F5EFF'
+      }
+    })));
+  })));
+}
 /* ---------- uso da IA no mês: Renata por texto, Renata por voz, WhatsApp e a soma ---------- */
 var USO_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 function UsoIA(_ref0) {
@@ -632,6 +787,8 @@ function PlanosSection(_ref2) {
       color: 'var(--text-muted)'
     }
   }, used.toLocaleString('pt-BR'), " de ", PLAN_LIMIT.toLocaleString('pt-BR'), " usadas \xB7 renova dia ", SB_ON ? diaRenova() : 10)) : null), /*#__PURE__*/React.createElement(UsoIA, {
+    mobile: mobile
+  }), /*#__PURE__*/React.createElement(Armazenamento, {
     mobile: mobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {

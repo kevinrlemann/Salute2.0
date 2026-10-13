@@ -90,6 +90,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `sinal_expirar` (via `ia_manutencao`, a cada minuto) cancela reservas vencidas. No "Recebi pagamento" e em "Nova receita", o sinal pago do
   paciente aparece para abater (`sinal_disponivel` / `sinal_abater`). A política antiga `agente_ia.politica_sinal` continua só para
   "aprovação humana"; os modos "obrigatório" passam a usar a regra nova quando a clínica a liga.
+- Armazenamento por clínica (2026-10-13): RPC `armazenamento_uso(clinica)` soma os arquivos do Storage (pasta `<clinica_id>/...` em todos os
+  buckets, por tipo) e o tamanho das linhas de conversas e cadastros. Tela: Minha conta › Plano e cobrança › "Armazenamento usado", abaixo do uso da IA.
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.
 - Feriados: os nacionais são calculados (`feriados_nacionais`) e somados aos da clínica (`feriados_do_mes`).
 - Limite mensal de IA (`renata_limite_mes`, padrão 300 sem plano): conta Renata por texto, Renata por voz e respostas da IA no WhatsApp (`renata_consumo.mensagens_renata_texto/_voz/_whatsapp`, soma em `mensagens_ia`). Ordem do limite: mês (`renata_consumo.limite_mensagens`) > clínica (`clinicas.limite_mensagens_ia`, só o master, RPC `admin_definir_limite_ia`) > plano. Vale para a Renata (função `renata`) e para o WhatsApp (`agente_pode_responder`, motivo `limite_mensagens`). Tela: Minha conta › Plano e cobrança › Uso da IA (RPC `ia_uso`).
