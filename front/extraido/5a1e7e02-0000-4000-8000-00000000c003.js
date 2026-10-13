@@ -121,7 +121,9 @@ function hidratarCatalogos() {
       cor: p.cor_agenda || '#1F5EFF',
       procs: (p.procs || []).map(nomeProc).filter(Boolean),
       fotoPath: p.foto_path,
-      usuarioId: p.usuario_id
+      usuarioId: p.usuario_id,
+      sinalModo: p.sinal_modo || 'clinica',
+      sinalValor: p.sinal_valor != null ? Number(p.sinal_valor) : ''
     };
   }));
   substituir(PROS, profs.map(function (p) {
@@ -1370,7 +1372,12 @@ var agTela = function agTela(r) {
     status: r.status ? r.status.chave : null,
     tipo: r.tipo ? r.tipo.chave : null,
     duplicado: r.horario_duplicado,
-    origem: r.origem
+    origem: r.origem,
+    // sinal para garantir a vaga: nao_exigido | pendente | pago | expirado; comprovante enviado tem data
+    statusPag: r.status_pagamento || 'nao_exigido',
+    sinalValor: r.sinal_valor != null ? Number(r.sinal_valor) : null,
+    sinalComprovanteEm: r.sinal_comprovante_em || null,
+    reservaExpiraEm: r.reserva_expira_em || null
   };
 };
 var AG_SELECT = '*, paciente:pacientes(nome), procedimento:procedimentos(nome), status:status_agendamento(chave,nome,cor), tipo:tipos_agendamento(chave,nome,cor)';
@@ -1522,7 +1529,10 @@ function agendaDoDia(d) {
       hf: BR.hm(a.fim),
       proc: a.proc,
       origem: a.origem,
-      status: a.status
+      status: a.status,
+      statusPag: a.statusPag,
+      sinalValor: a.sinalValor,
+      sinalComprovanteEm: a.sinalComprovanteEm
     };
   }).filter(function (s) {
     return s.col >= 0;

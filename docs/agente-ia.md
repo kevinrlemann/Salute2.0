@@ -2,11 +2,11 @@
 
 Base: documento "Arquitetura_Agente_IA_Salute_n8n_MultiClinicas" (enviado pelo fundador em 2026-10-09).
 Estado em 2026-10-09: **banco pronto e testado** (38 de 38 casos em `supabase/testes/agente_ia_aceite.sql`);
-**fluxos do n8n, envio real pelo WhatsApp e cobrança de sinal não existem ainda** (confirmado).
+**fluxos do n8n e envio real pelo WhatsApp existem (WF01 a WF09); o sinal para garantir a vaga foi implementado em 2026-10-13** (confirmado). Fluxo do sinal: `criar_agendamento` devolve `reservado_aguardando_sinal` com valor, chave PIX, prazo e instrução; o contato manda o comprovante; a IA chama `registrar_comprovante_sinal` (abre transferência "Sinal"); a equipe confirma ou dispensa na Agenda; reservas vencidas expiram sozinhas (`sinal_expirar`).
 
 ## Decisões do fundador (2026-10-09, confirmado)
 
-- Sinal padrão: nenhum. A IA pode criar agendamento sozinha (`ia_cria_agendamento = true`).
+- Sinal padrão: nenhum. A IA pode criar agendamento sozinha (`ia_cria_agendamento = true`). Com `configuracoes_clinica.sinal_ativo` (ou regra própria do profissional), a IA reserva e cobra o sinal; ver `sinal_regra`.
 - Follow-up: 3 h, 6 h, 2 dias e 7 dias sem resposta (`followup_atrasos_min = {180,360,2880,10080}`).
 - Lembretes: 48 h, 24 h, 2 h e 15 min antes (`lembretes_offsets_min = {2880,1440,120,15}`).
 - A IA nasce **desligada** (`ia_ativa = false`) e em **modo teste** (`modo_teste = true`). Ligar é decisão da clínica.

@@ -106,7 +106,14 @@ var estTela = function estTela() {
     agendaDireto: g.ia_agenda_procedimento_direto !== false,
     primeiraVez: g.ia_primeira_vez_avaliacao !== false,
     consultaAgendamentos: g.ia_consulta_agendamentos !== false,
-    avaliacao: g.ia_procedimento_avaliacao_id || ''
+    avaliacao: g.ia_procedimento_avaliacao_id || '',
+    // sinal para garantir a vaga
+    sinalAtivo: !!g.sinal_ativo,
+    sinalModo: g.sinal_modo || 'valor',
+    sinalValor: g.sinal_valor != null ? String(g.sinal_valor) : '',
+    sinalPix: g.sinal_chave_pix || '',
+    sinalInstrucoes: g.sinal_instrucoes || '',
+    sinalPrazo: g.sinal_prazo_horas != null ? String(g.sinal_prazo_horas) : '24'
   };
 };
 // DIAS começa na segunda; no banco 0 é domingo
@@ -207,8 +214,18 @@ var ClinSvc = {
               ia_primeira_vez_avaliacao: est.primeiraVez !== false,
               ia_consulta_agendamentos: est.consultaAgendamentos !== false,
               ia_procedimento_avaliacao_id: est.agendaDireto === false ? (est.avaliacao || null) : null,
-              parcelas_maximas_credito: parseInt(parc, 10) || 1
+              parcelas_maximas_credito: parseInt(parc, 10) || 1,
+              sinal_ativo: !!est.sinalAtivo,
+              sinal_modo: est.sinalModo === 'integral' ? 'integral' : 'valor',
+              sinal_valor: Math.max(0, Number(String(est.sinalValor || '0').replace(',', '.')) || 0),
+              sinal_chave_pix: (est.sinalPix || '').trim() || null,
+              sinal_instrucoes: (est.sinalInstrucoes || '').trim() || null,
+              sinal_prazo_horas: Math.max(1, parseInt(est.sinalPrazo, 10) || 24)
             };
+            if (cfg.sinal_ativo && cfg.sinal_modo === 'valor' && !(cfg.sinal_valor > 0)) {
+              avisoErro('Informe o valor do sinal', 'Com o sinal ligado e no modo "valor fixo", o valor precisa ser maior que zero.');
+              throw new Error('sinal');
+            }
             if (!CAT.v.config) {
               _context3.n = 7;
               break;
@@ -435,7 +452,7 @@ var EquipeSvc = {
 };
 
 /* ---------- Profissionais ---------- */
-var PROF_SEL = 'id,nome,especialidade,registro_conselho,cor_agenda,foto_path,usuario_id,ordem,profissionais_procedimentos(procedimento_id,excluido_em)';
+var PROF_SEL = 'id,nome,especialidade,registro_conselho,cor_agenda,foto_path,usuario_id,ordem,sinal_modo,sinal_valor,profissionais_procedimentos(procedimento_id,excluido_em)';
 var ProfSvc = {
   salvar: function salvar(ed) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {
@@ -459,8 +476,15 @@ var ProfSvc = {
               especialidade: ed.esp || null,
               registro_conselho: ed.reg || null,
               cor_agenda: ed.cor || null,
-              foto_path: foto
+              foto_path: foto,
+              // sinal para garantir a vaga: clinica (segue a clínica) | nao | valor | integral
+              sinal_modo: ['clinica', 'nao', 'valor', 'integral'].indexOf(ed.sinalModo) >= 0 ? ed.sinalModo : 'clinica',
+              sinal_valor: ed.sinalModo === 'valor' || ed.sinalModo === 'integral' ? Math.max(0, Number(String(ed.sinalValor || '0').replace(',', '.')) || 0) || null : null
             };
+            if (dados.sinal_modo === 'valor' && !(dados.sinal_valor > 0)) {
+              avisoErro('Informe o valor do sinal', 'Para pedir um valor fixo, informe quanto o profissional cobra de sinal.');
+              throw new Error('sinal');
+            }
             if (!existente) {
               _context5.n = 4;
               break;

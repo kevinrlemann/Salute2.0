@@ -49,3 +49,14 @@ Pedido do fundador (voz, 2026-10-13). Cada parte é executada, testada e marcada
 | 7 Publicação | pendente do comando "publicar" | computador 1280×800: 8 telas iguais ao commit anterior, só o orbe animado difere |
 
 Não verificado: aparelho real; queda real do canal de tempo real; cópia local em navegador com armazenamento bloqueado (o código ignora o erro e segue sem cache).
+
+## Sinal para garantir a vaga (2026-10-13, pedido do fundador)
+
+Banco: migrações `20261013150000_sinal_para_garantir_vaga.sql` e `20261013150500_sinal_na_ia_whatsapp.sql`. Teste SQL de ponta a ponta (com
+rollback) nos cenários: clínica sem sinal; clínica R$ 100; profissional "integral" (R$ 380 do procedimento) e profissional "não pede"; reserva pela IA
+(Aguardando, pendente, expira em 24 h); confirmação pela equipe (Confirmado, receita paga de R$ 100, mensagem enfileirada); abatimento; expiração
+(cancelado/expirado); dispensa (agendado/não exigido); regras do agente citam o sinal. Tudo confirmado.
+n8n: WF05 aceita `registrar_comprovante_sinal`; WF01 ganhou a ferramenta "Registrar comprovante do sinal" ligada ao agente e o prompt explica o fluxo.
+Front: Configurações › Clínica (bloco "Sinal para garantir a vaga"), Cadastro › Profissionais (select), selos na agenda (celular e computador),
+gaveta e janela da consulta com "Confirmar sinal recebido" e "Dispensar", abatimento no "Recebi pagamento" (celular) e em "Nova receita" (computador).
+Não verificado: conversa real no WhatsApp com envio de comprovante (depende de teste do fundador).

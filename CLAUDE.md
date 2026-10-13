@@ -81,6 +81,15 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Clínica nova cadastrada pelo site nasce aguardando aprovação (`clinicas.aprovada_em` nulo): o dono entra, mas
   `minhas_clinicas`/`clinicas_gestao`/`clinicas_permitidas` a ignoram até o administrador master aprovar no Painel Master
   (`admin_aprovar_clinica`). Clínica criada pela equipe da Salute já nasce aprovada (2026-10-10).
+- Sinal para garantir a vaga (2026-10-13): a clínica liga em Configurações › Clínica (`configuracoes_clinica.sinal_*`: valor fixo ou
+  integral do procedimento, chave PIX, prazo em horas, instruções) e cada profissional escolhe seguir a clínica, não pedir, valor fixo ou
+  integral (`profissionais.sinal_modo/sinal_valor`). A regra efetiva é `sinal_regra(clinica, profissional, procedimento)`. A IA reserva a
+  consulta como "Aguardando" com `agendamentos.status_pagamento = 'pendente'`, `sinal_valor` e `reserva_expira_em`; passa valor, PIX e prazo;
+  o comprovante vira `registrar_comprovante_sinal` (transferência "Sinal" para a equipe). A equipe confirma na Agenda (`sinal_confirmar`:
+  consulta Confirmada, receita paga em `contas_receber` ligada ao agendamento, aviso no WhatsApp) ou dispensa (`sinal_dispensar`).
+  `sinal_expirar` (via `ia_manutencao`, a cada minuto) cancela reservas vencidas. No "Recebi pagamento" e em "Nova receita", o sinal pago do
+  paciente aparece para abater (`sinal_disponivel` / `sinal_abater`). A política antiga `agente_ia.politica_sinal` continua só para
+  "aprovação humana"; os modos "obrigatório" passam a usar a regra nova quando a clínica a liga.
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.
 - Feriados: os nacionais são calculados (`feriados_nacionais`) e somados aos da clínica (`feriados_do_mes`).
 - Limite mensal de IA (`renata_limite_mes`, padrão 300 sem plano): conta Renata por texto, Renata por voz e respostas da IA no WhatsApp (`renata_consumo.mensagens_renata_texto/_voz/_whatsapp`, soma em `mensagens_ia`). Ordem do limite: mês (`renata_consumo.limite_mensagens`) > clínica (`clinicas.limite_mensagens_ia`, só o master, RPC `admin_definir_limite_ia`) > plano. Vale para a Renata (função `renata`) e para o WhatsApp (`agente_pode_responder`, motivo `limite_mensagens`). Tela: Minha conta › Plano e cobrança › Uso da IA (RPC `ia_uso`).

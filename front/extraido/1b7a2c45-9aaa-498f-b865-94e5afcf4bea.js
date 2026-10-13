@@ -486,7 +486,7 @@ function MxFeito(p){
 }
 function MxDinheiro(p){
   var tipo = p.tipo, ctx = p.ctx;
-  var st = React.useState({passo:'valor', valor:'', quem:'', busca:'', forma:'', venc:TODAY_ISO, pago:false, salvando:false, erro:''});
+  var st = React.useState({passo:'valor', valor:'', quem:'', busca:'', forma:'', venc:TODAY_ISO, pago:false, salvando:false, erro:'', sinais:[], abater:true});
   var s = st[0];
   var up = function(patch){ st[1](function(o){ return Object.assign({}, o, patch); }); };
   var formas = (CAT.v.formas || []).filter(function(f){ return f.aceita && f.ativo; }).map(function(f){ return f.nome; });
@@ -495,6 +495,15 @@ function MxDinheiro(p){
   var titulo = tipo === 'recebi' ? 'Recebi pagamento' : 'Paguei conta';
   var v = mxNum(s.valor);
   var voltar = s.passo === 'valor' ? null : function(){ up({passo: s.passo === 'confirma' ? 'quem' : 'valor', erro:''}); };
+  // sinal já pago pelo paciente (consulta confirmada com sinal): oferece abater do total
+  var pacSel = tipo === 'recebi' && s.quem ? (PAC_STORE.v || []).find(function(x){ return x.nome === s.quem; }) : null;
+  React.useEffect(function(){
+    if (!SB_ON || !pacSel || !pacSel.dbId) { if (s.sinais.length) up({sinais: []}); return; }
+    var vivo = true;
+    SB.rpc('sinal_disponivel', {p_paciente: pacSel.dbId}).then(function(r){ if (vivo && !r.error) up({sinais: r.data || []}); });
+    return function(){ vivo = false; };
+  }, [pacSel && pacSel.dbId]);
+  var sinalAbatido = s.abater && s.sinais.length ? Number(s.sinais[0].valor) || 0 : 0;
   if (s.passo === 'valor') return mxTela({titulo: titulo + ' · 1 de 3', onFechar: ctx.fechar, children: [
     React.createElement(MxTeclado, {key:'t', valor: s.valor, decimal: true, prefixo: 'R$', onMudar: function(x){ up({valor: x}); }}),
     React.createElement("button", {key:'b', type:"button", disabled: v <= 0, onClick: function(){ up({passo:'quem'}); }, style: Object.assign({}, MX_BTN, {opacity: v <= 0 ? 0.45 : 1})}, 'Continuar')
@@ -527,9 +536,12 @@ function MxDinheiro(p){
     var feitoOk = function(){ ctx.feito(tipo === 'recebi' ? 'Recebimento salvo' : 'Pagamento salvo', brl(v) + (tipo === 'recebi' ? ' de ' + (s.quem || 'venda avulsa') : ' para ' + s.quem)); };
     var falha = function(e){ up({salvando: false, erro: 'Não salvei. Confira e tente de novo.'}); if (window.avisoErro) avisoErro('Não foi possível salvar', e); };
     if (tipo === 'recebi') {
-      var r = {id: id, dbId: id, data: TODAY_ISO, pac: s.quem || '', proc: '', pro: '', cat: 'Procedimentos', atend: 'Particular', total: v, desc: 0, forma: forma, parc: 1, venc: TODAY_ISO, status: 'Recebido'};
+      var abate = sinalAbatido > 0 ? Math.min(sinalAbatido, v) : 0;
+      var r = {id: id, dbId: id, data: TODAY_ISO, pac: s.quem || '', proc: s.sinais.length && abate ? (s.sinais[0].procedimento || '') : '', pro: '', cat: 'Procedimentos', atend: 'Particular', total: v, desc: abate, forma: forma, parc: 1, venc: TODAY_ISO, status: 'Recebido'};
       REC_STORE.v = [r].concat(REC_STORE.v); avisar(REC_STORE);
-      if (SB_ON) return FinSvc.criar('rec', r, {}).then(feitoOk, function(e){ REC_STORE.v = REC_STORE.v.filter(function(x){ return x !== r; }); avisar(REC_STORE); falha(e); });
+      if (SB_ON) return FinSvc.criar('rec', r, abate ? {observacoes: 'Sinal de ' + brl(abate) + ' abatido (consulta de ' + s.sinais[0].data + ')'} : {}).then(function(){
+        if (abate) return SB.rpc('sinal_abater', {p_agendamento: s.sinais[0].agendamento_id, p_conta_receber: id}).then(function(){}, function(){});
+      }).then(feitoOk, function(e){ REC_STORE.v = REC_STORE.v.filter(function(x){ return x !== r; }); avisar(REC_STORE); falha(e); });
       return feitoOk();
     }
     var d = {id: id, dbId: id, desc: s.quem, cat: 'Outros', forn: s.quem, total: v, forma: forma, data: TODAY_ISO, venc: s.venc, parc: 1, status: s.pago ? 'Pago' : 'Pendente'};
@@ -538,6 +550,7 @@ function MxDinheiro(p){
     return feitoOk();
   };
   var resumo = [['Valor', brl(v)], [tipo === 'recebi' ? 'Paciente' : 'Fornecedor', s.quem || 'Venda avulsa'], ['Forma', forma]];
+  if (tipo === 'recebi' && sinalAbatido > 0) resumo.push(['Sinal já pago', '- ' + brl(Math.min(sinalAbatido, v)) + ' (consulta de ' + s.sinais[0].data + ')'], ['Recebe agora', brl(Math.max(0, v - sinalAbatido))]);
   if (tipo === 'paguei') resumo.push(['Vencimento', s.venc === TODAY_ISO ? 'Hoje' : s.venc.split('-').reverse().join('/')], ['Situação', s.pago ? 'Já paguei' : 'A pagar']);
   return mxTela({titulo: titulo + ' · 3 de 3', onFechar: ctx.fechar, onVoltar: voltar, children: [
     React.createElement("div", {key:'r', style: Object.assign({}, MX_CARD, {gap:12})}, resumo.map(function(x){ return React.createElement("div", {key:x[0], style:{display:'flex',justifyContent:'space-between',gap:12,fontSize:16}}, React.createElement("span", {style:{color:'var(--text-muted)'}}, x[0]), React.createElement("span", {style:{color:'var(--text-strong)',fontWeight:600,textAlign:'right'}}, x[1])); })),
@@ -4777,7 +4790,55 @@ function AgEditar(_ref) {
       key: p.id || p.n,
       value: p.id
     }, p.n, p.r ? ' · ' + p.r : '');
-  }))), statusOpcoes.length ? /*#__PURE__*/React.createElement("label", {
+  }))), (function () {
+    // sinal para garantir a vaga: situação e ações da equipe
+    var sl = window.sinalSelo ? sinalSelo(a) : null;
+    if (!sl) return null;
+    var bt = function bt(t, fn, pri) {
+      return /*#__PURE__*/React.createElement("button", {
+        type: "button",
+        onClick: fn,
+        style: {
+          borderRadius: 12,
+          padding: '10px 12px',
+          border: pri ? 0 : '1.5px solid rgba(214,226,242,.9)',
+          background: pri ? '#1F9D55' : '#fff',
+          color: pri ? '#fff' : 'var(--text-strong)',
+          fontFamily: 'inherit',
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: 'pointer'
+        }
+      }, t);
+    };
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        gridColumn: '1 / -1',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: '10px 12px',
+        borderRadius: 12,
+        background: sl.bg
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: sl.cor
+      }
+    }, 'Sinal: ' + sl.t + (a.sinalValor ? ' · ' + brl(Number(a.sinalValor)) : '') + (sl.k === 'pendente' && a.reservaExpiraEm ? ' · reserva até ' + BR.dataTela(BR.diaDe(a.reservaExpiraEm)) + ' ' + BR.hm(a.reservaExpiraEm) : '')), a.statusPag === 'pendente' ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8,
+        flexWrap: 'wrap'
+      }
+    }, bt('Confirmar sinal recebido', function () {
+      sinalConfirmar(Object.assign({}, a, { n: a.pac }), onClose);
+    }, true), bt('Dispensar o sinal', function () {
+      sinalDispensar(Object.assign({}, a, { n: a.pac }), onClose);
+    })) : null);
+  })(), statusOpcoes.length ? /*#__PURE__*/React.createElement("label", {
     style: lab
   }, "Status", /*#__PURE__*/React.createElement("select", {
     style: inp,
