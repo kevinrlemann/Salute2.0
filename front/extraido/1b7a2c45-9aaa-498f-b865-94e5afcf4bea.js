@@ -15368,6 +15368,10 @@ function App() {
     };
   }, [toast]);
   React.useEffect(function () {
+    // os três pontos das telas do celular e o item Configurações do menu de Conversas usam o mesmo caminho do item Configurações da aba Mais
+    window.abrirConfiguracoes = function () {
+      navegar('perfil');
+    };
     window.RN_NAV = function (t) {
       if (!ROUTES[t] || !can(t)) return false;
       navegar(t);

@@ -4013,7 +4013,8 @@ function MensagensWA(_ref10) {
         React.createElement("button", { type: "button", onClick: function () { setTab('p'); setMenuAberto(false); }, style: Object.assign({}, itemMenu, { fontWeight: !isTeam ? 600 : 400 }) }, 'Pacientes'),
         React.createElement("button", { type: "button", onClick: function () { setTab('d'); setMenuAberto(false); }, style: Object.assign({}, itemMenu, { fontWeight: isTeam ? 600 : 400 }) }, 'Equipe'),
         React.createElement("button", { type: "button", onClick: function () { setCrm(true); setMenuAberto(false); }, style: itemMenu }, 'Funil de clientes'),
-        React.createElement("button", { type: "button", onClick: function () { setFl('arquivadas'); setMenuAberto(false); }, style: itemMenu }, 'Arquivadas')) : null),
+        React.createElement("button", { type: "button", onClick: function () { setFl('arquivadas'); setMenuAberto(false); }, style: itemMenu }, 'Arquivadas'),
+        React.createElement("button", { type: "button", onClick: function () { setMenuAberto(false); if (window.abrirConfiguracoes) window.abrirConfiguracoes(); }, style: itemMenu }, 'Configurações')) : null),
     React.createElement("span", { style: { flex: 1, textAlign: 'center', fontSize: 21, fontWeight: 700, color: WA.text, whiteSpace: 'nowrap' } }, isTeam ? 'Equipe' : 'Conversas'),
     // não existe fluxo para começar uma conversa daqui (o paciente escreve primeiro); o botão é só a busca
     React.createElement("button", { type: "button", "aria-label": "Pesquisar conversa", title: "Pesquisar conversa", onClick: function () { var i = document.querySelector('input[aria-label="Pesquisar conversa"]'); if (i) { i.focus(); i.scrollIntoView({ block: 'nearest' }); } }, style: Object.assign({}, botaoRedondo, { background: WA.green, color: '#fff' }) }, React.createElement(MIcon, { name: "search", size: 20 })));
