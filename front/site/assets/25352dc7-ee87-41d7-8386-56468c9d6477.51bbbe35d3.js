@@ -608,6 +608,54 @@ function MesChip() {
   })), m.carregando ? /*#__PURE__*/React.createElement("style", null, '@keyframes sbgira{to{transform:rotate(360deg)}}') : null);
 }
 
+// chip de período de UM indicador: Este mês · Últimos 7 dias · Últimos 30 dias · Personalizado (duas datas)
+function PeriodoChip(_ref) {
+  var secao = _ref.secao, compacto = _ref.compacto;
+  var per = useStore(PAINEL_PER)[0];
+  var dados = useStore(PAINEL_DADOS)[0];
+  useStore(PAINEL_MES);
+  var chave = per[secao] || 'mes';
+  var _c = React.useState(null), custom = _c[0], setCustom = _c[1];
+  var carregando = chave !== 'mes' && !dados[chave];
+  var valorSel = /^c:/.test(chave) ? 'custom' : chave;
+  var escolher = function (v) {
+    if (v === 'custom') {
+      var d = painelDatasDe(chave) || [BR.diaDe(Date.now() - 13 * 86400000), BR.hoje()];
+      setCustom({ ini: d[0], fim: d[1] });
+      return;
+    }
+    setCustom(null);
+    painelEscolherPeriodo(secao, v);
+  };
+  var aplicar = function () {
+    if (!custom || !custom.ini || !custom.fim || custom.fim < custom.ini) return;
+    painelEscolherPeriodo(secao, 'c:' + custom.ini + ':' + custom.fim);
+    setCustom(null);
+  };
+  var est = _objectSpread(_objectSpread({}, pillSel), compacto ? { height: 30, fontSize: 13, padding: '0 28px 0 12px', gap: 6 } : {});
+  var campo = { height: 34, padding: '0 8px', borderRadius: 10, border: '1.5px solid rgba(214,226,242,.9)', background: '#fff', fontFamily: 'inherit', fontSize: 14, color: 'var(--text-strong)' };
+  return /*#__PURE__*/React.createElement("span", { style: { position: 'relative', display: 'inline-flex', maxWidth: '100%' } },
+    /*#__PURE__*/React.createElement("label", { style: est, title: "Escolher o período deste indicador" },
+      /*#__PURE__*/React.createElement(SIcon, { name: carregando ? 'loader-circle' : 'calendar-range', size: compacto ? 15 : 17, strokeWidth: 1.7, style: carregando ? { animation: 'sbgira 1s linear infinite' } : undefined }),
+      /*#__PURE__*/React.createElement("span", { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, painelRotuloPeriodo(chave)),
+      /*#__PURE__*/React.createElement("span", { style: { position: 'absolute', right: compacto ? 9 : 13, display: 'flex', pointerEvents: 'none' } }, /*#__PURE__*/React.createElement(SIcon, { name: "chevron-down", size: 15 })),
+      /*#__PURE__*/React.createElement("select", { "aria-label": "Período do indicador", value: valorSel, onChange: function (e) { escolher(e.target.value); }, style: selInvisivel },
+        /*#__PURE__*/React.createElement("option", { value: "mes" }, painelRotuloPeriodo('mes')),
+        /*#__PURE__*/React.createElement("option", { value: "7d" }, "Últimos 7 dias"),
+        /*#__PURE__*/React.createElement("option", { value: "30d" }, "Últimos 30 dias"),
+        /*#__PURE__*/React.createElement("option", { value: "custom" }, "Personalizado...")),
+      carregando ? /*#__PURE__*/React.createElement("style", null, '@keyframes sbgira{to{transform:rotate(360deg)}}') : null),
+    custom ? /*#__PURE__*/React.createElement("div", { "data-overlay": "1", role: "dialog", "aria-label": "Período personalizado",
+      style: { position: 'absolute', top: '100%', right: 0, marginTop: 6, zIndex: 60, padding: 12, borderRadius: 14, background: '#fff', border: '1.5px solid rgba(214,226,242,.9)', boxShadow: '0 12px 30px -12px rgba(23,73,170,.35)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 230 } },
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+        /*#__PURE__*/React.createElement("input", { type: "date", "aria-label": "De", value: custom.ini, max: custom.fim, onChange: function (e) { setCustom(_objectSpread(_objectSpread({}, custom), {}, { ini: e.target.value })); }, style: campo }),
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, color: 'var(--text-muted)' } }, "a"),
+        /*#__PURE__*/React.createElement("input", { type: "date", "aria-label": "Até", value: custom.fim, min: custom.ini, onChange: function (e) { setCustom(_objectSpread(_objectSpread({}, custom), {}, { fim: e.target.value })); }, style: campo })),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6, justifyContent: 'flex-end' } },
+        /*#__PURE__*/React.createElement("button", { type: "button", onClick: function () { setCustom(null); }, style: { height: 32, padding: '0 12px', borderRadius: 10, border: 0, background: 'rgba(23,73,170,.08)', color: 'var(--text-strong)', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer' } }, "Cancelar"),
+        /*#__PURE__*/React.createElement("button", { type: "button", onClick: aplicar, style: { height: 32, padding: '0 14px', borderRadius: 10, border: 0, background: '#1F5EFF', color: '#fff', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer' } }, "Aplicar"))) : null);
+}
+
 /* ---- Pacientes recentes: próximos atendimentos e os já feitos, por profissional ---- */
 var DIA_C = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 function quandoAg(ts) {
@@ -1269,7 +1317,13 @@ function PainelScreen(_ref14) {
   var mesAgora = mesesPainel()[0].value,
     mesMin = mesesPainel()[11].value;
   var carga = useCarga('painel');
-  var D = SB_ON ? painelTela(pv) : null;
+  var perSt = useStore(PAINEL_PER)[0];
+  var dadosPer = useStore(PAINEL_DADOS)[0];
+  // ao entrar no Painel, cada indicador volta ao período padrão (mês para uns, últimos 7 dias para outros)
+  React.useEffect(function () {
+    if (SB_ON) painelPeriodosPadrao();
+  }, []);
+  var D = SB_ON ? painelTelaPeriodos(pv, perSt, dadosPer) : null;
   var stats = D ? D.stats : [{
     icon: 'users',
     title: 'Total de pacientes',
@@ -1352,8 +1406,10 @@ function PainelScreen(_ref14) {
       gridTemplateColumns: mobile ? '1fr' : narrow ? 'repeat(auto-fit, minmax(280px,1fr))' : 'repeat(3, minmax(0,1fr))',
       gap: g
     }
-  }, stats.map(function (s) {
-    return /*#__PURE__*/React.createElement(StatCard, _extends({
+  }, stats.map(function (s, si) {
+    return /*#__PURE__*/React.createElement("div", { key: s.title, style: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 } },
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', justifyContent: 'flex-end' } }, /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia'][si], compacto: true })),
+      /*#__PURE__*/React.createElement(StatCard, _extends({
       key: s.title
     }, s, {
       // celular: os três pontos do cartão abrem a tela de Configurações (mesmo caminho do item da aba Mais)
@@ -1361,9 +1417,10 @@ function PainelScreen(_ref14) {
         if (window.abrirConfiguracoes) window.abrirConfiguracoes();else if (onNavigate) onNavigate('perfil');
       } : function onMenu() {},
       style: _objectSpread(_objectSpread({}, glass), {}, {
-        padding: mobile ? 18 : 22
+        padding: mobile ? 18 : 22,
+        flex: 1
       })
-    }));
+    })));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
@@ -1378,7 +1435,7 @@ function PainelScreen(_ref14) {
       gap: 16
     })
   }, /*#__PURE__*/React.createElement(CardTitle, {
-    right: /*#__PURE__*/React.createElement(MesChip, null)
+    right: /*#__PURE__*/React.createElement(PeriodoChip, { secao: "funil" })
   }, "Funil de vendas"), /*#__PURE__*/React.createElement(BigNum, {
     trend: D ? D.funilTrend : '9,4%',
     sub: "leads no funil"
@@ -1418,7 +1475,7 @@ function PainelScreen(_ref14) {
       gap: 16
     })
   }, /*#__PURE__*/React.createElement(CardTitle, {
-    right: /*#__PURE__*/React.createElement(MesChip, null)
+    right: /*#__PURE__*/React.createElement(PeriodoChip, { secao: "canais" })
   }, "Leads por canal"), /*#__PURE__*/React.createElement(BigNum, {
     sub: "Leads"
   }, D ? D.leads : 186), /*#__PURE__*/React.createElement(LeadsPorCanal, {
@@ -1437,7 +1494,7 @@ function PainelScreen(_ref14) {
       gap: 12
     })
   }, /*#__PURE__*/React.createElement(CardTitle, {
-    right: /*#__PURE__*/React.createElement(MesChip, null)
+    right: /*#__PURE__*/React.createElement(PeriodoChip, { secao: "atendimentos" })
   }, "Atendimentos"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -1460,7 +1517,7 @@ function PainelScreen(_ref14) {
       fontSize: 15,
       color: 'var(--text-muted)'
     }
-  }, "vs m\xEAs anterior")), D ? /*#__PURE__*/React.createElement("div", {
+  }, D ? D.rotAtend : "vs m\xEAs anterior")), D ? /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 18,

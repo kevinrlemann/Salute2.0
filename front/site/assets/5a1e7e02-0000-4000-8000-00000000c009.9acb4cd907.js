@@ -39,12 +39,12 @@ CARGAS.painel = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(fun
     while (1) switch (_context.n) {
       case 0:
         _context.n = 1;
-        return DB.ler(SB.rpc('painel_mes', {
+        return Promise.all([DB.ler(SB.rpc('painel_mes', {
           p_clinica: CLI(),
           p_mes: PAINEL_MES.v.iso
-        }), 'Não foi possível carregar o Painel');
+        }), 'Não foi possível carregar o Painel'), painelCarregarPeriodo('7d', true)]);
       case 1:
-        r = _context.v;
+        r = _context.v[0];
         PAINEL.v = r;
         avisar(PAINEL);
       case 2:
@@ -52,6 +52,82 @@ CARGAS.painel = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(fun
     }
   }, _callee);
 }));
+/* ---- Período por indicador (2026-10-16) ----
+   Cada cartão do Painel tem o seu período: ao entrar na tela, "Este mês" para pacientes, agendamentos, funil e canais
+   e "Últimos 7 dias" para a IA e os atendimentos. A pessoa pode trocar (7 dias, 30 dias, mês ou datas escolhidas).
+   'mes' usa os dados de painel_mes (mês escolhido no chip do mês); os outros vêm de painel_periodo. */
+var PAINEL_PER_PADRAO = { pacientes: 'mes', agendamentos: 'mes', ia: '7d', funil: 'mes', canais: 'mes', atendimentos: '7d' };
+var PAINEL_PER = makeStore(_objectSpread({}, PAINEL_PER_PADRAO));
+var PAINEL_DADOS = makeStore({});
+var PAINEL_CARREGANDO = {};
+function painelDatasDe(chave) {
+  var hoje = BR.hoje();
+  if (chave === '7d') return [BR.diaDe(Date.now() - 6 * 86400000), hoje];
+  if (chave === '30d') return [BR.diaDe(Date.now() - 29 * 86400000), hoje];
+  var m = /^c:(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/.exec(String(chave || ''));
+  return m ? [m[1], m[2]] : null;
+}
+function painelCarregarPeriodo(chave, forcar) {
+  if (!SB_ON || chave === 'mes') return Promise.resolve();
+  var d = painelDatasDe(chave);
+  if (!d) return Promise.resolve();
+  if (!forcar && PAINEL_DADOS.v[chave]) return Promise.resolve();
+  if (PAINEL_CARREGANDO[chave]) return PAINEL_CARREGANDO[chave];
+  var p = SB.rpc('painel_periodo', { p_clinica: CLI(), p_ini: d[0], p_fim: d[1] }).then(function (r) {
+    if (r.error) throw r.error;
+    PAINEL_DADOS.v = _objectSpread(_objectSpread({}, PAINEL_DADOS.v), {}, _defineProperty({}, chave, r.data));
+    avisar(PAINEL_DADOS);
+  })["catch"](function (e) {
+    avisoErro('Não foi possível carregar o período', e);
+  }).then(function () {
+    delete PAINEL_CARREGANDO[chave];
+  });
+  PAINEL_CARREGANDO[chave] = p;
+  return p;
+}
+function painelEscolherPeriodo(secao, chave) {
+  PAINEL_PER.v = _objectSpread(_objectSpread({}, PAINEL_PER.v), {}, _defineProperty({}, secao, chave));
+  avisar(PAINEL_PER);
+  return painelCarregarPeriodo(chave);
+}
+// ao entrar no Painel os períodos voltam ao padrão
+function painelPeriodosPadrao() {
+  PAINEL_PER.v = _objectSpread({}, PAINEL_PER_PADRAO);
+  avisar(PAINEL_PER);
+  Object.keys(PAINEL_PER_PADRAO).forEach(function (k) {
+    painelCarregarPeriodo(PAINEL_PER_PADRAO[k]);
+  });
+}
+function painelRotuloPeriodo(chave) {
+  if (chave === 'mes') return PAINEL_MES.v.iso === mesIso(BR.partes().ano, BR.partes().mes) ? 'Este mês' : mesNomeIso(PAINEL_MES.v.iso);
+  if (chave === '7d') return 'Últimos 7 dias';
+  if (chave === '30d') return 'Últimos 30 dias';
+  var d = painelDatasDe(chave);
+  return d ? BR.dataTela(d[0]).slice(0, 5) + ' a ' + BR.dataTela(d[1]).slice(0, 5) : 'Período';
+}
+function painelRotuloAnterior(chave) {
+  return chave === 'mes' ? 'vs mês anterior' : chave === '7d' ? 'vs 7 dias anteriores' : chave === '30d' ? 'vs 30 dias anteriores' : 'vs período anterior';
+}
+// monta a tela a partir do mês e troca só as partes cujo período não é o mês
+function painelTelaPeriodos(base, per, dados) {
+  var D = painelTela(base, 'vs mês anterior');
+  var cache = {};
+  var de = function de(secao) {
+    var k = per[secao];
+    if (k === 'mes' || !dados[k]) return null;
+    if (!cache[k]) cache[k] = painelTela(dados[k], painelRotuloAnterior(k));
+    return cache[k];
+  };
+  var x;
+  if (x = de('pacientes')) D.stats[0] = x.stats[0];
+  if (x = de('agendamentos')) D.stats[1] = x.stats[1];
+  if (x = de('ia')) D.stats[2] = x.stats[2];
+  if (x = de('funil')) { D.funil = x.funil; D.funilTotal = x.funilTotal; D.perdidos = x.perdidos; D.funilTrend = x.funilTrend; D.conv = x.conv; D.diasMedios = x.diasMedios; }
+  if (x = de('canais')) { D.canais = x.canais; D.leads = x.leads; }
+  if (x = de('atendimentos')) { D.atend = x.atend; D.atendTrend = x.atendTrend; D.week = x.week; D.weekMax = x.weekMax; D.weekAgendados = x.weekAgendados; }
+  D.rotAtend = painelRotuloAnterior(per.atendimentos);
+  return D;
+}
 // troca o mês de todos os cartões do Painel; os números antigos ficam na tela até os novos chegarem
 function painelMudarMes(_x) {
   return _painelMudarMes.apply(this, arguments);
@@ -169,7 +245,7 @@ var STATUS_PAC = {
   consulta: 'consulta',
   concluido: 'concluido'
 };
-function painelTela(r) {
+function painelTela(r, rotuloAnterior) {
   r = r || {};
   var pac = r.pacientes || {},
     ag = r.agendamentos || {},
@@ -179,7 +255,7 @@ function painelTela(r) {
     fu = r.funil || {};
   var lbl = {
     value: '',
-    label: 'vs mês anterior'
+    label: rotuloAnterior || 'vs mês anterior'
   };
   var horas = Math.round((ia.conversas || 0) * (ia.minutos_por_conversa || 5) / 60);
   var etapas = (fu.etapas || []).map(function (e) {
@@ -280,7 +356,7 @@ function painelTela(r) {
       value: horas + 'h',
       // é uma estimativa: conversas atendidas pela IA × minutos por conversa (Configurações); o rótulo diz isso
       trend: _objectSpread(_objectSpread({}, tr(ia.conversas || 0, ia.conversas_anterior || 0)), {}, {
-        label: 'conversas vs mês anterior · estimativa de ' + (ia.minutos_por_conversa || 5) + ' min cada'
+        label: 'conversas ' + (rotuloAnterior || 'vs mês anterior') + ' · estimativa de ' + (ia.minutos_por_conversa || 5) + ' min cada'
       }),
       breakdown: [{
         label: 'Conversas',
@@ -357,6 +433,14 @@ function saudacao() {
   return (h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite') + (quem ? ', ' + quem : '');
 }
 Object.assign(window, {
+  PAINEL_PER: PAINEL_PER,
+  PAINEL_DADOS: PAINEL_DADOS,
+  painelEscolherPeriodo: painelEscolherPeriodo,
+  painelPeriodosPadrao: painelPeriodosPadrao,
+  painelRotuloPeriodo: painelRotuloPeriodo,
+  painelTelaPeriodos: painelTelaPeriodos,
+  painelDatasDe: painelDatasDe,
+  PAINEL_CARREGANDO: PAINEL_CARREGANDO,
   PAINEL: PAINEL,
   PAINEL_MES: PAINEL_MES,
   painelTela: painelTela,

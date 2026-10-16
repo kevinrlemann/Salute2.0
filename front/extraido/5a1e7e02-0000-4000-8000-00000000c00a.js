@@ -936,7 +936,7 @@ function rnApplyDB(a) {
       total: x.valor,
       desc: 0,
       forma: x.forma,
-      parc: 1,
+      parc: x.pago ? 1 : Math.max(1, Number(x.parcelas) || 1),
       venc: x.venc,
       status: x.pago ? 'Recebido' : 'Pendente',
       ia: true
@@ -956,7 +956,7 @@ function rnApplyDB(a) {
       forma: x.forma,
       data: x.data,
       venc: x.venc,
-      parc: 1,
+      parc: x.pago ? 1 : Math.max(1, Number(x.parcelas) || 1),
       status: x.pago ? 'Pago' : 'Pendente',
       ia: true
     };

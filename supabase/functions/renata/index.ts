@@ -230,6 +230,8 @@ Deno.serve(async (req) => {
     if (!(arq instanceof File)) return json({ erro: 'Falta o áudio' }, 400);
     const fd = new FormData();
     fd.append('model_id', String(form.get('model_id') || 'scribe_v1'));
+    // idioma fixo em português: a ElevenLabs acerta muito mais palavras quando não precisa adivinhar a língua
+    fd.append('language_code', 'por');
     fd.append('file', arq, arq.name || 'fala.webm');
     const r = await fetch('https://api.elevenlabs.io/v1/speech-to-text', { method: 'POST', headers: { 'xi-api-key': key }, body: fd });
     if (!r.ok) return erroVoz(r, 'Speech to Text');

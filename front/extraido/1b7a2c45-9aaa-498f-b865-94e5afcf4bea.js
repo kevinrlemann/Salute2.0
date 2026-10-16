@@ -1442,6 +1442,46 @@ function rnEnxugar(x, prof) {
 var rnNorm = function rnNorm(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 };
+// palavras que a clínica usa (nomes de pacientes, profissionais, procedimentos e termos da área): servem para
+// escolher, entre as alternativas que o navegador oferece, a frase que mais combina com o vocabulário da clínica
+var RN_TERMOS_CLINICA = ['botox', 'toxina', 'preenchimento', 'bioestimulador', 'harmonizacao', 'peeling', 'laser', 'limpeza de pele', 'microagulhamento',
+  'anamnese', 'prontuario', 'agendar', 'agendamento', 'consulta', 'retorno', 'paciente', 'procedimento', 'pix', 'cartao', 'dinheiro', 'boleto', 'parcelas',
+  'receita', 'despesa', 'estoque', 'produto', 'fornecedor', 'clareamento', 'implante', 'canal', 'aparelho', 'avaliacao', 'orcamento', 'lead', 'whatsapp'];
+var rnVocabCache = { t: 0, set: null };
+function rnVocab() {
+  if (rnVocabCache.set && Date.now() - rnVocabCache.t < 60000) return rnVocabCache.set;
+  var set = {};
+  var add = function (txt) { rnNorm(txt).split(/[^a-z0-9]+/).forEach(function (w) { if (w.length >= 3) set[w] = 1; }); };
+  RN_TERMOS_CLINICA.forEach(add);
+  try { (window.PAC_STORE && PAC_STORE.v || []).forEach(function (x) { add(x.nome || ''); }); } catch (e) {}
+  try { (window.PROF0 || []).forEach(function (x) { add(x.nome || x.n || ''); }); } catch (e) {}
+  try { (window.CAT && CAT.v && CAT.v.procedimentos || []).forEach(function (x) { add(x.nome || ''); }); } catch (e) {}
+  try { (window.PROD_STORE && PROD_STORE.v || []).forEach(function (x) { add(x.nome || ''); }); } catch (e) {}
+  rnVocabCache = { t: Date.now(), set: set };
+  return set;
+}
+// entre as alternativas de um trecho reconhecido, fica com a que tem mais palavras do vocabulário da clínica
+function rnMelhorAlternativa(res) {
+  if (!res || res.length <= 1) return res && res[0] ? res[0].transcript : '';
+  var voc = rnVocab(), melhor = res[0].transcript, nota = -1;
+  for (var k = 0; k < res.length; k++) {
+    var t = res[k].transcript || '';
+    var n = 0;
+    rnNorm(t).split(/[^a-z0-9]+/).forEach(function (w) { if (voc[w]) n++; });
+    n += (res[k].confidence || 0) * 0.5 - k * 0.01;
+    if (n > nota) { nota = n; melhor = t; }
+  }
+  return melhor;
+}
+// erros comuns do reconhecimento de voz em português, trocados antes de a Renata interpretar
+var RN_DITADO = [[/\bbio ?estimulador(es)?\b/gi, 'bioestimulador$1'], [/\bpr[eé][ -]enchimento\b/gi, 'preenchimento'], [/\bb[oó]t[oó]cs?\b/gi, 'botox'], [/\bpi(cks|ques|x)\b/gi, 'Pix'],
+  [/\banam ?n[eé]se\b/gi, 'anamnese'], [/\bpr[oó]ntu[aá]rio\b/gi, 'prontuário'], [/\bwhats ?app?\b/gi, 'WhatsApp'], [/\bzap\b/gi, 'WhatsApp'],
+  [/\b(\d+) ?(vezes|x) sem juros\b/gi, '$1 parcelas'], [/\bem (\d+) ?(vezes|x)\b/gi, 'em $1 parcelas'], [/\bparcelado em (\d+)\b/gi, 'em $1 parcelas']];
+function rnCorrigirDitado(q) {
+  var t = String(q || '');
+  RN_DITADO.forEach(function (p) { t = t.replace(p[0], p[1]); });
+  return t.replace(/\s+/g, ' ').trim();
+}
 var rnHas = function rnHas(q) {
   for (var _len = arguments.length, w = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
     w[_key - 1] = arguments[_key];
@@ -1929,7 +1969,7 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   'AÇÕES (lançar, receber, pagar, estoque, agendar, remarcar, cancelar, cadastrar paciente, enviar anamnese ou mensagem, prontuário, CRM)',
   '10. Use as ferramentas propor_*. Elas só preparam: o sistema grava quando a pessoa disser sim. Nunca diga que fez antes disso.',
   '11. UMA PERGUNTA POR VEZ. Se faltar informação, pergunte só o próximo dado, em uma frase curta, e espere a resposta. Nunca junte duas perguntas na mesma frase. Não repita o que a pessoa já disse.',
-  '12. Ordem das perguntas. Receita: valor, paciente, procedimento, profissional, forma de pagamento, se já recebeu ou vai receber, data. Despesa: valor, descrição, categoria, fornecedor, forma de pagamento, se já pagou ou vai pagar, data. Estoque: entrada ou baixa, produto, quantidade, e na entrada valor total, fornecedor e forma; na baixa o motivo. Agendamento: paciente, procedimento, profissional, dia, horário.',
+  '12. Ordem das perguntas. Receita: valor, paciente, procedimento, profissional, forma de pagamento, se já recebeu ou vai receber, data. Dinheiro A RECEBER: pergunte "Para qual data está previsto o recebimento?" e lance nessa data (nunca em hoje). PARCELADO ("em 3x", "em duas vezes", "10 parcelas"): pergunte quantas parcelas (se não disse) e a data da primeira; passe parcelas e a data da primeira; cada parcela vence um mês depois da anterior. Se a pessoa disser só a quantidade de parcelas, não invente a data. Despesa: valor, descrição, categoria, fornecedor, forma de pagamento, se já pagou ou vai pagar, data. Estoque: entrada ou baixa, produto, quantidade, e na entrada valor total, fornecedor e forma; na baixa o motivo. Agendamento: paciente, procedimento, profissional, dia, horário.',
   '13. Nunca suponha valor, data, forma, profissional, categoria, fornecedor ou motivo. "Hoje" só se a pessoa disser.',
   '13b. Telefone: os dois primeiros dígitos ditos são o DDD ("19 99493-0755" = (19) 99493-0755). Nunca troque nem invente o DDD; se vier sem DDD, pergunte.',
   '14. Com tudo em mãos, chame a propor_* NA HORA e faça UMA pergunta de confirmação resumindo o essencial. Ex.: "Lanço R$ 300,00 recebidos da Mariana no Pix hoje?". Depois do sim, não pergunte de novo.',
@@ -2204,7 +2244,8 @@ function rnBuildFin(items) {
             profissional: rnProsFin().find(function (p) {
               return rnNorm(p).includes(rnNorm(x.profissional || '#'));
             }) || rnProsFin()[0] || '',
-            forma: rnFormaOf(x.forma || '') || (pago ? 'Pix' : 'Boleto')
+            forma: rnFormaOf(x.forma || '') || (pago ? 'Pix' : 'Boleto'),
+            parcelas: Math.max(1, Math.min(48, Math.round(Number(x.parcelas) || 1)))
           });
         } else {
           var d0 = rnDespOf((x.categoria || '') + ' ' + (x.descricao || ''));
@@ -2220,7 +2261,8 @@ function rnBuildFin(items) {
             descricao: String(x.descricao || (d0 ? d0.desc : 'Despesa')).trim(),
             cat: cat,
             fornecedor: String(x.fornecedor || 'Não informado'),
-            forma: rnFormaOf(x.forma || '') || (pago ? 'Pix' : 'Boleto')
+            forma: rnFormaOf(x.forma || '') || (pago ? 'Pix' : 'Boleto'),
+            parcelas: Math.max(1, Math.min(48, Math.round(Number(x.parcelas) || 1)))
           });
         }
       },
@@ -2336,11 +2378,11 @@ function rnResumo(a) {
   if (rec.length) {
     var pac = rec[0].paciente;
     ps.push(rec.map(function (x) {
-      return "**".concat(brl(x.valor), "** ").concat(x.pago ? 'como recebido ' + rnHojeOu(x.data) : 'a receber em **' + dBR(x.venc) + '**');
+      return "**".concat(brl(x.valor), "** ").concat(x.pago ? 'como recebido ' + rnHojeOu(x.data) : x.parcelas > 1 ? 'em **' + x.parcelas + ' parcelas** de ' + brl(Math.round(x.valor / x.parcelas * 100) / 100) + ', a primeira em **' + dBR(x.venc) + '**' : 'a receber em **' + dBR(x.venc) + '**');
     }).join(' e ') + " de **".concat(pac, "**").concat(rec[0].procedimento !== 'Atendimento' ? ' (' + rec[0].procedimento + ')' : ''));
   }
   des.forEach(function (x) {
-    return ps.push("a despesa **".concat(x.descricao, "** de **").concat(brl(x.valor), "** ").concat(x.pago ? 'como paga ' + rnHojeOu(x.data) : 'a pagar em **' + dBR(x.venc) + '**'));
+    return ps.push("a despesa **".concat(x.descricao, "** de **").concat(brl(x.valor), "** ").concat(x.pago ? 'como paga ' + rnHojeOu(x.data) : x.parcelas > 1 ? 'em **' + x.parcelas + ' parcelas**, a primeira em **' + dBR(x.venc) + '**' : 'a pagar em **' + dBR(x.venc) + '**'));
   });
   return 'Lançar ' + ps.join(' e ') + '?';
 }
@@ -2596,7 +2638,9 @@ function rnFaltaFin(items) {
     }
     if (!rnFormaOf(x.forma || '')) f.push({ n: 'forma de pagamento', q: 'Qual foi a forma de pagamento?' });
     if (x.status !== 'pago' && x.status !== 'pendente') f.push({ n: rec ? 'recebido ou a receber' : 'pago ou a pagar', q: rec ? 'Já foi recebido ou ainda vai receber?' : 'Já foi pago ou ainda vai pagar?' });
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(x.data || ''))) f.push({ n: 'data', q: x.status === 'pendente' ? 'Para qual data é o vencimento?' : rec ? 'Em qual data foi recebido?' : 'Em qual data foi pago?' });
+    var np = Math.round(Number(x.parcelas) || 0);
+    if (x.status === 'pendente' && x.parcelas !== undefined && x.parcelas !== null && !(np >= 1 && np <= 48)) f.push({ n: 'parcelas', q: 'Em quantas parcelas?' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(x.data || ''))) f.push({ n: 'data', q: x.status === 'pendente' ? (np > 1 ? 'Quando vence a primeira parcela?' : rec ? 'Para qual data está previsto o recebimento?' : 'Para qual data é o vencimento?') : rec ? 'Em qual data foi recebido?' : 'Em qual data foi pago?' });
     return f;
   }), items, 'Lançamento');
 }
@@ -2642,7 +2686,11 @@ RENATA_TOOLS.push({
             },
             data: {
               type: 'string',
-              description: 'AAAA-MM-DD. Para pendente, a data de vencimento. Para pago, hoje.'
+              description: 'AAAA-MM-DD. Para pendente (a receber ou a pagar), a data prevista do recebimento ou pagamento, dita pela pessoa; com parcelas, a data da primeira parcela. Para pago, a data em que recebeu ou pagou.'
+            },
+            parcelas: {
+              type: 'integer',
+              description: 'Número de parcelas quando a pessoa falar em parcelado (3x, em duas vezes, em 10 parcelas). Cada parcela vence um mês depois da anterior, a partir da data informada. Sem parcelamento, 1.'
             },
             paciente: {
               type: 'string',
@@ -2830,7 +2878,7 @@ var RN_AI = makeStore(SB_ON ? {
 // voz única da Renata: Sarah, voz padrão da ElevenLabs liberada no plano grátis (fala português com flash v2.5)
 var RN_VOZ_OFICIAL = 'EXAVITQu4vr4xnSDxMaL';
 // silêncio que encerra a fala da pessoa no modo voz (dá tempo de pensar entre uma frase e outra)
-var RN_SILENCIO_MS = 2200;
+var RN_SILENCIO_MS = 1500; // era 2,2 s; 1,5 s responde mais rápido sem cortar frases normais
 var RN_VOICE = makeStore(function () {
   var s = SB_ON ? {} : lsGet('salute-kit:renata-voz', {}) || {};
   return {
@@ -9505,6 +9553,7 @@ function RenataVoiceMode(_ref16) {
       return _regenerator().w(function (_context4) {
         while (1) switch (_context4.n) {
           case 0:
+            q = rnCorrigirDitado(q);
             setHeard(q);
             if (!(R.rest && !RN_PENDING.v && RN_YES.test(rnNorm(q)))) {
               _context4.n = 1;
@@ -9654,6 +9703,8 @@ function RenataVoiceMode(_ref16) {
     R.rec = r;
     r.lang = 'pt-BR';
     r.interimResults = true;
+    // até 3 alternativas por trecho: a Renata escolhe a que mais combina com o vocabulário da clínica
+    try { r.maxAlternatives = 3; } catch (x) {}
     // contínuo: o navegador não corta na primeira pausa; quem encerra é o silêncio de RN_SILENCIO_MS
     r.continuous = true;
     var fin = '',
@@ -9663,7 +9714,7 @@ function RenataVoiceMode(_ref16) {
       fin = '';
       inter = '';
       for (var i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) fin += e.results[i][0].transcript + ' ';else inter += e.results[i][0].transcript;
+        if (e.results[i].isFinal) fin += rnMelhorAlternativa(e.results[i]) + ' ';else inter += e.results[i][0].transcript;
       }
       setHeard((fin + ' ' + inter).replace(/\s+/g, ' ').trim());
       clearTimeout(silT);
