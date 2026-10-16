@@ -861,6 +861,15 @@ var MsgSvc = {
       return r;
     });
   },
+  // apaga a conversa para toda a equipe (exclusão lógica: excluido_em); as mensagens ficam guardadas no banco
+  excluir: function excluir(c) {
+    if (!SB_ON || !ehUuid(c.id)) return Promise.reject(new Error('Disponível só com o sistema conectado.'));
+    return DB.upd('conversas', c.id, { excluido_em: agoraIso() }, 'Não foi possível apagar a conversa').then(function () {
+      if (MSG_CONV[c.id]) MSG_CONV[c.id].excluido_em = agoraIso();
+      delete MSG_CONV[c.id];
+      publicarInbox(INBOX.filter(function (x) { return x.id !== c.id; }));
+    });
+  },
   // liga ou pausa a IA só nesta conversa (o lead ligado acompanha pelo gatilho do banco)
   alternarIA: function alternarIA(c, ativa) {
     if (!SB_ON || !ehUuid(c.id)) return Promise.reject(new Error('Disponível só com o sistema conectado.'));

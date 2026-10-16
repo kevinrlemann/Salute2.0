@@ -3835,18 +3835,58 @@ function CrmBoard(_ref1) {
 }
 /* ---------- celular: deslizar para arquivar, filtro Esperando e CRM em lista ---------- */
 function MxDeslize(p){
+  // arrastar a linha: para a esquerda aparece a lixeira (apagar); para a direita, fixar (só no celular)
   var st = React.useState(0), dx = st[0], setDx = st[1];
-  var ref = React.useRef({x: null, moveu: false});
+  var ref = React.useRef({x: null, moveu: false, id: null});
   if (!p.ativo) return p.children;
+  var ini = function (x, id) { ref.current = {x: x, moveu: false, id: id}; };
+  var mov = function (x) {
+    if (ref.current.x == null) return;
+    var d = x - ref.current.x;
+    if (Math.abs(d) > 8) ref.current.moveu = true;
+    if (d < 0) setDx(Math.max(d, -160)); else if (d > 0 && p.onFixar) setDx(Math.min(d, 160)); else setDx(0);
+  };
+  var fim = function () {
+    if (ref.current.x == null) return;
+    var d = dx; ref.current.x = null; setDx(0);
+    if (d <= -110 && p.onDeslizar) p.onDeslizar();
+    if (d >= 110 && p.onFixar) p.onFixar();
+  };
   return React.createElement("div", {style:{position:'relative',overflow:'hidden'}},
     p.onFixar ? React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#00a884',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-start',paddingLeft:18,fontSize:15,fontWeight:600}}, p.rotuloFixar || 'Fixar') : null,
-    React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#D93838',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-end',paddingRight:18,fontSize:15,fontWeight:600}}, p.rotulo || 'Arquivar'),
+    React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#D93838',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,paddingRight:18,fontSize:15,fontWeight:600}},
+      React.createElement(MIcon, { name: "trash-2", size: 20 }), p.rotulo || 'Apagar'),
     React.createElement("div", {
-      onTouchStart: function(e){ ref.current = {x: e.touches[0].clientX, moveu: false}; },
-      onTouchMove: function(e){ if (ref.current.x == null) return; var d = e.touches[0].clientX - ref.current.x; if (Math.abs(d) > 8) ref.current.moveu = true; if (d < 0) setDx(Math.max(d, -160)); else if (d > 0 && p.onFixar) setDx(Math.min(d, 160)); },
-      onTouchEnd: function(){ var d = dx; ref.current.x = null; setDx(0); if (d <= -120 && p.onDeslizar) p.onDeslizar(); if (d >= 120 && p.onFixar) p.onFixar(); },
+      onTouchStart: function(e){ ini(e.touches[0].clientX); },
+      onTouchMove: function(e){ mov(e.touches[0].clientX); },
+      onTouchEnd: fim,
+      onMouseDown: function(e){ if (e.button === 0) ini(e.clientX); },
+      onMouseMove: function(e){ if (ref.current.x != null && e.buttons === 1) mov(e.clientX); },
+      onMouseUp: fim,
+      onMouseLeave: function(){ if (ref.current.x != null) { ref.current.x = null; setDx(0); } },
       onClickCapture: function(e){ if (ref.current.moveu) { e.stopPropagation(); e.preventDefault(); ref.current.moveu = false; } },
-      style:{position:'relative',background:'#111b21',transform:'translateX(' + dx + 'px)',transition: dx ? 'none' : 'transform .2s ease'}}, p.children));
+      style:{position:'relative',background:'#111b21',transform:'translateX(' + dx + 'px)',transition: dx ? 'none' : 'transform .2s ease',touchAction:'pan-y'}}, p.children));
+}
+// janela de confirmação no visual escuro da tela de Mensagens
+function WaConfirmar(p){
+  React.useEffect(function () {
+    var h = function (e) { if (e.key === 'Escape') p.onFechar(); };
+    window.addEventListener('keydown', h);
+    return function () { window.removeEventListener('keydown', h); };
+  }, []);
+  var bt = function (rotulo, onClick, cor, fundo) {
+    return React.createElement("button", { type: "button", onClick: onClick, style: { flex: 1, minWidth: 96, height: 40, borderRadius: 10, border: 0, background: fundo, color: cor, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' } }, rotulo);
+  };
+  return React.createElement("div", { "data-overlay": "1", role: "dialog", "aria-modal": "true", "aria-label": p.titulo,
+    onClick: function (e) { if (e.target === e.currentTarget) p.onFechar(); },
+    style: { position: 'fixed', inset: 0, zIndex: (window.Z && Z.dialogo) || 600, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
+    React.createElement("div", { style: { width: '100%', maxWidth: 380, borderRadius: 16, background: WA.panel, color: WA.text, boxShadow: '0 20px 60px rgba(0,0,0,.5)', padding: 16 } },
+      React.createElement("div", { style: { fontSize: 17, fontWeight: 700 } }, p.titulo),
+      React.createElement("div", { style: { fontSize: 14, color: WA.sub, marginTop: 6, lineHeight: 1.45 } }, p.texto),
+      React.createElement("div", { style: { display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' } },
+        bt('Cancelar', p.onFechar, WA.text, WA.head),
+        p.secundario ? bt(p.secundario, p.onSecundario, WA.text, WA.field) : null,
+        bt(p.confirmar || 'Apagar', p.onConfirmar, '#fff', '#D93838'))));
 }
 function arquivarConversa(c){
   var it = INBOX.find(function(x){ return x.id === c.id; });
@@ -3937,6 +3977,19 @@ function MensagensWA(_ref10) {
   var pessoaDe = function (uid) { return EQUIPE_PESSOAS.find(function (u) { return SB_ON ? u.usuarioId === uid : u.id === uid; }) || null; };
   var primeiroNome = function (uid) { if (meuId && uid === meuId) return 'você'; var u = pessoaDe(uid); return u ? String(u.nome || '').split(' ')[0] : 'alguém da equipe'; };
   var transfSt = React.useState(null), transf = transfSt[0], setTransf = transfSt[1];
+  var apagarSt = React.useState(null), apagar = apagarSt[0], setApagar = apagarSt[1];
+  var hovSt = React.useState(null), hov = hovSt[0], setHov = hovSt[1];
+  var apagarConversa = function (c) {
+    setApagar(null);
+    if (sel === c.id) setSel(null);
+    if (!SB_ON) {
+      var i = ALL.indexOf(c); if (i >= 0) ALL.splice(i, 1);
+      MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA);
+      avisoOk('Conversa apagada.');
+      return;
+    }
+    MsgSvc.excluir(c).then(function () { avisoOk('Conversa apagada.'); }, function (e) { avisoErro('Não foi possível apagar a conversa', e); });
+  };
   var seloResp = function (c) {
     if (!c.resp && !c.equipe) return null;
     var minha = !!(c.resp && meuId && c.resp === meuId);
@@ -4143,7 +4196,13 @@ function MensagensWA(_ref10) {
     var on = c.id === sel,
       last = lastOf(c),
       u = unreadOf(c);
-    return React.createElement(MxDeslize, {key: c.id, ativo: mobile && !c.arq, rotulo: "Arquivar", onDeslizar: function () { arquivarConversa(c); }, onFixar: mobile ? function () { alternarFixada(c); } : null, rotuloFixar: fixada(c) ? 'Desafixar' : 'Fixar', children: React.createElement("button", {
+    return React.createElement(MxDeslize, {key: c.id, ativo: !c.arq, rotulo: "Apagar", onDeslizar: function () { setApagar(c); }, onFixar: mobile ? function () { alternarFixada(c); } : null, rotuloFixar: fixada(c) ? 'Desafixar' : 'Fixar', children: React.createElement("div", { style: { position: 'relative' } },
+      !mobile && hov === c.id ? React.createElement("button", { type: "button", "aria-label": "Apagar conversa", title: "Apagar conversa",
+        onClick: function (e) { e.stopPropagation(); setApagar(c); },
+        onMouseEnter: function () { setHov(c.id); },
+        style: { position: 'absolute', right: 10, top: 22, width: 30, height: 30, borderRadius: '50%', border: 0, background: 'rgba(217,56,56,.18)', color: '#f28b8b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 } },
+        React.createElement(MIcon, { name: "trash-2", size: 16 })) : null,
+      React.createElement("button", {
       key: c.id,
       type: "button",
       onClick: function onClick() {
@@ -4151,9 +4210,11 @@ function MensagensWA(_ref10) {
       },
       onMouseEnter: function onMouseEnter(e) {
         if (!on) e.currentTarget.style.background = WA.hover;
+        if (!mobile) setHov(c.id);
       },
       onMouseLeave: function onMouseLeave(e) {
         if (!on) e.currentTarget.style.background = 'transparent';
+        if (!mobile) setHov(function (h) { return h === c.id ? null : h; });
       },
       style: {
         width: '100%',
@@ -4248,7 +4309,7 @@ function MensagensWA(_ref10) {
         justifyContent: 'center',
         flexShrink: 0
       }
-    }, u) : null)))});
+    }, u) : null))))});
   }), !LIST.length ? /*#__PURE__*/React.createElement("p", {
     style: {
       textAlign: 'center',
@@ -4553,12 +4614,21 @@ function MensagensWA(_ref10) {
       }
     })), fichaEl);
   }
+  var apagarEl = apagar ? /*#__PURE__*/React.createElement(WaConfirmar, {
+    titulo: 'Apagar a conversa com ' + apagar.n + '?',
+    texto: 'A conversa some da lista para toda a equipe. As mensagens continuam guardadas no banco e nada é enviado ao paciente.',
+    confirmar: 'Apagar',
+    secundario: apagar.arq ? null : 'Só arquivar',
+    onSecundario: function () { setApagar(null); arquivarConversa(apagar); },
+    onFechar: function () { setApagar(null); },
+    onConfirmar: function () { apagarConversa(apagar); }
+  }) : null;
   var transfEl = transf ? /*#__PURE__*/React.createElement(WaTransferir, {
     c: transf.c, pessoas: EQUIPE_PESSOAS, meuId: meuId,
     onFechar: function () { setTransf(null); },
     onFeito: function (uid) {
       setTransf(null);
-      avisoOk(uid === null ? 'Atendimento encerrado. A IA volta a responder.' : uid === meuId ? 'Conversa assumida por você.' : 'Conversa transferida para ' + primeiroNome(uid) + '.');
+      avisoOk(uid === null ? 'Conversa devolvida para a fila. A IA volta a responder.' : uid === meuId ? 'Conversa assumida por você.' : 'Conversa transferida para ' + primeiroNome(uid) + '.');
     }
   }) : null;
   if (SB_ON && carga !== 'ok' && !(INBOX.length && carga === 'carregando')) return /*#__PURE__*/React.createElement(CargaEstado, {
@@ -4578,7 +4648,7 @@ function MensagensWA(_ref10) {
       flexDirection: 'column',
       height: '100%'
     }
-  }, thread), fichaEl, transfEl);
+  }, thread), fichaEl, transfEl, apagarEl);
   if (mobile) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       height: 'calc(100vh - 190px)',
@@ -4588,7 +4658,7 @@ function MensagensWA(_ref10) {
       boxShadow: 'none',
       margin: '0 -16px'
     })
-  }, list), fichaEl, transfEl);
+  }, list), fichaEl, transfEl, apagarEl);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       display: 'grid',
@@ -4596,7 +4666,7 @@ function MensagensWA(_ref10) {
       height: 'calc(100vh - 170px)',
       minHeight: 620
     })
-  }, list, thread), fichaEl, transfEl);
+  }, list, thread), fichaEl, transfEl, apagarEl);
 }
 // janela "Transferir para": lista as pessoas ativas da clínica; motivo é opcional
 function WaTransferir(_ref) {
@@ -4614,7 +4684,7 @@ function WaTransferir(_ref) {
   };
   var encerrar = function () {
     if (salvando) return;
-    if (!SB_ON) { c.resp = null; c.ia = true; MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA); onFeito(null); return; }
+    if (!SB_ON) { c.resp = null; c.ia = true; c.equipe = false; MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA); onFeito(null); return; }
     setSalvando(true);
     MsgSvc.liberar(c, true).then(function () { onFeito(null); }, function (e) { setSalvando(false); avisoErro('Não foi possível encerrar o atendimento', e); });
   };
@@ -4650,10 +4720,11 @@ function WaTransferir(_ref) {
   /*#__PURE__*/React.createElement("div", { style: { flex: 1, overflowY: 'auto', padding: '0 8px 8px' } },
     lista.length ? lista.map(linha) : /*#__PURE__*/React.createElement("p", { style: { color: WA.sub, fontSize: 14, textAlign: 'center', padding: 20 } }, SB_ON ? 'Carregando a equipe...' : 'Ninguém na equipe.')),
   /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 8, padding: '8px 12px 12px', borderTop: '1px solid ' + WA.line } },
-    c.resp ? /*#__PURE__*/React.createElement("button", { type: "button", disabled: salvando, onClick: encerrar,
-      style: { flex: 1, height: 38, borderRadius: 10, border: '1px solid ' + WA.line, background: 'transparent', color: WA.text, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer' } }, "Encerrar e devolver para a IA") : null,
+    c.resp || c.equipe || c.ia === false ? /*#__PURE__*/React.createElement("button", { type: "button", disabled: salvando, onClick: encerrar,
+      title: "Encerra o atendimento humano: a conversa volta para a fila e a IA responde de novo",
+      style: { flex: 1, height: 38, borderRadius: 10, border: '1px solid rgba(0,168,132,.5)', background: 'rgba(0,168,132,.1)', color: WA.green, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer' } }, "Devolver para a fila e ligar a IA") : null,
     /*#__PURE__*/React.createElement("button", { type: "button", onClick: onFechar,
-      style: { flex: c.resp ? 0 : 1, minWidth: 96, height: 38, borderRadius: 10, border: 0, background: WA.head, color: WA.text, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer' } }, "Cancelar"))));
+      style: { flex: c.resp || c.equipe || c.ia === false ? 0 : 1, minWidth: 96, height: 38, borderRadius: 10, border: 0, background: WA.head, color: WA.text, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer' } }, "Cancelar"))));
 }
 function pessoaNome(lista, uid) { var u = lista.find(function (x) { return x.id === uid; }); return u ? (u.eu ? 'você' : u.nome) : 'alguém da equipe'; }
 // aviso quando o Agente de IA está em modo teste (só quem enxerga a tabela, o administrador master, vê)
