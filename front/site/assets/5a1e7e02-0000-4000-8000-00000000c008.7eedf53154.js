@@ -47,7 +47,8 @@ function hidratarPlanos() {
       anual: p.preco_anual === null || p.preco_anual === undefined ? null : Number(p.preco_anual),
       implantacao: p.preco_implantacao === null || p.preco_implantacao === undefined ? null : Number(p.preco_implantacao),
       usuarios: p.limite_usuarios,
-      profissionais: p.limite_profissionais
+      profissionais: p.limite_profissionais,
+      armazenamentoGb: p.limite_armazenamento_gb
     };
   }));
   var a = CAT.v.assinatura;
@@ -82,6 +83,7 @@ CARGAS.catalogos = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
         });
       case 3:
         hidratarPlanos();
+        planoIaWhatsappCarregar();
         // valores adicionais (cobrados à parte acima do limite do plano)
         if (window.ADICIONAIS_STORE) SB.from('planos_adicionais').select('codigo,nome,descricao,preco,cobranca,quantidade,planos,ordem').eq('ativo', true).is('excluido_em', null).order('ordem').then(function (res) {
           if (res && !res.error && res.data && res.data.length) {
@@ -362,3 +364,22 @@ Object.assign(window, {
   notifTela: notifTela,
   salvarNotif: salvarNotif
 });
+// a IA conversacional do WhatsApp só existe nos planos IA Pro e Enterprise (o banco também confere em agente_pode_responder)
+var PLANO_IA_WPP = { v: null }; // null = ainda não perguntou ao banco
+function planoTemIaWhatsapp() {
+  if (!SB_ON) return true;
+  if (PLANO_IA_WPP.v !== null) return PLANO_IA_WPP.v;
+  var a = CAT.v && CAT.v.assinatura;
+  if (a && a.plano && a.plano.codigo) return a.plano.codigo === 'iapro' || a.plano.codigo === 'enterprise';
+  return true; // ainda carregando: não bloqueia; o banco confere de verdade em agente_pode_responder
+}
+function planoIaWhatsappCarregar() {
+  if (!SB_ON || !CLI()) return Promise.resolve();
+  return SB.rpc('plano_ia_whatsapp', { p_clinica: CLI() }).then(function (r) {
+    if (!r.error) { PLANO_IA_WPP.v = !!r.data; if (window.MSG_LISTA) { MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA); } }
+  }, function () {});
+}
+function avisoPlanoIa() {
+  if (window.avisoErro) avisoErro('A IA do WhatsApp faz parte do plano IA Pro. Para ligar, mude o plano em Minha conta › Plano e cobrança.');
+}
+Object.assign(window, { planoTemIaWhatsapp: planoTemIaWhatsapp, avisoPlanoIa: avisoPlanoIa, planoIaWhatsappCarregar: planoIaWhatsappCarregar, PLANO_IA_WPP: PLANO_IA_WPP });

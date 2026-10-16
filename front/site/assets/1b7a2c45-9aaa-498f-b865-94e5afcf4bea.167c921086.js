@@ -206,40 +206,7 @@ function InicioScreen(props) {
       fontSize: 16,
       color: 'var(--text-strong)'
     }
-  })), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    onClick: function onClick() {
-      return onNavigate && onNavigate('agenda');
-    },
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 6,
-      padding: '16px 18px',
-      borderRadius: 22,
-      border: '1.5px solid rgba(255,255,255,.95)',
-      background: 'linear-gradient(160deg,#0A2A8F,#0B4BEB 55%,#7B4BC4 130%)',
-      color: '#fff',
-      cursor: 'pointer',
-      fontFamily: 'inherit',
-      textAlign: 'left'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 13,
-      opacity: .85
-    }
-  }, carregandoAg ? 'Hoje' : 'Hoje · ' + ordenada.length + (ordenada.length === 1 ? ' consulta' : ' consultas')), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 22,
-      fontWeight: 700
-    }
-  }, carregandoAg ? 'Carregando sua agenda' : proxima ? 'Próxima às ' + horaProx : ordenada.length ? 'Consultas de hoje encerradas' : 'Nenhuma consulta hoje'), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14,
-      opacity: .9
-    }
-  }, carregandoAg ? 'Buscando as consultas de hoje' : proxima ? nomeProx + ' · tocar para ver a agenda' : 'Tocar para abrir a agenda')), /*#__PURE__*/React.createElement("div", {
+  })), null /* cartão "Hoje · consultas" removido a pedido do fundador (2026-10-16): o Início fica só com Financeiro, Estoque e Indicadores */, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -444,6 +411,11 @@ var MOB_ACOES = [{
   label: 'Usei material',
   sub: 'Dá baixa no estoque',
   icon: 'package-minus'
+}, {
+  id: 'entrada',
+  label: 'Recebi material',
+  sub: 'Dá entrada de produto no estoque',
+  icon: 'package-plus'
 }];
 /* ---------- celular: ações rápidas do + (Recebi, Paguei, Usei), cobranças, extrato do dia e lista de compras ---------- */
 var MX_BTN = {width:'100%',boxSizing:'border-box',border:0,borderRadius:16,padding:'16px',background:'#1F5EFF',color:'#fff',fontFamily:'inherit',fontSize:17,fontWeight:600,cursor:'pointer'};
@@ -599,6 +571,56 @@ function MxUsei(p){
       React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Sobra no estoque: ' + Math.max(prod.qtd - q, 0))),
     s.erro ? React.createElement("p", {key:'e', style:{margin:0,color:'#D93838',fontSize:15}}, s.erro) : null,
     React.createElement("button", {key:'b', type:"button", disabled: s.salvando, onClick: salvar, style: Object.assign({}, MX_BTN, {opacity: s.salvando ? 0.6 : 1})}, s.salvando ? 'Salvando…' : 'Confirmar baixa')
+  ]});
+}
+function MxEntrada(p){
+  // Recebi material: entrada de produto no estoque (quantidade, produto, valor pago opcional)
+  var ctx = p.ctx;
+  var st = React.useState({passo:'qtd', qtd:'', busca:'', prod:null, valor:'', salvando:false, erro:''});
+  var s = st[0];
+  var up = function(patch){ st[1](function(o){ return Object.assign({}, o, patch); }); };
+  var q = Math.floor(mxNum(s.qtd));
+  var total = mxNum(s.valor);
+  var voltar = s.passo === 'qtd' ? null : function(){ up({passo: s.passo === 'confirma' ? 'valor' : s.passo === 'valor' ? 'produto' : 'qtd', erro:''}); };
+  if (s.passo === 'qtd') return mxTela({titulo: 'Recebi material · 1 de 4', onFechar: ctx.fechar, children: [
+    React.createElement("p", {key:'p', style:{margin:0,fontSize:14,color:'var(--text-muted)'}}, 'Quantas unidades chegaram?'),
+    React.createElement(MxTeclado, {key:'t', valor: s.qtd, decimal: false, onMudar: function(x){ up({qtd: x}); }}),
+    React.createElement("button", {key:'b', type:"button", disabled: q <= 0, onClick: function(){ up({passo:'produto'}); }, style: Object.assign({}, MX_BTN, {opacity: q <= 0 ? 0.45 : 1})}, 'Continuar')
+  ]});
+  if (s.passo === 'produto') {
+    var lista = (PROD_STORE.v || []).filter(function(x){ return !s.busca || String(x.nome).toLowerCase().indexOf(s.busca.toLowerCase()) >= 0; }).slice(0, 30);
+    return mxTela({titulo: 'Recebi material · 2 de 4', onFechar: ctx.fechar, onVoltar: voltar, children: [
+      React.createElement("input", {key:'i', value: s.busca, placeholder:'Buscar produto', onChange: function(e){ up({busca: e.target.value}); }, style:{width:'100%',boxSizing:'border-box',padding:'14px 16px',borderRadius:16,border:'1.5px solid rgba(255,255,255,.95)',background:'#fff',fontFamily:'inherit',fontSize:16}}),
+      React.createElement("div", {key:'l', style:{display:'flex',flexDirection:'column',gap:8}}, lista.length ? lista.map(function(x){
+        return React.createElement("button", {key: x.id || x.nome, type:"button", onClick: function(){ up({prod: x, passo:'valor'}); }, style: Object.assign({}, MX_CARD, {border:0,textAlign:'left',cursor:'pointer',fontFamily:'inherit'})},
+          React.createElement("span", {style:{fontSize:16,fontWeight:600,color:'var(--text-strong)'}}, x.nome),
+          React.createElement("span", {style:{fontSize:13,color: x.qtd < x.min ? '#D93838' : 'var(--text-muted)'}}, 'Em estoque: ' + x.qtd + ' ' + (x.un || '') + (x.qtd < x.min ? ' · abaixo do mínimo' : '')));
+      }) : React.createElement("p", {style:{margin:0,fontSize:14,color:'var(--text-muted)'}}, 'Nenhum produto encontrado. Cadastre o produto no Estoque antes de dar entrada.'))
+    ]});
+  }
+  var prod = s.prod;
+  if (s.passo === 'valor') return mxTela({titulo: 'Recebi material · 3 de 4', onFechar: ctx.fechar, onVoltar: voltar, children: [
+    React.createElement("p", {key:'p', style:{margin:0,fontSize:14,color:'var(--text-muted)'}}, 'Quanto você pagou no total por ' + q + ' ' + (prod.un || 'un') + ' de ' + prod.nome + '? (pode pular)'),
+    React.createElement(MxTeclado, {key:'t', valor: s.valor, decimal: true, prefixo: 'R$', onMudar: function(x){ up({valor: x}); }}),
+    React.createElement("button", {key:'b', type:"button", onClick: function(){ up({passo:'confirma'}); }, style: MX_BTN}, total > 0 ? 'Continuar' : 'Pular, não sei o valor')
+  ]});
+  var salvar = function(){
+    up({salvando: true, erro: ''});
+    var feitoOk = function(){ ctx.feito('Entrada registrada', q + ' ' + prod.nome + ' entrou no estoque'); };
+    if (SB_ON) {
+      return EstSvc.lancar(prod, {tipo: 'entrada', qtd: q, custo: total > 0 ? Math.round(total / q * 100) / 100 : null, obs: 'Entrada pelo celular'}).then(feitoOk, function(e){ up({salvando: false, erro: 'Não salvei. Tente de novo.'}); if (window.avisoErro) avisoErro('Não foi possível registrar a entrada', e); });
+    }
+    PROD_STORE.v = PROD_STORE.v.map(function(x){ return x === prod ? Object.assign({}, x, {qtd: x.qtd + q}) : x; });
+    avisar(PROD_STORE);
+    return feitoOk();
+  };
+  return mxTela({titulo: 'Recebi material · 4 de 4', onFechar: ctx.fechar, onVoltar: voltar, children: [
+    React.createElement("div", {key:'r', style: Object.assign({}, MX_CARD, {gap:10})},
+      React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, 'Vou dar entrada de'),
+      React.createElement("span", {style:{fontSize:22,fontWeight:700,color:'var(--text-strong)'}}, q + ' ' + (prod.un || 'un') + ' de ' + prod.nome),
+      React.createElement("span", {style:{fontSize:14,color:'var(--text-muted)'}}, (total > 0 ? 'Valor pago: ' + brl(total) + ' · ' : '') + 'Fica no estoque: ' + (prod.qtd + q))),
+    s.erro ? React.createElement("p", {key:'e', style:{margin:0,color:'#D93838',fontSize:15}}, s.erro) : null,
+    React.createElement("button", {key:'b', type:"button", disabled: s.salvando, onClick: salvar, style: Object.assign({}, MX_BTN, {opacity: s.salvando ? 0.6 : 1})}, s.salvando ? 'Salvando...' : 'Confirmar entrada')
   ]});
 }
 function MxCobrancas(p){
@@ -777,6 +799,7 @@ function MxRoot(p){
   var id = String(p.id).replace(/^mx_(recebi|paguei|usei)$/, '$1');
   if (id === 'recebi' || id === 'paguei') return React.createElement(MxDinheiro, {tipo: id, ctx: ctx});
   if (id === 'usei') return React.createElement(MxUsei, {ctx: ctx});
+  if (id === 'entrada') return React.createElement(MxEntrada, {ctx: ctx});
   if (id === 'mx_cobrancas') return React.createElement(MxCobrancas, {ctx: ctx});
   if (id === 'mx_extrato') return React.createElement(MxExtrato, {ctx: ctx});
   if (id === 'mx_compras') return React.createElement(MxCompras, {ctx: ctx});
@@ -15541,7 +15564,7 @@ function App() {
     onEscolher: function onEscolher(id) {
       setAcaoAberta(false);
       if (id === 'agendar') return window.abrirNovoAgendamento ? window.abrirNovoAgendamento({}) : setNovo(true);
-      if (id === 'recebi' || id === 'paguei' || id === 'usei') return setMx(id);
+      if (id === 'recebi' || id === 'paguei' || id === 'usei' || id === 'entrada') return setMx(id);
       return navegar('gestao');
     }
   }) : null, /*#__PURE__*/React.createElement(XDialog, {

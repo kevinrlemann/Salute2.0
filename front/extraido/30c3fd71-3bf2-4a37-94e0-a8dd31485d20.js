@@ -58,8 +58,9 @@ var PLANS = [{
   id: 'inicial',
   anual: 1970,
   implantacao: 0,
-  usuarios: 5,
+  usuarios: 2,
   profissionais: 3,
+  armazenamentoGb: 5,
   nome: 'Inicial',
   preco: 197,
   sub: 'Gestão completa da clínica com o WhatsApp no mesmo lugar.',
@@ -69,8 +70,9 @@ var PLANS = [{
   id: 'assistente',
   anual: 3970,
   implantacao: 297,
-  usuarios: 10,
+  usuarios: 2,
   profissionais: 6,
+  armazenamentoGb: 10,
   nome: 'Assistente',
   preco: 397,
   sub: 'A Renata IA ajuda a equipe dentro do sistema.',
@@ -80,8 +82,9 @@ var PLANS = [{
   id: 'iapro',
   anual: 9970,
   implantacao: 997,
-  usuarios: 20,
+  usuarios: 2,
   profissionais: 10,
+  armazenamentoGb: 25,
   nome: 'IA Pro',
   preco: 997,
   sub: 'A Renata IA atende, agenda e confirma pelo WhatsApp.',
@@ -103,7 +106,7 @@ var PLANS = [{
 var PLAN_STORE = makeStore('iapro');
 // valores adicionais: cobrados à parte quando a clínica passa do limite do plano (vêm da tabela planos_adicionais)
 var ADICIONAIS_STORE = makeStore([{
-  codigo: 'usuario_extra', nome: '+1 usuário', descricao: 'Acima do limite de usuários do plano.', preco: 19, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro']
+  codigo: 'usuario_extra', nome: '+1 usuário', descricao: 'Cada usuário além dos 2 incluídos no plano.', preco: 49.9, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro']
 }, {
   codigo: 'profissional_extra', nome: '+1 profissional com agenda', descricao: 'Acima do limite de profissionais do plano.', preco: 29, cobranca: 'mensal', quantidade: 1, planos: ['inicial', 'assistente', 'iapro']
 }, {
@@ -142,50 +145,36 @@ function planoCondicoes(p, dark) {
   };
   var linhas = [];
   if (p.preco && p.anual) linhas.push('ou ' + planoBrl(p.anual) + ' por ano (2 meses grátis)');
-  if (p.implantacao !== null && p.implantacao !== undefined) linhas.push(Number(p.implantacao) > 0 ? 'Implantação: ' + planoBrl(p.implantacao) + ' (uma vez)' : 'Implantação grátis');
+  if (p.implantacao !== null && p.implantacao !== undefined) linhas.push(Number(p.implantacao) > 0 ? 'Implantação: ' + planoBrl(p.implantacao) + ' (uma vez)' : 'Sem taxa de implantação');
+  var fmt = function (v) { return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: Number(v) % 1 ? 2 : 0, maximumFractionDigits: 2 }); };
+  // o que é cobrado acima do limite: [o que passou, quanto custa]
   var acima = [];
-  var u = achar('usuario_extra'),
-    pr = achar('profissional_extra'),
-    m = achar('mensagens_ia_2000'),
-    r = achar('renata_500');
-  if (u && p.usuarios) acima.push('mais de ' + p.usuarios + ' usuários: ' + planoBrl(u.preco) + ' por usuário/mês');
-  if (pr && p.profissionais) acima.push('mais de ' + p.profissionais + ' profissionais: ' + planoBrl(pr.preco) + ' por profissional/mês');
-  if (m && p.limite) acima.push('mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' mensagens de IA: ' + planoBrl(m.preco) + ' a cada ' + Number(m.quantidade).toLocaleString('pt-BR'));else if (r && p.limite) acima.push('mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' perguntas: ' + planoBrl(r.preco) + ' a cada ' + r.quantidade);
+  var u = achar('usuario_extra'), g = achar('armazenamento_25'), m = achar('mensagens_ia_2000'), r = achar('renata_500');
+  if (u && p.usuarios) acima.push(['Mais de ' + p.usuarios + ' usuários', fmt(u.preco) + ' por usuário a mais, por mês']);
+  if (g && p.armazenamentoGb) acima.push(['Mais de ' + p.armazenamentoGb + ' GB guardados', fmt(g.preco) + ' por mês a cada ' + g.quantidade + ' GB a mais']);
+  if (p.limite) {
+    if (m && p.id !== 'assistente') acima.push(['Mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' mensagens de IA no mês', fmt(m.preco) + ' a cada ' + Number(m.quantidade).toLocaleString('pt-BR') + ' mensagens a mais']);
+    else if (r) acima.push(['Mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' perguntas à Renata no mês', fmt(r.preco) + ' a cada ' + r.quantidade + ' perguntas a mais']);
+  }
   if (!linhas.length && !acima.length) return null;
   var cor = dark ? 'rgba(255,255,255,.85)' : 'var(--text-muted)';
   return /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 10,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3,
-      fontSize: 12.5,
-      lineHeight: 1.45,
-      color: cor
-    }
+    style: { marginTop: 4, display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5, lineHeight: 1.45, color: cor }
   }, linhas.map(function (t) {
-    return /*#__PURE__*/React.createElement("span", {
-      key: t
-    }, t);
-  }), acima.length ? /*#__PURE__*/React.createElement("span", {
-    style: {
-      marginTop: 4,
-      padding: '8px 10px',
-      borderRadius: 12,
-      background: dark ? 'rgba(255,255,255,.12)' : 'rgba(31,94,255,.06)'
-    }
-  }, /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: dark ? '#fff' : 'var(--text-strong)'
-    }
-  }, "Acima do limite"), acima.map(function (t) {
-    return /*#__PURE__*/React.createElement("span", {
-      key: t,
-      style: {
-        display: 'block'
-      }
-    }, t);
+    return /*#__PURE__*/React.createElement("span", { key: t }, t);
+  }), acima.length ? /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 6, padding: '10px 12px', borderRadius: 14, background: dark ? 'rgba(255,255,255,.12)' : 'rgba(31,94,255,.06)', display: 'flex', flexDirection: 'column', gap: 6 }
+  }, /*#__PURE__*/React.createElement("b", { style: { color: dark ? '#fff' : 'var(--text-strong)', fontSize: 13 } }, "Acima do limite"), acima.map(function (t) {
+    return /*#__PURE__*/React.createElement("div", { key: t[0], style: { display: 'flex', alignItems: 'baseline', gap: 8 } },
+      /*#__PURE__*/React.createElement("span", { style: { width: 18, height: 18, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, background: dark ? 'rgba(255,255,255,.2)' : 'rgba(31,94,255,.12)', color: dark ? '#fff' : '#1F5EFF', alignSelf: 'center' } }, "+"),
+      /*#__PURE__*/React.createElement("span", { style: { display: 'flex', flexDirection: 'column' } },
+        /*#__PURE__*/React.createElement("span", { style: { color: dark ? '#fff' : 'var(--text-strong)', fontWeight: 600 } }, t[0]),
+        /*#__PURE__*/React.createElement("span", null, t[1])));
   })) : null);
+}
+// usuários ativos da clínica (o plano é controlado por usuário)
+function planoUsuariosAtivos() {
+  try { return (window.TEAM_STORE && TEAM_STORE.v || []).filter(function (u) { return u.convite !== 'pendente'; }).length; } catch (e) { return 0; }
 }
 // tabela "Valores adicionais" embaixo dos planos
 function PlanosAdicionais(_ref) {
@@ -311,30 +300,39 @@ function Armazenamento(_ref) {
     return /*#__PURE__*/React.createElement("div", {
       key: titulo,
       style: {
-        flex: 1,
-        minWidth: mobile ? 'calc(50% - 5px)' : 150,
-        padding: '12px 14px',
-        borderRadius: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '10px 14px',
+        borderRadius: 14,
         background: destaque ? 'linear-gradient(160deg,#0A2A8F,#0B4BEB 60%,#7B4BC4 140%)' : 'rgba(255,255,255,.65)',
         border: '1.5px solid rgba(255,255,255,.95)',
-        color: destaque ? '#fff' : 'var(--text-strong)'
+        color: destaque ? '#fff' : 'var(--text-strong)',
+        marginTop: destaque ? 4 : 0,
+        flexWrap: 'wrap'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 12,
-        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+        fontSize: destaque ? 14 : 13.5,
+        fontWeight: destaque ? 700 : 500,
+        color: destaque ? '#fff' : 'var(--text-strong)',
+        minWidth: 0
       }
     }, titulo), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 24,
+        fontSize: destaque ? 22 : 18,
         fontWeight: 700,
         letterSpacing: '-0.02em',
-        marginTop: 2
+        whiteSpace: 'nowrap',
+        textAlign: 'right'
       }
     }, valor), sub ? /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11.5,
-        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)',
+        flexBasis: '100%',
+        marginTop: -6
       }
     }, sub) : null);
   };
@@ -364,10 +362,23 @@ function Armazenamento(_ref) {
   }, "Tudo o que esta cl\xEDnica guarda no sistema: arquivos (fotos, \xE1udios, v\xEDdeos, documentos) e o texto das conversas e dos cadastros. Calculado agora, no banco.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 10,
-      flexWrap: 'wrap'
+      flexDirection: 'column',
+      gap: 6
     }
-  }, card('Total', armFmt(total, true), total < 1073741824 ? 'o mesmo que ' + armFmt(total) : 'em GB', true), card('Arquivos', armFmt(dados.arquivos_bytes), n(dados.arquivos) + (Number(dados.arquivos) === 1 ? ' arquivo' : ' arquivos')), card('Conversas e cadastros', armFmt(dados.dados_bytes), 'texto guardado no banco')), /*#__PURE__*/React.createElement("div", {
+  }, (function () {
+    var pl = PLANS.find(function (x) { return x.id === PLAN_STORE.v; }) || {};
+    var gb = pl.armazenamentoGb;
+    if (!gb) return null;
+    var usadoGb = total / 1073741824;
+    var pctA = Math.min(100, Math.round(usadoGb / gb * 100));
+    var ad = (ADICIONAIS_STORE.v || []).find(function (a) { return a.codigo === 'armazenamento_25'; });
+    return /*#__PURE__*/React.createElement("div", { key: "limite", style: { padding: '10px 14px', borderRadius: 14, background: 'rgba(31,94,255,.06)', border: '1.5px solid rgba(255,255,255,.95)', fontSize: 12.5, color: 'var(--text-muted)' } },
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', justifyContent: 'space-between', gap: 10, color: 'var(--text-strong)', fontWeight: 600 } },
+        /*#__PURE__*/React.createElement("span", null, "Limite do plano " + (pl.nome || '')), /*#__PURE__*/React.createElement("span", null, armFmt(total, true) + ' de ' + gb + ' GB')),
+      /*#__PURE__*/React.createElement("div", { style: { height: 6, borderRadius: 999, background: 'rgba(214,226,242,.8)', overflow: 'hidden', margin: '6px 0' } },
+        /*#__PURE__*/React.createElement("div", { style: { width: pctA + '%', height: '100%', background: pctA >= 100 ? '#E5484D' : pctA >= 80 ? '#F59E0B' : '#1F5EFF' } })),
+      ad ? /*#__PURE__*/React.createElement("span", null, 'Acima de ' + gb + ' GB: ' + planoBrl(ad.preco) + ' por mês a cada ' + ad.quantidade + ' GB a mais.') : null);
+  })(), card('Total', armFmt(total, true), total < 1073741824 ? 'o mesmo que ' + armFmt(total) : 'em GB', true), card('Arquivos', armFmt(dados.arquivos_bytes), n(dados.arquivos) + (Number(dados.arquivos) === 1 ? ' arquivo' : ' arquivos')), card('Conversas e cadastros', armFmt(dados.dados_bytes), 'texto guardado no banco')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -490,30 +501,39 @@ function UsoIA(_ref0) {
     return /*#__PURE__*/React.createElement("div", {
       key: titulo,
       style: {
-        flex: 1,
-        minWidth: mobile ? 'calc(50% - 5px)' : 150,
-        padding: '12px 14px',
-        borderRadius: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 12,
+        padding: '10px 14px',
+        borderRadius: 14,
         background: destaque ? 'linear-gradient(160deg,#0A2A8F,#0B4BEB 60%,#7B4BC4 140%)' : 'rgba(255,255,255,.65)',
         border: '1.5px solid rgba(255,255,255,.95)',
-        color: destaque ? '#fff' : 'var(--text-strong)'
+        color: destaque ? '#fff' : 'var(--text-strong)',
+        marginTop: destaque ? 4 : 0,
+        flexWrap: 'wrap'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 12,
-        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+        fontSize: destaque ? 14 : 13.5,
+        fontWeight: destaque ? 700 : 500,
+        color: destaque ? '#fff' : 'var(--text-strong)',
+        minWidth: 0
       }
     }, titulo), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 24,
+        fontSize: destaque ? 22 : 18,
         fontWeight: 700,
         letterSpacing: '-0.02em',
-        marginTop: 2
+        whiteSpace: 'nowrap',
+        textAlign: 'right'
       }
     }, n(valor)), sub ? /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11.5,
-        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)'
+        color: destaque ? 'rgba(255,255,255,.8)' : 'var(--text-muted)',
+        flexBasis: '100%',
+        marginTop: -6
       }
     }, sub) : null);
   };
@@ -584,8 +604,8 @@ function UsoIA(_ref0) {
   }, "Cada pergunta feita \xE0 Renata (texto ou voz) e cada resposta da IA no WhatsApp contam 1 mensagem. ", a.ilimitado ? 'Este plano não tem limite.' : 'Limite do mês: ' + n(limite) + (dados.limite_clinica !== null && dados.limite_clinica !== undefined ? ' (definido pela Salute para esta clínica)' : dados.plano ? ' (plano ' + dados.plano + ')' : ' (padrão)') + '.')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 10,
-      flexWrap: 'wrap'
+      flexDirection: 'column',
+      gap: 6
     }
   }, card('Renata por texto', a.renata_texto, 'perguntas no chat'), card('Renata por voz', a.renata_voz, 'perguntas faladas'), card('WhatsApp', a.whatsapp, 'respostas da IA'), card('Total', a.usadas, a.ilimitado ? 'sem limite' : 'de ' + n(limite), true)), a.ilimitado ? null : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -872,7 +892,7 @@ function PlanosSection(_ref2) {
         opacity: dark ? .88 : 1,
         color: dark ? '#fff' : 'var(--text-muted)'
       }
-    }, p.sub), planoCondicoes(p, dark)), /*#__PURE__*/React.createElement("ul", {
+    }, p.sub)), /*#__PURE__*/React.createElement("ul", {
       style: {
         listStyle: 'none',
         margin: 0,
@@ -909,7 +929,8 @@ function PlanosSection(_ref2) {
         size: 12,
         strokeWidth: 3
       })), t);
-    })), atual ? /*#__PURE__*/React.createElement("button", {
+    })), atual && p.usuarios ? /*#__PURE__*/React.createElement("div", { style: { fontSize: 12.5, color: dark ? 'rgba(255,255,255,.85)' : 'var(--text-muted)' } },
+      "Usuários ativos: ", /*#__PURE__*/React.createElement("b", { style: { color: dark ? '#fff' : 'var(--text-strong)' } }, planoUsuariosAtivos() + ' de ' + p.usuarios), planoUsuariosAtivos() > p.usuarios ? ' (' + (planoUsuariosAtivos() - p.usuarios) + ' cobrado' + (planoUsuariosAtivos() - p.usuarios === 1 ? '' : 's') + ' à parte)' : '') : null, planoCondicoes(p, dark), atual ? /*#__PURE__*/React.createElement("button", {
       type: "button",
       disabled: true,
       style: {
@@ -1621,7 +1642,8 @@ function PerfilScreen(_ref0) {
     },
     onChange: function onChange(e) {
       var f = e.target.files && e.target.files[0];
-      if (f) ContaSvc.foto(f)["catch"](function () {});
+      // a pessoa ajusta o enquadramento (arrasta e aproxima) antes de a foto subir
+      if (f) abrirRecorteFoto(f, { aspecto: 1, redondo: true }).then(function (r) { return ContaSvc.foto(r); })["catch"](function () {});
       e.target.value = '';
     }
   }) : null, /*#__PURE__*/React.createElement("button", {
@@ -1775,3 +1797,96 @@ function PerfilScreen(_ref0) {
 Object.assign(window, {
   PerfilScreen: PerfilScreen
 });
+
+/* ---------- Recorte da foto (2026-10-16) ----------
+   Janela para enquadrar a foto antes de subir: arrastar para posicionar, controle para aproximar.
+   abrirRecorteFoto(arquivo, {aspecto: 1, redondo: true, tamanho: 512}) devolve uma Promise com o arquivo JPEG recortado. */
+var FOTO_RECORTE = makeStore(null);
+var fotoRecorteRaiz = null;
+function abrirRecorteFoto(arquivo, opcoes) {
+  opcoes = opcoes || {};
+  return new Promise(function (resolve, reject) {
+    if (!arquivo || !/^image\//.test(arquivo.type || '')) { reject(new Error('Escolha uma imagem.')); return; }
+    if (!fotoRecorteRaiz) {
+      var div = document.createElement('div');
+      document.body.appendChild(div);
+      fotoRecorteRaiz = ReactDOM.createRoot(div);
+      fotoRecorteRaiz.render(React.createElement(FotoRecorte));
+    }
+    FOTO_RECORTE.v = { arquivo: arquivo, aspecto: Number(opcoes.aspecto) || 1, redondo: !!opcoes.redondo, tamanho: Number(opcoes.tamanho) || 512, resolve: resolve, reject: reject };
+    avisar(FOTO_RECORTE);
+  });
+}
+function FotoRecorte() {
+  var pedido = useStore(FOTO_RECORTE)[0];
+  var _img = React.useState(null), img = _img[0], setImg = _img[1];
+  var _z = React.useState(1), zoom = _z[0], setZoom = _z[1];
+  var _o = React.useState({ x: 0, y: 0 }), off = _o[0], setOff = _o[1];
+  var canvasRef = React.useRef(null);
+  var arr = React.useRef(null);
+  var LARG = 280;
+  var alt = pedido ? Math.round(LARG / pedido.aspecto) : LARG;
+  React.useEffect(function () {
+    if (!pedido) { setImg(null); return undefined; }
+    var url = URL.createObjectURL(pedido.arquivo);
+    var i = new Image();
+    i.onload = function () { setImg(i); setZoom(1); setOff({ x: 0, y: 0 }); };
+    i.onerror = function () { pedido.reject(new Error('Não foi possível abrir a imagem.')); FOTO_RECORTE.v = null; avisar(FOTO_RECORTE); };
+    i.src = url;
+    return function () { URL.revokeObjectURL(url); };
+  }, [pedido]);
+  // escala base: a imagem cobre toda a janela; o zoom aproxima a partir daí
+  var base = img ? Math.max(LARG / img.width, alt / img.height) : 1;
+  var desenhar = function (cv, escalaSaida) {
+    if (!img || !cv) return;
+    var ctx = cv.getContext('2d');
+    var k = escalaSaida || 1;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    var esc = base * zoom * k;
+    var w = img.width * esc, h = img.height * esc;
+    var x = (LARG * k - w) / 2 + off.x * k, y = (alt * k - h) / 2 + off.y * k;
+    ctx.drawImage(img, x, y, w, h);
+  };
+  React.useEffect(function () { desenhar(canvasRef.current, 1); });
+  var limitar = function (o, z) {
+    var esc = base * (z || zoom);
+    var mx = Math.max(0, (img.width * esc - LARG) / 2), my = Math.max(0, (img.height * esc - alt) / 2);
+    return { x: Math.max(-mx, Math.min(mx, o.x)), y: Math.max(-my, Math.min(my, o.y)) };
+  };
+  var ini = function (x, y) { arr.current = { x: x, y: y, ox: off.x, oy: off.y }; };
+  var mov = function (x, y) { if (!arr.current || !img) return; setOff(limitar({ x: arr.current.ox + (x - arr.current.x), y: arr.current.oy + (y - arr.current.y) })); };
+  var fim = function () { arr.current = null; };
+  var usar = function () {
+    if (!img) return;
+    var cv = document.createElement('canvas');
+    var k = pedido.tamanho / LARG;
+    cv.width = Math.round(LARG * k); cv.height = Math.round(alt * k);
+    desenhar(cv, k);
+    cv.toBlob(function (b) {
+      var nome = String(pedido.arquivo.name || 'foto').replace(/\.[a-z0-9]+$/i, '') + '.jpg';
+      var f = new File([b], nome, { type: 'image/jpeg' });
+      pedido.resolve(f);
+      FOTO_RECORTE.v = null; avisar(FOTO_RECORTE);
+    }, 'image/jpeg', 0.9);
+  };
+  var cancelar = function () { pedido.reject(new Error('cancelado')); FOTO_RECORTE.v = null; avisar(FOTO_RECORTE); };
+  if (!pedido) return null;
+  var bt = function (rotulo, onClick, primario) {
+    return React.createElement("button", { type: "button", onClick: onClick, style: { flex: 1, height: 42, borderRadius: 12, border: primario ? 0 : '1.5px solid rgba(214,226,242,.9)', background: primario ? '#1F5EFF' : '#fff', color: primario ? '#fff' : 'var(--text-strong)', fontFamily: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer' } }, rotulo);
+  };
+  return React.createElement("div", { "data-overlay": "1", role: "dialog", "aria-modal": "true", "aria-label": "Ajustar a foto",
+    style: { position: 'fixed', inset: 0, zIndex: (window.Z && Z.dialogo) || 600, background: 'rgba(10,20,40,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: 'var(--font-sans, inherit)' } },
+    React.createElement("div", { style: { width: '100%', maxWidth: 360, borderRadius: 22, background: '#F5F8FF', padding: 18, boxShadow: '0 24px 60px rgba(0,0,0,.35)', display: 'flex', flexDirection: 'column', gap: 12 } },
+      React.createElement("div", { style: { fontSize: 18, fontWeight: 700, color: 'var(--text-strong)' } }, 'Ajustar a foto'),
+      React.createElement("div", { style: { fontSize: 13, color: 'var(--text-muted)' } }, 'Arraste para posicionar e use o controle para aproximar. A parte dentro da moldura é a que fica.'),
+      React.createElement("div", { style: { display: 'flex', justifyContent: 'center' } },
+        React.createElement("div", { style: { position: 'relative', width: LARG, height: alt, borderRadius: pedido.redondo ? '50%' : 16, overflow: 'hidden', background: '#dfe7f5', boxShadow: '0 0 0 3px rgba(31,94,255,.35)', touchAction: 'none', cursor: 'grab' },
+          onMouseDown: function (e) { e.preventDefault(); ini(e.clientX, e.clientY); }, onMouseMove: function (e) { if (e.buttons === 1) mov(e.clientX, e.clientY); }, onMouseUp: fim, onMouseLeave: fim,
+          onTouchStart: function (e) { ini(e.touches[0].clientX, e.touches[0].clientY); }, onTouchMove: function (e) { mov(e.touches[0].clientX, e.touches[0].clientY); }, onTouchEnd: fim },
+          React.createElement("canvas", { ref: canvasRef, width: LARG, height: alt, style: { display: 'block', width: LARG, height: alt } }),
+          !img ? React.createElement("div", { style: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 } }, 'Abrindo a foto...') : null)),
+      React.createElement("label", { style: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-muted)' } }, 'Aproximar',
+        React.createElement("input", { type: "range", min: 1, max: 4, step: 0.01, value: zoom, "aria-label": "Aproximar a foto", onChange: function (e) { var z = Number(e.target.value); setZoom(z); if (img) setOff(limitar(off, z)); }, style: { flex: 1 } })),
+      React.createElement("div", { style: { display: 'flex', gap: 8 } }, bt('Cancelar', cancelar, false), bt('Usar esta foto', usar, true))));
+}
+Object.assign(window, { abrirRecorteFoto: abrirRecorteFoto });

@@ -829,12 +829,16 @@ function WaTicks(_ref4) {
 /* botão da IA no cabeçalho da conversa: roxo = a IA responde aqui; cinza = pausada, só a equipe responde */
 var waIaBotao = function waIaBotao(c, onToggle) {
   var ligada = c.ia !== false;
+  // sem o plano IA Pro a IA do WhatsApp não responde: o botão mostra isso e não liga
+  var semPlano = typeof planoTemIaWhatsapp === 'function' && !planoTemIaWhatsapp();
+  if (semPlano) ligada = false;
   return /*#__PURE__*/React.createElement("button", {
     type: "button",
-    title: ligada ? 'A IA responde nesta conversa. Tocar para pausar' : 'IA pausada nesta conversa. Tocar para ligar',
-    "aria-label": ligada ? 'Pausar IA nesta conversa' : 'Ligar IA nesta conversa',
+    title: semPlano ? 'IA do WhatsApp disponível no plano IA Pro' : ligada ? 'A IA responde nesta conversa. Tocar para pausar' : 'IA pausada nesta conversa. Tocar para ligar',
+    "aria-label": semPlano ? 'IA do WhatsApp disponível no plano IA Pro' : ligada ? 'Pausar IA nesta conversa' : 'Ligar IA nesta conversa',
     "aria-pressed": ligada,
     onClick: function onClick() {
+      if (semPlano) return avisoPlanoIa();
       return onToggle(!ligada);
     },
     style: {
@@ -3374,6 +3378,7 @@ function CrmCard(_ref6) {
     },
     onClick: function onClick(e) {
       e.stopPropagation();
+      if (typeof planoTemIaWhatsapp === 'function' && !planoTemIaWhatsapp() && !l.ia) return avisoPlanoIa();
       onToggle && onToggle();
     },
     title: l.ia ? 'Pausar IA neste lead' : 'Retomar IA neste lead',
