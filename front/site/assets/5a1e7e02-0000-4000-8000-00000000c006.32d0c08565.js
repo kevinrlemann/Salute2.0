@@ -82,8 +82,23 @@ if (SB_ON) {
 /* =====================================================================
    FINANCEIRO
    ===================================================================== */
-var REC_SEL = '*, paciente:pacientes(nome), procedimento:procedimentos(nome), profissional:profissionais(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome)';
-var DESP_SEL = '*, fornecedor:fornecedores(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome)';
+var REC_SEL = '*, paciente:pacientes(nome), procedimento:procedimentos(nome), profissional:profissionais(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome), parcelas:parcelas(numero,vencimento,status,valor,excluido_em)';
+var DESP_SEL = '*, fornecedor:fornecedores(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome), parcelas:parcelas(numero,vencimento,status,valor,excluido_em)';
+// vencimentos de cada parcela (lançamento parcelado): usados no filtro por período e na coluna Vencimento
+var vencsTela = function vencsTela(r) {
+  return (r.parcelas || []).filter(function (x) {
+    return !x.excluido_em;
+  }).sort(function (a, b) {
+    return a.numero - b.numero;
+  }).map(function (x) {
+    return {
+      n: x.numero,
+      venc: x.vencimento,
+      valor: Number(x.valor),
+      pago: x.status === 'pago'
+    };
+  });
+};
 var recTela = function recTela(r) {
   return {
     id: r.id,
@@ -100,6 +115,7 @@ var recTela = function recTela(r) {
     forma: r.forma && r.forma.nome || '',
     parc: r.numero_parcelas || 1,
     venc: r.data_vencimento || r.data_competencia,
+    vencs: vencsTela(r),
     status: r.status === 'pago' ? 'Recebido' : 'Pendente',
     ia: !!r.criado_por_ia
   };
@@ -116,6 +132,7 @@ var despTela = function despTela(d) {
     parc: d.numero_parcelas || 1,
     data: d.data_competencia,
     venc: d.data_vencimento || d.data_competencia,
+    vencs: vencsTela(d),
     status: d.status === 'pago' ? 'Pago' : 'Pendente',
     ia: !!d.criado_por_ia
   };

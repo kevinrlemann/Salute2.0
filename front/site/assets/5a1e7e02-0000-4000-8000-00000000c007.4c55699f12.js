@@ -746,7 +746,7 @@ var gravarGlobal = function gravarGlobal(q, titulo) {
   return DB.gravar(q, titulo || 'Não foi possível salvar');
 };
 CARGAS.conteudo = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8() {
-  var _yield$Promise$all, _yield$Promise$all2, cats, flix, prog, cast, parc, selos, pr, logos;
+  var _yield$Promise$all, _yield$Promise$all2, cats, flix, prog, cast, parc, selos, pr, logos, logosParc;
   return _regenerator().w(function (_context9) {
     while (1) switch (_context9.n) {
       case 0:
@@ -800,7 +800,13 @@ CARGAS.conteudo = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(f
           };
         });
         avisar(CAST_STORE);
-        PARC_STORE.v = parc.map(function (p) {
+        _context9.n = 2;
+        return Promise.all(parc.map(function (p) {
+          return ARQ.url('conteudos', p.logo_path);
+        }));
+      case 2:
+        logosParc = _context9.v;
+        PARC_STORE.v = parc.map(function (p, i) {
           var cp = (p.cupons || []).find(function (x) {
             return x.ativo && !x.excluido_em;
           });
@@ -812,15 +818,17 @@ CARGAS.conteudo = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(f
             ben: p.beneficio || '',
             cupom: cp ? cp.codigo : '',
             site: p.site || '',
-            of: !!p.oficial
+            of: !!p.oficial,
+            logo: logosParc[i] || null,
+            logoPath: p.logo_path || null
           };
         });
         avisar(PARC_STORE);
-        _context9.n = 2;
+        _context9.n = 3;
         return Promise.all(selos.map(function (s) {
           return ARQ.url('conteudos', s.logo_path);
         }));
-      case 2:
+      case 3:
         logos = _context9.v;
         SELOS_STORE.v = selos.map(function (s, i) {
           return {
@@ -836,7 +844,7 @@ CARGAS.conteudo = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(f
           };
         });
         avisar(SELOS_STORE);
-      case 3:
+      case 4:
         return _context9.a(2);
     }
   }, _callee8);
@@ -937,29 +945,39 @@ var ContSvc = {
   },
   parceiros: function parceiros(antes, depois) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee0() {
-      var novos, _iterator4, _step4, x, id, _t1;
+      var novos, logo, subir, x, id, path, _i, _p;
       return _regenerator().w(function (_context10) {
-        while (1) switch (_context10.p = _context10.n) {
+        while (1) switch (_context10.n) {
           case 0:
             novos = depois.filter(function (x) {
               return !x.dbId;
             });
-            if (!(novos.length && !soAdmin())) {
+            logo = depois.filter(function (x) {
+              return x.dbId && x.logo && /^data:/.test(x.logo) && (antes.find(function (a) {
+                return a.id === x.id;
+              }) || {}).logo !== x.logo;
+            });
+            if (!((novos.length || logo.length) && !soAdmin())) {
               _context10.n = 1;
               break;
             }
             return _context10.a(2);
           case 1:
-            _iterator4 = _createForOfIteratorHelper(novos);
-            _context10.p = 2;
-            _iterator4.s();
-          case 3:
-            if ((_step4 = _iterator4.n()).done) {
+            subir = function subir(x) {
+              return x.logo && /^data:/.test(x.logo) ? ARQ.enviarDataUrl('conteudos', 'parceiros', x.logo, 'logo.png') : Promise.resolve(null);
+            };
+            _i = 0;
+          case 2:
+            if (!(_i < novos.length)) {
               _context10.n = 7;
               break;
             }
-            x = _step4.value;
+            x = novos[_i];
             id = novoId();
+            _context10.n = 3;
+            return subir(x);
+          case 3:
+            path = _context10.v;
             _context10.n = 4;
             return gravarGlobal(SB.from('parceiros').insert({
               id: id,
@@ -968,6 +986,7 @@ var ContSvc = {
               beneficio: x.ben || null,
               site: x.site || null,
               oficial: !!x.of,
+              logo_path: path,
               ordem: depois.length
             }), 'Não foi possível salvar o parceiro');
           case 4:
@@ -983,28 +1002,41 @@ var ContSvc = {
           case 5:
             x.id = id;
             x.dbId = id;
+            x.logoPath = path;
           case 6:
-            _context10.n = 3;
+            _i++;
+            _context10.n = 2;
             break;
           case 7:
-            _context10.n = 9;
-            break;
+            _i = 0;
           case 8:
-            _context10.p = 8;
-            _t1 = _context10.v;
-            _iterator4.e(_t1);
+            if (!(_i < logo.length)) {
+              _context10.n = 12;
+              break;
+            }
+            _p = logo[_i];
+            _context10.n = 9;
+            return subir(_p);
           case 9:
-            _context10.p = 9;
-            _iterator4.f();
-            return _context10.f(9);
+            path = _context10.v;
+            _context10.n = 10;
+            return gravarGlobal(SB.from('parceiros').update({
+              logo_path: path
+            }).eq('id', _p.dbId), 'Não foi possível salvar o logo do parceiro');
           case 10:
+            _p.logoPath = path;
+          case 11:
+            _i++;
+            _context10.n = 8;
+            break;
+          case 12:
             PARC_STORE.v = depois;
             avisar(PARC_STORE);
-            if (novos.length) avisoOk('Parceiro salvo');
-          case 11:
+            if (novos.length) avisoOk('Parceiro salvo');else if (logo.length) avisoOk('Logo salvo');
+          case 13:
             return _context10.a(2);
         }
-      }, _callee0, null, [[2, 8, 9, 10]]);
+      }, _callee0);
     }))();
   },
   cast: function cast(antes, depois) {

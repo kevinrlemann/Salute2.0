@@ -97,6 +97,28 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   mantém UMA `transferencias_humanas` aberta por conversa (`atribuida_a`), escreve uma nota `mensagens.tipo = 'sistema'` (não vai para o WhatsApp: `mensagem_automacao`
   sai cedo) e avisa quem recebe no sino. `liberar_conversa(conversa, religar_ia)` encerra. Na lista: selo "Com Fulano"/"Com você" (azul/verde) ou "Aguardando equipe"
   (amarelo) e o filtro "Minhas". Departamentos, fila e SLA por departamento NÃO foram feitos (dependeriam de branch paga do Supabase e fluxos n8n).
+- Conversas (2026-10-16): arrastar a conversa para a esquerda (toque ou mouse) ou passar o mouse mostra a lixeira; "Apagar" é exclusão lógica
+  (`MsgSvc.excluir`, `conversas.excluido_em`). Na janela "Transferir para", o botão "Devolver para a fila e ligar a IA" chama `liberar_conversa(conversa, true)`.
+- Prontuário › "Transcrição e relatório da consulta" (2026-10-16): grava a conversa da consulta (voz do navegador ou ElevenLabs via `renata`), a IA gera o
+  relatório e tudo fica em `consultas_relatorios` (RLS `clinicas_permitidas('pacientes')`) e no histórico do paciente (tipo `consulta`).
+- Painel (2026-10-16): período por indicador (`PAINEL_PER`: pacientes/agendamentos/funil/canais abrem no mês; IA/atendimentos nos últimos 7 dias;
+  30 dias e datas livres via `PeriodoChip`), RPC `painel_periodo(clinica, ini, fim)` (período anterior do mesmo tamanho).
+- Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
+  reconhecedor), transcrição com `language_code: 'por'`. Dinheiro a receber: ela pergunta a data prevista e lança nessa data; entende parcelas
+  (`parcelas` em `propor_lancamento_financeiro` → `FinSvc.criar` com `parc`/`venc`: UMA conta com `numero_parcelas` e N linhas em `parcelas`, vencimentos mensais).
+- Agenda (2026-10-16): a grade 6h–20h cresce quando há agendamento fora desse horário na semana visível (`slotsGrade`).
+- Celular (2026-10-16): Início sem o cartão "Hoje"; Agenda escolhe primeiro o profissional e depois o dia por toque (`DiaPicker`); sem o botão redondo de
+  calendário; folha Novo tem "Recebi material" (`MxEntrada` → `EstSvc.lancar` entrada).
+- Foto de perfil e do profissional (2026-10-16): recorte com zoom e arrasto antes de subir (`abrirRecorteFoto` / `FotoRecorte`, em `30c3fd71`).
+- Plano e cobrança (2026-10-16): uso da IA e armazenamento em linhas (texto, voz, WhatsApp, total); todo plano pago inclui 2 usuários
+  (`planos.limite_usuarios`), usuário extra R$ 49,90/mês (`planos_adicionais.usuario_extra`), GB (`limite_armazenamento_gb`) e mensagens extras
+  (ex.: +2.000 por R$ 97) mostrados em "Acima do limite". O controle é por usuários ativos, não por profissionais (`planoUsuariosAtivos`).
+  Agente de IA (WhatsApp) só no plano IA Pro: `plano_ia_whatsapp(clinica)` no banco (gate `plano_sem_ia` em `agente_pode_responder`) e botões
+  de ligar/pausar a IA bloqueados na tela (`planoTemIaWhatsapp`). Os limites de usuários/GB ainda não são cobrados automaticamente.
+- Financeiro (2026-10-16): tabelas de receitas e despesas começam por "Lançamento" (data de competência) e trazem Valor antes de Vencimento; lançamento
+  parcelado mostra os vencimentos de cada parcela; filtro de período (este mês, mês que vem, últimos 30 dias, datas livres), por vencimento ou por lançamento.
+- Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
+  (só capa e informações; migration `20261016180000`). Parcerias com logo (`parceiros.logo_path`, bucket `conteudos/parceiros`), no visual de Certificações.
 - Armazenamento por clínica (2026-10-13): RPC `armazenamento_uso(clinica)` soma os arquivos do Storage (pasta `<clinica_id>/...` em todos os
   buckets, por tipo) e o tamanho das linhas de conversas e cadastros. Tela: Minha conta › Plano e cobrança › "Armazenamento usado", abaixo do uso da IA.
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.

@@ -76,6 +76,26 @@ Migration `20261016120000_transferir_conversa_equipe.sql`, tudo aditivo:
 - Não feito (decisão do fundador, custo): departamentos, fila por departamento, SLA por departamento e fluxos n8n novos. WF07 continua avisando gestores
   quando uma transferência passa do SLA da clínica, o que também vale para as transferências entre a equipe.
 
+## O n8n respeita cada campo da aba Agente de IA (2026-10-16) [confirmado]
+
+Auditoria campo a campo (front `1b7a2c45` → tabela `agente_ia` → `n8n_contexto`/`agente_ia_regras` → WF01). Já respeitados antes: status
+(`ia_ativa`, `modo_teste`, pausa), identidade e tom (nome, tom, tamanho das respostas, idioma, saudação), assuntos permitidos e proibidos, regras
+extras, serviços (informar preço, agendável pela IA, consultar horários, sinal e valor via `sinal_regra`), horários da clínica e janela de envio,
+CRM (mover ao agendar em `reservar_agendamento`), follow-up (quantidade 1 a 4, atrasos, parar ao agendar), lembretes (48h/24h/2h/15min, pedir
+confirmação, permitir cancelar), transferência humana (categorias, mensagem, SLA, quem recebe), conhecimento aprovado, privacidade e palavras de
+parada (`palavras_optout` em `mensagem_automacao`).
+
+Lacunas corrigidas pela migration `20261016170000_agente_ia_respeita_front.sql` (aditiva):
+- `transferencia_inicio`/`transferencia_fim`: entram nas regras do prompt e o SLA (`transferir_para_humano`) só começa a contar no próximo horário da equipe.
+- `pedir_consentimento` (LGPD): a IA pede o consentimento na primeira conversa antes de guardar dados.
+- `followup_parar_ao_responder`: `validar_tarefa` cancela os follow-ups pendentes quando o lead responde; se ele some de novo, o ciclo recomeça até 4.
+- `retencao_conversas_dias`: `ia_retencao_conversas()` arquiva conversas paradas há mais dias que o configurado (roda em `ia_manutencao` às 03:00).
+
+WF01 "Montar prompt" (versão publicada em 2026-10-16): a regra 10 depende de `agente.apresentar_como_assistente`. Ligado: avisa logo no começo
+que é a assistente virtual. Desligado: não diz por conta própria, mas nunca nega se perguntarem e oferece a equipe.
+
+Plano: o atendimento automático no WhatsApp só funciona no plano IA Pro (`plano_ia_whatsapp`, motivo `plano_sem_ia` em `agente_pode_responder`).
+
 ## Atenção: segunda implementação no mesmo banco (confirmado, não resolvido)
 
 Na madrugada de 2026-10-09, **outra sessão fora desta** aplicou no mesmo Supabase as migrations

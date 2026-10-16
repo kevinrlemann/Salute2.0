@@ -6,7 +6,7 @@ update public.planos set limite_usuarios = 2 where codigo in ('inicial', 'assist
 update public.planos set limite_armazenamento_gb = case codigo when 'inicial' then 5 when 'assistente' then 10 when 'iapro' then 25 else null end
  where excluido_em is null and limite_armazenamento_gb is null;
 update public.planos set itens = (select jsonb_agg(case when x ~* 'profissionais e .* usu' then '2 usuários incluídos (mais usuários: R$ 49,90 cada por mês)' else x end)
-                                   from jsonb_array_elements_text(itens) x)
+                                   from unnest(itens) x)
  where codigo in ('inicial', 'assistente', 'iapro') and excluido_em is null and itens::text ~* 'profissionais e .* usu';
 update public.planos_adicionais set preco = 49.90, nome = '+1 usuário', descricao = 'Cada usuário além dos 2 incluídos no plano.' where codigo = 'usuario_extra' and excluido_em is null;
 update public.planos_adicionais set ativo = false where codigo = 'profissional_extra' and excluido_em is null;
