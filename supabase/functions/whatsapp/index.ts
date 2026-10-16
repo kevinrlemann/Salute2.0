@@ -437,7 +437,7 @@ async function gestao(req: Request) {
     return await salvarFigurinha(auth, mid, String(corpo.rotulo || ''));
   }
   const id = String(corpo.instancia_id || '');
-  if (!['conectar', 'estado', 'desconectar'].includes(acao) || !/^[0-9a-f-]{36}$/i.test(id)) return json({ erro: 'Pedido inválido.' }, 400);
+  if (!['conectar', 'estado', 'desconectar', 'contatos'].includes(acao) || !/^[0-9a-f-]{36}$/i.test(id)) return json({ erro: 'Pedido inválido.' }, 400);
 
   // permissão: o próprio banco decide (a política de edição de instancias_whatsapp)
   const usu = createClient(URL_SB, Deno.env.get('SUPABASE_ANON_KEY')!, { auth: { persistSession: false }, global: { headers: { Authorization: auth } } });
@@ -465,6 +465,18 @@ async function gestao(req: Request) {
   if (!seg) return json({ erro: prov === 'zapi' ? 'Informe o token da instância.' : 'A chave do WhatsApp ainda não foi configurada pela equipe da Salute.' }, 400);
   const i: Inst = { api_url: api, nome_instancia: nome };
 
+  // contatos: a agenda do telefone conectado (nome + número), para a tela "Importar contatos"
+  if (acao === 'contatos') {
+    if (inst.status !== 'conectado') return json({ erro: 'Conecte o WhatsApp pelo QR Code antes de importar os contatos.' }, 400);
+    const ped = pedidoContatos(prov, i, seg as string);
+    if (!ped) return json({ erro: 'A Z-API não disponibiliza a agenda de contatos. A importação funciona com a Evolution API.' }, 400);
+    const r = await chamar(ped);
+    if (!r.ok) return json({ erro: erroProvedor(r.status) }, 502);
+    const nomes = lerContatos(r.dados);
+    const contatos = Object.entries(nomes).map(([telefone, nome]) => ({ nome, telefone: '+' + telefone }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return json({ contatos });
+  }
   if (acao === 'desconectar') {
     await chamar(pedidoDesconectar(prov, i, seg as string));
     await gravarConexao(inst, 'desconectado');

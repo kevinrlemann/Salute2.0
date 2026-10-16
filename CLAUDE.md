@@ -125,6 +125,16 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (despesa também). Nova receita/despesa reorganizada em 4 blocos (Quem · Classificação · Valores e pagamento · Prazo e situação), tudo em lista.
   Tabelas com colunas Atendente (receita) e Profissional/Responsável (despesa); filtros por profissional e por atendente; Visão geral com
   "Faturamento por atendente". Migration `20261016190000`.
+- Importar contatos do WhatsApp (2026-10-16): só na conexão por QR Code com Evolution API. Função `whatsapp` ação `contatos` (agenda do telefone:
+  nome + número) e RPC `importar_contatos_whatsapp(clinica, contatos, 'paciente'|'lead')` (não duplica pelo telefone; paciente nasce com
+  `origem_cadastro = 'whatsapp'`; lead entra no funil padrão em Novo Lead com origem WhatsApp). Tela: Integrações › WhatsApp › "Importar contatos do
+  telefone" (`WaImportar`, prévia com busca e seleção). Migration `20261016200000`. Z-API não tem agenda de contatos.
+- Fotos (2026-10-16): links assinados das fotos (conversas, anexos e pacientes) valem 7 dias (`FOTO_TTL_S`) e o cache local de Mensagens guarda os links, para
+  a lista e as fotos abrirem na hora ao voltar à aba ou recarregar. A foto do contato do WhatsApp segue a pessoa em todo o sistema: o `Avatar` do design
+  system (`7bf00496`) sem `src` procura `window.fotoPorNome(nome)` (foto do paciente em `PAC`, senão a da conversa em `window.FOTO_NOME_WA`).
+- Conversas (2026-10-16): no computador a lixeira ao passar o mouse foi removida; apagar/arquivar é só arrastando a conversa (como no celular).
+- Suporte da Salute (2026-10-16): dentro de uma clínica (`acessos_suporte`) tem todos os módulos e sub-abas (`meu_contexto` devolve tudo; RLS por
+  `clinica_suporte()`; `trocar_plano` aceita o suporte; o resto já aceitava `eh_admin_plataforma()`). Migration `20261016210000`.
 - Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
   (só capa e informações; migration `20261016180000`). Parcerias com logo (`parceiros.logo_path`, bucket `conteudos/parceiros`), no visual de Certificações.
 - Armazenamento por clínica (2026-10-13): RPC `armazenamento_uso(clinica)` soma os arquivos do Storage (pasta `<clinica_id>/...` em todos os

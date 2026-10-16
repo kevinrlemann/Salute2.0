@@ -229,6 +229,23 @@ function hidratarCatalogos() {
 var pk = function pk(p) {
   return p ? p.dbId || p.cpf || p.nome : null;
 };
+// foto por nome: pacientes (bucket clinica) e, se não houver, a foto do contato no WhatsApp (conversas). Usada pelo Avatar do design system.
+var FOTO_NOME = {};
+var fotoNomeChave = function fotoNomeChave(n) {
+  return String(n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+};
+function fotoIndexarPacientes() {
+  var m = {};
+  (PAC || []).forEach(function (p) {
+    if (p.foto && p.nome) m[fotoNomeChave(p.nome)] = p.foto;
+  });
+  FOTO_NOME = m;
+}
+window.fotoPorNome = function (nome) {
+  var k = fotoNomeChave(nome);
+  if (!k) return null;
+  return FOTO_NOME[k] || (window.FOTO_NOME_WA || {})[k] || null;
+};
 var pacTela = function pacTela(r) {
   return {
     id: r.id,
@@ -305,13 +322,14 @@ function assinarFotosPacientes(list) {
         mudou = true;
       }
     });
+    fotoIndexarPacientes();
     if (mudou) {
       PAC_STORE.v = PAC.slice();
       avisar(PAC_STORE);
     }
   };
   if (!paths.length) return aplicar();
-  SB.storage.from('clinica').createSignedUrls(paths, 3600).then(function (r) {
+  SB.storage.from('clinica').createSignedUrls(paths, 7 * 24 * 3600).then(function (r) {
     (r.data || []).forEach(function (u) {
       if (u.signedUrl) PAC_FOTO[u.path] = u.signedUrl;
     });

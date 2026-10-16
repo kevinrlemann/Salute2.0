@@ -94,7 +94,7 @@ function assinarFigurinhas(figs) {
     return f.imagem_path;
   });
   if (!paths.length || !SB_ON) return Promise.resolve();
-  return SB.storage.from('mensagens').createSignedUrls(paths, 3600).then(function (r) {
+  return SB.storage.from('mensagens').createSignedUrls(paths, FOTO_TTL_S).then(function (r) {
     (r.data || []).forEach(function (u) {
       if (u.signedUrl) FIG_URL[u.path] = u.signedUrl;
     });
@@ -158,6 +158,13 @@ function publicarInbox(list) {
   substituir(INBOX, list.sort(function (a, b) {
     return String(b.ord).localeCompare(String(a.ord));
   }));
+  // foto do contato do WhatsApp por nome: o Avatar usa quando o paciente/lead ainda não tem foto própria
+  var fm = {};
+  INBOX.forEach(function (c) {
+    var k = String(c.n || c.nome || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (k && c.foto && !fm[k]) fm[k] = c.foto;
+  });
+  window.FOTO_NOME_WA = fm;
   MSG_LISTA.v = MSG_LISTA.v + 1;
   avisar(MSG_LISTA);
   msgCacheSalvar();
@@ -170,7 +177,7 @@ function assinarFotos(convs) {
     return p && !FOTO_URL[p];
   });
   if (!paths.length) return;
-  SB.storage.from('mensagens').createSignedUrls(paths, 3600).then(function (r) {
+  SB.storage.from('mensagens').createSignedUrls(paths, FOTO_TTL_S).then(function (r) {
     (r.data || []).forEach(function (u) {
       if (u.signedUrl) FOTO_URL[u.path] = u.signedUrl;
     });
@@ -201,7 +208,9 @@ function pedirFoto(c) {
 }
 /* Cópia local da lista de conversas e das últimas mensagens dos chats abertos (só neste aparelho, por
    clínica e usuário; apagada ao sair). Serve para a tela abrir na hora; o banco é consultado em seguida. */
-var MSG_CACHE_V = 1;
+var MSG_CACHE_V = 2;
+// links das fotos e anexos valem 7 dias: ao voltar para Mensagens ou recarregar a página, as fotos aparecem na hora, sem assinar de novo
+var FOTO_TTL_S = 7 * 24 * 3600;
 var __msgCacheTimer = null;
 function msgCacheChave() {
   return 'salute:mensagens:' + CLI() + ':' + UID();
@@ -226,7 +235,7 @@ function msgCacheRestaurar() {
   try {
     var c = JSON.parse(localStorage.getItem(msgCacheChave()) || 'null');
     if (!c || c.v !== MSG_CACHE_V || !Array.isArray(c.inbox) || !c.inbox.length) return false;
-    var velho = Date.now() - (c.t || 0) > 50 * 60000; // links das fotos valem 1 h
+    var velho = Date.now() - (c.t || 0) > 6 * 24 * 3600000; // links das fotos valem 7 dias (FOTO_TTL_S)
     substituir(INBOX, c.inbox.map(function (x) {
       return velho ? _objectSpread(_objectSpread({}, x), {}, { foto: null }) : x;
     }));
@@ -376,7 +385,7 @@ function _msgTela() {
             break;
           }
           _context11.n = 1;
-          return SB.storage.from('mensagens').createSignedUrls(paths, 3600);
+          return SB.storage.from('mensagens').createSignedUrls(paths, FOTO_TTL_S);
         case 1:
           _yield$SB$storage$fro = _context11.v;
           data = _yield$SB$storage$fro.data;

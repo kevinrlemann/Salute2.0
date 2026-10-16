@@ -1319,6 +1319,17 @@ WaSvc.salvarNaoOficial = function (d) {
   }).then(waRecarregar);
 };
 WaSvc.acao = waFn;
+// agenda do telefone conectado (só Evolution): [{nome, telefone}]
+WaSvc.contatos = function () {
+  return waFn('contatos').then(function (j) { return j.contatos || []; });
+};
+// grava os contatos escolhidos como pacientes ou leads; o banco evita duplicar pelo telefone
+WaSvc.importarContatos = function (lista, como) {
+  return DB.rpc('importar_contatos_whatsapp', { p_clinica: CLI(), p_contatos: lista, p_como: como }, 'Não foi possível importar os contatos').then(function (r) {
+    if (como === 'paciente') carregar('pacientes', true);
+    return r;
+  });
+};
 var WA_DESCONECTAR_BASE = WaSvc.desconectar;
 WaSvc.desconectar = function () {
   var i = CAT.v.instancia;

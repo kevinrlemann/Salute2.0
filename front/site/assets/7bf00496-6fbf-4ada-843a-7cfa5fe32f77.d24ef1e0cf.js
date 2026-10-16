@@ -452,6 +452,8 @@ function Avatar({
   style
 }) {
   const [bg, fg] = PALETTE[hash(name) % PALETTE.length];
+  // sem foto própria: usa a foto conhecida da pessoa (cadastro do paciente ou perfil do WhatsApp), para ela acompanhar o nome em todo o sistema
+  if (!src && typeof window !== 'undefined' && typeof window.fotoPorNome === 'function') src = window.fotoPorNome(name) || undefined;
   const dot = {
     online: 'var(--green-500)',
     away: 'var(--amber-500)',

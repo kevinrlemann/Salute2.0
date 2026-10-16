@@ -4285,7 +4285,7 @@ function MensagensWA(_ref10) {
       last = lastOf(c),
       u = unreadOf(c);
     return React.createElement(MxDeslize, {key: c.id, ativo: !c.arq, rotulo: "Apagar", onDeslizar: function () { setApagar(c); }, onFixar: mobile ? function () { alternarFixada(c); } : null, rotuloFixar: fixada(c) ? 'Desafixar' : 'Fixar', children: React.createElement("div", { style: { position: 'relative' } },
-      !mobile && hov === c.id ? React.createElement("button", { type: "button", "aria-label": "Apagar conversa", title: "Apagar conversa",
+      false ? React.createElement("button", { type: "button", "aria-label": "Apagar conversa", title: "Apagar conversa",
         onClick: function (e) { e.stopPropagation(); setApagar(c); },
         onMouseEnter: function () { setHov(c.id); },
         style: { position: 'absolute', right: 10, top: 22, width: 30, height: 30, borderRadius: '50%', border: 0, background: 'rgba(217,56,56,.18)', color: '#f28b8b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 } },
