@@ -120,6 +120,11 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   de ligar/pausar a IA bloqueados na tela (`planoTemIaWhatsapp`). Os limites de usuários/GB ainda não são cobrados automaticamente.
 - Financeiro (2026-10-16): tabelas de receitas e despesas começam por "Lançamento" (data de competência) e trazem Valor antes de Vencimento; lançamento
   parcelado mostra os vencimentos de cada parcela; filtro de período (este mês, mês que vem, últimos 30 dias, datas livres), por vencimento ou por lançamento.
+- Quem vendeu e quem executou (2026-10-16, decisão do fundador: SEM cálculo de comissão no sistema; cada clínica faz o seu): receitas e despesas
+  guardam `atendente_usuario_id` (quem vendeu/lançou; padrão = quem está logado, pelo gatilho `lancamento_atendente_padrao`) e `profissional_id`
+  (despesa também). Nova receita/despesa reorganizada em 4 blocos (Quem · Classificação · Valores e pagamento · Prazo e situação), tudo em lista.
+  Tabelas com colunas Atendente (receita) e Profissional/Responsável (despesa); filtros por profissional e por atendente; Visão geral com
+  "Faturamento por atendente". Migration `20261016190000`.
 - Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
   (só capa e informações; migration `20261016180000`). Parcerias com logo (`parceiros.logo_path`, bucket `conteudos/parceiros`), no visual de Certificações.
 - Armazenamento por clínica (2026-10-13): RPC `armazenamento_uso(clinica)` soma os arquivos do Storage (pasta `<clinica_id>/...` em todos os

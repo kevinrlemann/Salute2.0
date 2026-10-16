@@ -82,8 +82,22 @@ if (SB_ON) {
 /* =====================================================================
    FINANCEIRO
    ===================================================================== */
-var REC_SEL = '*, paciente:pacientes(nome), procedimento:procedimentos(nome), profissional:profissionais(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome), parcelas:parcelas(numero,vencimento,status,valor,excluido_em)';
-var DESP_SEL = '*, fornecedor:fornecedores(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome), parcelas:parcelas(numero,vencimento,status,valor,excluido_em)';
+var REC_SEL = '*, paciente:pacientes(nome), procedimento:procedimentos(nome), profissional:profissionais(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome), parcelas:parcelas(numero,vencimento,status,valor,excluido_em), atendente:perfis_usuario!atendente_usuario_id(nome,sobrenome)';
+var DESP_SEL = '*, fornecedor:fornecedores(nome), categoria:categorias_financeiras(nome), forma:formas_pagamento(nome), parcelas:parcelas(numero,vencimento,status,valor,excluido_em), atendente:perfis_usuario!atendente_usuario_id(nome,sobrenome), profissional:profissionais(nome)';
+// atendente (quem vendeu / quem lançou): nome para a tela e id a partir do nome escolhido na lista da equipe
+var atendenteNome = function atendenteNome(r) {
+  return r.atendente ? [r.atendente.nome, r.atendente.sobrenome].filter(Boolean).join(' ') : '';
+};
+var atendenteId = function atendenteId(nome) {
+  var n = String(nome || '').trim();
+  if (!n) return null;
+  var m = (TEAM_STORE.v || []).find(function (x) {
+    return x.nome === n;
+  });
+  if (m && m.usuarioId) return m.usuarioId;
+  var eu = SESSAO.v && SESSAO.v.perfil ? [SESSAO.v.perfil.nome, SESSAO.v.perfil.sobrenome].filter(Boolean).join(' ') : '';
+  return eu === n ? UID() : null;
+};
 // vencimentos de cada parcela (lançamento parcelado): usados no filtro por período e na coluna Vencimento
 var vencsTela = function vencsTela(r) {
   return (r.parcelas || []).filter(function (x) {
@@ -116,6 +130,7 @@ var recTela = function recTela(r) {
     parc: r.numero_parcelas || 1,
     venc: r.data_vencimento || r.data_competencia,
     vencs: vencsTela(r),
+    vend: atendenteNome(r),
     status: r.status === 'pago' ? 'Recebido' : 'Pendente',
     ia: !!r.criado_por_ia
   };
@@ -133,6 +148,8 @@ var despTela = function despTela(d) {
     data: d.data_competencia,
     venc: d.data_vencimento || d.data_competencia,
     vencs: vencsTela(d),
+    vend: atendenteNome(d),
+    pro: d.profissional && d.profissional.nome || '',
     status: d.status === 'pago' ? 'Pago' : 'Pendente',
     ia: !!d.criado_por_ia
   };
@@ -362,7 +379,8 @@ var FinSvc = {
               categoria_financeira_id: FinSvc.idCat('receita', r.cat),
               tipo_atendimento: r.atend === 'Convênio' ? 'convenio' : 'particular',
               convenio_id: r.atend === 'Convênio' && p && p.conv ? catId('convenios', p.conv) : null,
-              valor_desconto: r.desc || 0
+              valor_desconto: r.desc || 0,
+              atendente_usuario_id: atendenteId(r.vend) || UID()
             }, ext), 'Não foi possível salvar a receita');
           case 1:
             _context3.n = 4;
@@ -376,7 +394,11 @@ var FinSvc = {
             return DB.ins('contas_pagar', _objectSpread(_objectSpread({}, comum), {}, {
               descricao: r.desc,
               categoria_financeira_id: FinSvc.idCat('despesa', r.cat),
-              fornecedor_id: fid
+              fornecedor_id: fid,
+              atendente_usuario_id: atendenteId(r.vend) || UID(),
+              profissional_id: (PROF0.find(function (x) {
+                return x.nome === r.pro;
+              }) || {}).dbId || null
             }, ext), 'Não foi possível salvar a despesa');
           case 4:
             if (!((r.parc || 1) > 1)) {
@@ -434,14 +456,19 @@ var FinSvc = {
         categoria_financeira_id: FinSvc.idCat('receita', r.cat),
         tipo_atendimento: r.atend === 'Convênio' ? 'convenio' : 'particular',
         convenio_id: r.atend === 'Convênio' && p && p.conv ? catId('convenios', p.conv) : null,
-        valor_desconto: r.desc || 0
+        valor_desconto: r.desc || 0,
+        atendente_usuario_id: atendenteId(r.vend)
       }));
     } else {
       dados = FinSvc.fornecedor(r.forn).then(function (fid) {
         return Object.assign(comum, {
           descricao: r.desc,
           categoria_financeira_id: FinSvc.idCat('despesa', r.cat),
-          fornecedor_id: fid
+          fornecedor_id: fid,
+          atendente_usuario_id: atendenteId(r.vend),
+          profissional_id: (PROF0.find(function (x) {
+            return x.nome === r.pro;
+          }) || {}).dbId || null
         });
       });
     }

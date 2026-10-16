@@ -1,5 +1,11 @@
 # Plano: comissionamento por profissional e por procedimento, e Equipe unificada
 
+> **Decisão do fundador (2026-10-16, depois deste plano): NÃO fazer o cálculo de comissão no sistema.** O sistema só evidencia quem vendeu
+> (atendente) e quem executou (profissional) em cada lançamento financeiro, com filtros em Receitas e Despesas e o indicador
+> "Faturamento por atendente" na Visão geral. Cada clínica calcula a própria comissão a partir disso. Feito na migration
+> `20261016190000_atendente_e_profissional_nos_lancamentos.sql` e no front (ver CLAUDE.md). O restante deste documento fica como referência
+> caso o cálculo automático volte a ser desejado.
+
 Pedido do fundador (2026-10-16): cada doutor tem uma porcentagem de comissão; a porcentagem pode ser definida por procedimento,
 para que o valor saia pronto, sem revisão depois; e a aba "Equipe e acessos" deve mostrar todo mundo (profissionais e equipe),
 porque o profissional também faz parte da equipe. Plano feito ANTES da execução. Nada foi alterado ainda.
