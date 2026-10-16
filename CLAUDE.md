@@ -99,6 +99,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (amarelo) e o filtro "Minhas". Departamentos, fila e SLA por departamento NÃO foram feitos (dependeriam de branch paga do Supabase e fluxos n8n).
 - Conversas (2026-10-16): arrastar a conversa para a esquerda (toque ou mouse) ou passar o mouse mostra a lixeira; "Apagar" é exclusão lógica
   (`MsgSvc.excluir`, `conversas.excluido_em`). Na janela "Transferir para", o botão "Devolver para a fila e ligar a IA" chama `liberar_conversa(conversa, true)`.
+- Conversas, compositor como o WhatsApp (2026-10-16): segurar o microfone grava e soltar envia; arrastar para a esquerda cancela; toque curto trava
+  (cadeado, mãos livres); áudio com menos de 0,7 s não sai. Caixa de texto cresce (Enter envia, Shift+Enter quebra linha). Áudio recebido/enviado
+  toca em 1x, 1,5x e 2x. Tudo em `366b46a2` (`micDown/micMove/micUp`, `WaAudio.mudaVel`).
 - Prontuário › "Transcrição e relatório da consulta" (2026-10-16): grava a conversa da consulta (voz do navegador ou ElevenLabs via `renata`), a IA gera o
   relatório e tudo fica em `consultas_relatorios` (RLS `clinicas_permitidas('pacientes')`) e no histórico do paciente (tipo `consulta`).
 - Painel (2026-10-16): período por indicador (`PAINEL_PER`: pacientes/agendamentos/funil/canais abrem no mês; IA/atendimentos nos últimos 7 dias;

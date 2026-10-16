@@ -1109,6 +1109,14 @@ function WaAudio(_ref9) {
   var bars = React.useMemo(function () {
     return waBars(m.id);
   }, [m.id]);
+  var _vel = React.useState(1),
+    vel = _vel[0],
+    setVel = _vel[1];
+  var mudaVel = function mudaVel() {
+    var nv = vel === 1 ? 1.5 : vel === 1.5 ? 2 : 1;
+    setVel(nv);
+    if (ref.current) ref.current.playbackRate = nv;
+  };
   var toggle = function toggle() {
     var a = ref.current;
     if (!a) return;
@@ -1123,6 +1131,7 @@ function WaAudio(_ref9) {
       alignItems: 'center',
       gap: 10,
       width: 'min(300px, 62vw)',
+      position: 'relative',
       padding: '4px 2px 14px'
     }
   }, /*#__PURE__*/React.createElement("audio", {
@@ -1232,7 +1241,26 @@ function WaAudio(_ref9) {
       fontSize: 11,
       color: out ? 'rgba(233,237,239,.6)' : WA.sub
     }
-  }, waDur(play || pos ? pos : dur))));
+  }, waDur(play || pos ? pos : dur)), play || pos ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    "aria-label": "Velocidade do \xE1udio",
+    onClick: mudaVel,
+    style: {
+      position: 'absolute',
+      right: 8,
+      bottom: 8,
+      height: 22,
+      padding: '0 8px',
+      borderRadius: 999,
+      border: 0,
+      background: 'rgba(209,215,219,.25)',
+      color: '#e9edef',
+      fontFamily: 'inherit',
+      fontSize: 11.5,
+      fontWeight: 600,
+      cursor: 'pointer'
+    }
+  }, String(vel).replace('.', ',') + 'x') : null));
 }
 function WaMsg(_ref0) {
   var m = _ref0.m,
@@ -1867,6 +1895,34 @@ function WaChat(_ref13) {
     _React$useState36 = _slicedToArray(_React$useState35, 2),
     rec = _React$useState36[0],
     setRec = _React$useState36[1];
+  // como no WhatsApp: segurar o microfone grava, soltar envia, arrastar para a esquerda cancela e um toque curto trava a gravação (mãos livres)
+  var holdRef = React.useRef(null);
+  var micDown = function micDown(e) {
+    if (rec || v.trim()) return;
+    var x = e.clientX != null ? e.clientX : e.touches && e.touches[0] ? e.touches[0].clientX : 0;
+    holdRef.current = { x0: x, t0: Date.now(), dx: 0 };
+    startRec();
+  };
+  var micMove = function micMove(e) {
+    var h = holdRef.current;
+    if (!h || !recRef.current) return;
+    var x = e.clientX != null ? e.clientX : e.touches && e.touches[0] ? e.touches[0].clientX : h.x0;
+    h.dx = Math.min(0, x - h.x0);
+    setRec(function (r) { return r && !r.lock ? _objectSpread(_objectSpread({}, r), {}, { dx: h.dx }) : r; });
+    if (h.dx < -110) { holdRef.current = null; stopRec(false); }
+  };
+  var micUp = function micUp() {
+    var h = holdRef.current;
+    holdRef.current = null;
+    if (!h || !recRef.current) return;
+    if (Date.now() - h.t0 < 450) { setRec(function (r) { return r ? _objectSpread(_objectSpread({}, r), {}, { lock: true, dx: 0 }) : r; }); return; }
+    stopRec(true);
+  };
+  React.useEffect(function () {
+    window.addEventListener('pointerup', micUp);
+    window.addEventListener('pointermove', micMove);
+    return function () { window.removeEventListener('pointerup', micUp); window.removeEventListener('pointermove', micMove); };
+  });
   var _React$useState37 = React.useState(null),
     _React$useState38 = _slicedToArray(_React$useState37, 2),
     note = _React$useState38[0],
@@ -2126,7 +2182,7 @@ function WaChat(_ref13) {
       r.stream.getTracks().forEach(function (t) {
         return t.stop();
       });
-      if (!doSend) return;
+      if (!doSend || Date.now() - r.t0 < 700) return;
       var type = r.mr.mimeType || 'audio/webm';
       var blob = new Blob(r.chunks, {
         type: type
@@ -2551,7 +2607,10 @@ function WaChat(_ref13) {
       borderRadius: 999,
       background: WA.field,
       color: WA.text,
-      fontSize: 15
+      fontSize: 15,
+      transform: 'translateX(' + (rec.dx || 0) + 'px)',
+      opacity: 1 + (rec.dx || 0) / 160,
+      transition: rec.dx ? 'none' : 'transform .15s, opacity .15s'
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -2561,10 +2620,15 @@ function WaChat(_ref13) {
       background: '#f15c6d',
       animation: 'waDot 1s infinite'
     }
-  }), waDur(rec.s), /*#__PURE__*/React.createElement("span", {
+  }), waDur(rec.s), !rec.lock ? /*#__PURE__*/React.createElement("span", {
+    style: { flex: 1, textAlign: 'center', fontSize: 13, color: WA.sub, whiteSpace: 'nowrap', overflow: 'hidden' }
+  }, "\u2039 Deslize para cancelar") : null, rec.lock ? /*#__PURE__*/React.createElement("span", {
+    title: "Gravação travada: pode soltar o dedo",
+    style: { display: 'flex', color: WA.sub }
+  }, /*#__PURE__*/React.createElement(MIcon, { name: "lock", size: 16 })) : null, /*#__PURE__*/React.createElement("span", {
     style: {
-      flex: 1,
-      display: 'flex',
+      flex: rec.lock ? 1 : 0,
+      display: rec.lock ? 'flex' : 'none',
       alignItems: 'center',
       gap: 2,
       height: 22,
@@ -2610,14 +2674,21 @@ function WaChat(_ref13) {
   }, !!panel), ic('plus', 'Anexar', function () {
     setAttach(!attach);
     setPanel(null);
-  }, attach), /*#__PURE__*/React.createElement("input", {
+  }, attach), /*#__PURE__*/React.createElement("textarea", {
     ref: inpRef,
     value: v,
+    rows: 1,
     onChange: function onChange(e) {
-      return setV(e.target.value);
+      setV(e.target.value);
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
     },
     onKeyDown: function onKeyDown(e) {
-      if (e.key === 'Enter') sendText();
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendText();
+        e.target.style.height = 'auto';
+      }
       if (e.key === 'Escape') setReply(null);
     },
     placeholder: "Digite uma mensagem",
@@ -2625,22 +2696,34 @@ function WaChat(_ref13) {
     style: {
       flex: 1,
       minWidth: 0,
-      height: 42,
+      minHeight: 42,
+      maxHeight: 120,
       borderRadius: 8,
       border: 0,
       outline: 'none',
+      resize: 'none',
       background: WA.field,
       color: WA.text,
-      padding: '0 14px',
+      padding: '11px 14px',
       fontFamily: 'inherit',
-      fontSize: 15
+      fontSize: 15,
+      lineHeight: '20px'
     }
   }), /*#__PURE__*/React.createElement("button", {
     type: "button",
-    "aria-label": v.trim() ? 'Enviar' : 'Gravar áudio',
-    title: v.trim() ? 'Enviar' : 'Gravar áudio',
+    "aria-label": v.trim() ? 'Enviar' : 'Gravar áudio (segure para gravar, solte para enviar)',
+    title: v.trim() ? 'Enviar' : 'Segure para gravar, solte para enviar',
     onClick: function onClick() {
-      return v.trim() ? sendText() : startRec();
+      if (v.trim()) sendText();
+    },
+    onPointerDown: function onPointerDown(e) {
+      if (!v.trim()) {
+        e.preventDefault();
+        micDown(e);
+      }
+    },
+    onContextMenu: function onContextMenu(e) {
+      return e.preventDefault();
     },
     style: {
       width: 44,
