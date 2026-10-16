@@ -1407,11 +1407,11 @@ function PainelScreen(_ref14) {
       gap: g
     }
   }, stats.map(function (s, si) {
-    return /*#__PURE__*/React.createElement("div", { key: s.title, style: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 } },
-      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', justifyContent: 'flex-end' } }, /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia'][si], compacto: true })),
-      /*#__PURE__*/React.createElement(StatCard, _extends({
+    return /*#__PURE__*/React.createElement(StatCard, _extends({
       key: s.title
     }, s, {
+      // o período fica dentro do cartão, no cabeçalho, ao lado do título
+      headerRight: /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia'][si], compacto: true }),
       // celular: os três pontos do cartão abrem a tela de Configurações (mesmo caminho do item da aba Mais)
       onMenu: mobile ? function onMenu() {
         if (window.abrirConfiguracoes) window.abrirConfiguracoes();else if (onNavigate) onNavigate('perfil');
@@ -1420,7 +1420,7 @@ function PainelScreen(_ref14) {
         padding: mobile ? 18 : 22,
         flex: 1
       })
-    })));
+    }));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',

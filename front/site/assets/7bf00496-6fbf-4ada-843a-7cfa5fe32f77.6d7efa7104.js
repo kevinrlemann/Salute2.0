@@ -2922,6 +2922,7 @@ function StatCard({
   breakdown = [],
   onMenu,
   compact = false,
+  headerRight,
   style
 }) {
   return /*#__PURE__*/React.createElement("section", {
@@ -2987,7 +2988,9 @@ function StatCard({
   }, /*#__PURE__*/React.createElement(__ds_scope.Icon, {
     name: "ellipsis-vertical",
     size: 18
-  })) : null), /*#__PURE__*/React.createElement("div", {
+  })) : null), headerRight ? /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', justifyContent: 'flex-end', marginTop: -6 }
+  }, headerRight) : null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',

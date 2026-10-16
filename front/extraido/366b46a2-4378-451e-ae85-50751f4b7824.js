@@ -3941,9 +3941,9 @@ function MxDeslize(p){
     if (d >= 110 && p.onFixar) p.onFixar();
   };
   return React.createElement("div", {style:{position:'relative',overflow:'hidden'}},
-    p.onFixar ? React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#00a884',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-start',paddingLeft:18,fontSize:15,fontWeight:600}}, p.rotuloFixar || 'Fixar') : null,
-    React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#D93838',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,paddingRight:18,fontSize:15,fontWeight:600}},
-      React.createElement(MIcon, { name: "trash-2", size: 20 }), p.rotulo || 'Apagar'),
+    dx > 0 && p.onFixar ? React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#00a884',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-start',paddingLeft:18,fontSize:15,fontWeight:600}}, p.rotuloFixar || 'Fixar') : null,
+    dx < 0 ? React.createElement("div", {"aria-hidden":"true", style:{position:'absolute',inset:0,background:'#D93838',color:'#fff',display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8,paddingRight:18,fontSize:15,fontWeight:600}},
+      React.createElement(MIcon, { name: "trash-2", size: 20 }), p.rotulo || 'Apagar') : null,
     React.createElement("div", {
       onTouchStart: function(e){ ini(e.touches[0].clientX); },
       onTouchMove: function(e){ mov(e.touches[0].clientX); },
@@ -4285,11 +4285,7 @@ function MensagensWA(_ref10) {
       last = lastOf(c),
       u = unreadOf(c);
     return React.createElement(MxDeslize, {key: c.id, ativo: !c.arq, rotulo: "Apagar", onDeslizar: function () { setApagar(c); }, onFixar: mobile ? function () { alternarFixada(c); } : null, rotuloFixar: fixada(c) ? 'Desafixar' : 'Fixar', children: React.createElement("div", { style: { position: 'relative' } },
-      false ? React.createElement("button", { type: "button", "aria-label": "Apagar conversa", title: "Apagar conversa",
-        onClick: function (e) { e.stopPropagation(); setApagar(c); },
-        onMouseEnter: function () { setHov(c.id); },
-        style: { position: 'absolute', right: 10, top: 22, width: 30, height: 30, borderRadius: '50%', border: 0, background: 'rgba(217,56,56,.18)', color: '#f28b8b', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 } },
-        React.createElement(MIcon, { name: "trash-2", size: 16 })) : null,
+
       React.createElement("button", {
       key: c.id,
       type: "button",

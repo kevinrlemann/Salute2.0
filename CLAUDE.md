@@ -105,7 +105,7 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Prontuário › "Transcrição e relatório da consulta" (2026-10-16): grava a conversa da consulta (voz do navegador ou ElevenLabs via `renata`), a IA gera o
   relatório e tudo fica em `consultas_relatorios` (RLS `clinicas_permitidas('pacientes')`) e no histórico do paciente (tipo `consulta`).
 - Painel (2026-10-16): período por indicador (`PAINEL_PER`: pacientes/agendamentos/funil/canais abrem no mês; IA/atendimentos nos últimos 7 dias;
-  30 dias e datas livres via `PeriodoChip`), RPC `painel_periodo(clinica, ini, fim)` (período anterior do mesmo tamanho).
+  30 dias e datas livres via `PeriodoChip`, dentro de cada cartão: `StatCard.headerRight`), RPC `painel_periodo(clinica, ini, fim)` (período anterior do mesmo tamanho).
 - Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
   reconhecedor), transcrição com `language_code: 'por'`. Dinheiro a receber: ela pergunta a data prevista e lança nessa data; entende parcelas
   (`parcelas` em `propor_lancamento_financeiro` → `FinSvc.criar` com `parc`/`venc`: UMA conta com `numero_parcelas` e N linhas em `parcelas`, vencimentos mensais).
@@ -132,7 +132,7 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Fotos (2026-10-16): links assinados das fotos (conversas, anexos e pacientes) valem 7 dias (`FOTO_TTL_S`) e o cache local de Mensagens guarda os links, para
   a lista e as fotos abrirem na hora ao voltar à aba ou recarregar. A foto do contato do WhatsApp segue a pessoa em todo o sistema: o `Avatar` do design
   system (`7bf00496`) sem `src` procura `window.fotoPorNome(nome)` (foto do paciente em `PAC`, senão a da conversa em `window.FOTO_NOME_WA`).
-- Conversas (2026-10-16): no computador a lixeira ao passar o mouse foi removida; apagar/arquivar é só arrastando a conversa (como no celular).
+- Conversas (2026-10-16): sem ícone de lixeira na lista; a faixa vermelha "Apagar" só existe enquanto a conversa está sendo arrastada (`MxDeslize`), no computador e no celular.
 - Suporte da Salute (2026-10-16): dentro de uma clínica (`acessos_suporte`) tem todos os módulos e sub-abas (`meu_contexto` devolve tudo; RLS por
   `clinica_suporte()`; `trocar_plano` aceita o suporte; o resto já aceitava `eh_admin_plataforma()`). Migration `20261016210000`.
 - Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
