@@ -1243,6 +1243,13 @@ function WaMsg(_ref0) {
   var out = m.me;
   var bg = out ? WA.out : WA.inn;
   var pressRef = React.useRef(null);
+  // nota do sistema (transferência, encerramento): aparece no meio, como no WhatsApp, e não tem menu
+  if (m.kind === 'sys') return /*#__PURE__*/React.createElement("div", {
+    id: 'wam-' + m.id,
+    style: { display: 'flex', justifyContent: 'center', padding: '6px 8%', marginTop: first ? 10 : 2 }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: { maxWidth: '100%', padding: '5px 12px', borderRadius: 8, background: WA.date, color: WA.sub, fontSize: 12.5, lineHeight: '17px', textAlign: 'center' }
+  }, m.text, /*#__PURE__*/React.createElement("span", { style: { marginLeft: 6, fontSize: 11, opacity: .8 } }, m.t)));
   var sticker = m.kind === 'sticker' && !m.deleted;
   var media = (m.kind === 'image' || m.kind === 'video') && !m.deleted;
   var time = /*#__PURE__*/React.createElement("span", {
@@ -3924,6 +3931,21 @@ function MensagensWA(_ref10) {
   }];
   var isTeam = tab === 'd';
   var flSt = React.useState('todas'), fl = flSt[0], setFl = flSt[1];
+  // transferência entre a equipe: responsável pela conversa (conversas.atendente_usuario_id) e janela "Transferir para"
+  var _team = useStore(TEAM_STORE), EQUIPE_PESSOAS = (_team && _team[0]) || [];
+  var meuId = SB_ON && typeof UID === 'function' ? UID() : null;
+  var pessoaDe = function (uid) { return EQUIPE_PESSOAS.find(function (u) { return SB_ON ? u.usuarioId === uid : u.id === uid; }) || null; };
+  var primeiroNome = function (uid) { if (meuId && uid === meuId) return 'você'; var u = pessoaDe(uid); return u ? String(u.nome || '').split(' ')[0] : 'alguém da equipe'; };
+  var transfSt = React.useState(null), transf = transfSt[0], setTransf = transfSt[1];
+  var seloResp = function (c) {
+    if (!c.resp && !c.equipe) return null;
+    var minha = !!(c.resp && meuId && c.resp === meuId);
+    return /*#__PURE__*/React.createElement("span", {
+      title: c.resp ? 'Conversa atendida por ' + primeiroNome(c.resp) : 'A IA passou esta conversa para a equipe',
+      style: { flexShrink: 0, padding: '2px 8px', borderRadius: 999, background: c.resp ? (minha ? 'rgba(0,168,132,.18)' : 'rgba(83,189,235,.16)') : 'rgba(245,180,0,.16)',
+        color: c.resp ? (minha ? WA.green : WA.blue) : '#F5B400', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }
+    }, c.resp ? 'Com ' + primeiroNome(c.resp) : 'Aguardando equipe');
+  };
   var ALL = isTeam ? EQUIPE : INBOX;
   var keyOf = function keyOf(c) {
     return SB_ON ? (isTeam ? 'eq:' : 'conv:') + c.id : 'c' + c.id;
@@ -3947,7 +3969,7 @@ function MensagensWA(_ref10) {
   var term = q.trim().toLowerCase();
   var precisaAtencao = function (c) { return c.u > 0 || c.ia === false || !!c.equipe; };
   var LIST = ALL.filter(function (c) {
-    return (!term || c.n.toLowerCase().includes(term)) && (fl === 'arquivadas' ? !!c.arq : !c.arq) && (fl !== 'esperando' || precisaAtencao(c));
+    return (!term || c.n.toLowerCase().includes(term)) && (fl === 'arquivadas' ? !!c.arq : !c.arq) && (fl !== 'esperando' || precisaAtencao(c)) && (fl !== 'minhas' || (!!meuId && c.resp === meuId));
   });
   var cur = ALL.find(function (c) {
     return c.id === sel;
@@ -4102,6 +4124,8 @@ function MensagensWA(_ref10) {
     return setTab('p');
   }) : null, !mobile ? chip(isTeam, 'Equipe', function () {
     return setTab('d');
+  }) : null, !isTeam && meuId ? chip(fl === 'minhas', 'Minhas (' + ALL.filter(function (c) { return !c.arq && c.resp === meuId; }).length + ')', function () {
+    return setFl(fl === 'minhas' ? 'todas' : 'minhas');
   }) : null, mobile ? chip(fl === 'todas', 'Todas', function () {
     return setFl('todas');
   }) : null, mobile ? chip(fl === 'esperando', 'Esperando (' + ALL.filter(function (c) { return !c.arq && precisaAtencao(c); }).length + ')', function () {
@@ -4208,19 +4232,7 @@ function MensagensWA(_ref10) {
       style: {
         color: WA.green
       }
-    }, "digitando...") : usaUlt(c) ? (mobile && last.me ? 'Você: ' : '') + waPreview(last) : c.m)), c.equipe ? /*#__PURE__*/React.createElement("span", {
-      title: "A IA passou esta conversa para a equipe",
-      style: {
-        flexShrink: 0,
-        padding: '2px 8px',
-        borderRadius: 999,
-        background: 'rgba(245,180,0,.16)',
-        color: '#F5B400',
-        fontSize: 11.5,
-        fontWeight: 600,
-        whiteSpace: 'nowrap'
-      }
-    }, "Aguardando equipe") : null, (mobile && fixada(c)) ? React.createElement("span", { style: { flexShrink: 0, display: 'flex', color: WA.sub } }, React.createElement(MIcon, { name: "pin", size: 15 })) : null, u ? /*#__PURE__*/React.createElement("span", {
+    }, "digitando...") : usaUlt(c) ? (mobile && last.me ? 'Você: ' : '') + waPreview(last) : c.m)), isTeam ? null : seloResp(c), (mobile && fixada(c)) ? React.createElement("span", { style: { flexShrink: 0, display: 'flex', color: WA.sub } }, React.createElement(MIcon, { name: "pin", size: 15 })) : null, u ? /*#__PURE__*/React.createElement("span", {
       style: {
         minWidth: 20,
         height: 20,
@@ -4358,7 +4370,15 @@ function MensagensWA(_ref10) {
     MsgSvc.alternarIA(cur, ligar)["catch"](function (e) {
       avisoErro('Não foi possível mudar a IA desta conversa', e);
     });
-  })), /*#__PURE__*/React.createElement(WaChat, {
+  }), isTeam ? null : /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    title: cur.resp ? 'Atendida por ' + primeiroNome(cur.resp) + '. Tocar para transferir' : 'Transferir esta conversa para alguém da equipe',
+    "aria-label": "Transferir conversa",
+    onClick: function () { setTransf({ c: cur }); if (SB_ON && typeof carregar === 'function') carregar('equipe'); },
+    style: { height: 32, padding: '0 10px 0 8px', borderRadius: 999, border: '1.5px solid ' + (cur.resp ? 'rgba(83,189,235,.6)' : 'rgba(134,150,160,.45)'),
+      background: cur.resp ? 'rgba(83,189,235,.14)' : 'transparent', color: cur.resp ? WA.blue : WA.sub, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+      fontFamily: 'inherit', fontSize: 12, fontWeight: 700, flexShrink: 0, maxWidth: 140, overflow: 'hidden', whiteSpace: 'nowrap' }
+  }, /*#__PURE__*/React.createElement(MIcon, { name: "users", size: 15 }), cur.resp ? 'Com ' + primeiroNome(cur.resp) : 'Transferir')), /*#__PURE__*/React.createElement(WaChat, {
     key: keyOf(cur),
     chatKey: keyOf(cur),
     seed: seedOf(cur),
@@ -4533,6 +4553,14 @@ function MensagensWA(_ref10) {
       }
     })), fichaEl);
   }
+  var transfEl = transf ? /*#__PURE__*/React.createElement(WaTransferir, {
+    c: transf.c, pessoas: EQUIPE_PESSOAS, meuId: meuId,
+    onFechar: function () { setTransf(null); },
+    onFeito: function (uid) {
+      setTransf(null);
+      avisoOk(uid === null ? 'Atendimento encerrado. A IA volta a responder.' : uid === meuId ? 'Conversa assumida por você.' : 'Conversa transferida para ' + primeiroNome(uid) + '.');
+    }
+  }) : null;
   if (SB_ON && carga !== 'ok' && !(INBOX.length && carga === 'carregando')) return /*#__PURE__*/React.createElement(CargaEstado, {
     estado: carga,
     onRetry: function onRetry() {
@@ -4550,7 +4578,7 @@ function MensagensWA(_ref10) {
       flexDirection: 'column',
       height: '100%'
     }
-  }, thread), fichaEl);
+  }, thread), fichaEl, transfEl);
   if (mobile) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       height: 'calc(100vh - 190px)',
@@ -4560,7 +4588,7 @@ function MensagensWA(_ref10) {
       boxShadow: 'none',
       margin: '0 -16px'
     })
-  }, list), fichaEl);
+  }, list), fichaEl, transfEl);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, frame), {}, {
       display: 'grid',
@@ -4568,8 +4596,66 @@ function MensagensWA(_ref10) {
       height: 'calc(100vh - 170px)',
       minHeight: 620
     })
-  }, list, thread), fichaEl);
+  }, list, thread), fichaEl, transfEl);
 }
+// janela "Transferir para": lista as pessoas ativas da clínica; motivo é opcional
+function WaTransferir(_ref) {
+  var c = _ref.c, pessoas = _ref.pessoas, meuId = _ref.meuId, onFechar = _ref.onFechar, onFeito = _ref.onFeito;
+  var _m = React.useState(''), motivo = _m[0], setMotivo = _m[1];
+  var _s = React.useState(false), salvando = _s[0], setSalvando = _s[1];
+  var lista = pessoas.filter(function (u) { return SB_ON ? !!u.usuarioId && u.convite !== 'pendente' : true; })
+    .map(function (u) { return { id: SB_ON ? u.usuarioId : u.id, nome: u.nome, funcao: u.funcao, eu: SB_ON ? u.usuarioId === meuId : false }; })
+    .sort(function (a, b) { return (b.eu ? 1 : 0) - (a.eu ? 1 : 0) || String(a.nome).localeCompare(String(b.nome)); });
+  var escolher = function (uid) {
+    if (salvando) return;
+    if (!SB_ON) { c.resp = uid; c.ia = false; MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA); onFeito(uid); return; }
+    setSalvando(true);
+    MsgSvc.transferir(c, uid, motivo).then(function () { onFeito(uid); }, function (e) { setSalvando(false); avisoErro('Não foi possível transferir a conversa', e); });
+  };
+  var encerrar = function () {
+    if (salvando) return;
+    if (!SB_ON) { c.resp = null; c.ia = true; MSG_LISTA.v = MSG_LISTA.v + 1; avisar(MSG_LISTA); onFeito(null); return; }
+    setSalvando(true);
+    MsgSvc.liberar(c, true).then(function () { onFeito(null); }, function (e) { setSalvando(false); avisoErro('Não foi possível encerrar o atendimento', e); });
+  };
+  React.useEffect(function () {
+    var h = function (e) { if (e.key === 'Escape') onFechar(); };
+    window.addEventListener('keydown', h);
+    return function () { window.removeEventListener('keydown', h); };
+  }, []);
+  var linha = function (u) {
+    var atual = c.resp && c.resp === u.id;
+    return /*#__PURE__*/React.createElement("button", {
+      key: u.id, type: "button", disabled: salvando || !!atual, onClick: function () { escolher(u.id); },
+      style: { width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, border: 0, background: atual ? WA.sel : 'transparent',
+        color: WA.text, cursor: atual ? 'default' : 'pointer', fontFamily: 'inherit', textAlign: 'left', opacity: salvando ? .6 : 1 }
+    }, /*#__PURE__*/React.createElement(MAv, { name: u.nome, size: 36 }), /*#__PURE__*/React.createElement("span", { style: { flex: 1, minWidth: 0 } },
+      /*#__PURE__*/React.createElement("span", { style: { display: 'block', fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, u.nome, u.eu ? ' (você)' : ''),
+      /*#__PURE__*/React.createElement("span", { style: { display: 'block', fontSize: 12.5, color: WA.sub } }, atual ? 'Já está com esta conversa' : u.funcao || '')),
+      atual ? null : /*#__PURE__*/React.createElement("span", { style: { fontSize: 12.5, fontWeight: 700, color: WA.green } }, u.eu ? 'Assumir' : 'Transferir'));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    "data-overlay": "1", role: "dialog", "aria-modal": "true", "aria-label": "Transferir conversa",
+    onClick: function (e) { if (e.target === e.currentTarget) onFechar(); },
+    style: { position: 'fixed', inset: 0, zIndex: (window.Z && Z.dialogo) || 600, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { width: '100%', maxWidth: 420, maxHeight: '86vh', display: 'flex', flexDirection: 'column', borderRadius: 16, background: WA.panel, color: WA.text, boxShadow: '0 20px 60px rgba(0,0,0,.5)', overflow: 'hidden' }
+  }, /*#__PURE__*/React.createElement("div", { style: { padding: '16px 16px 8px' } },
+    /*#__PURE__*/React.createElement("div", { style: { fontSize: 17, fontWeight: 700 } }, "Transferir para"),
+    /*#__PURE__*/React.createElement("div", { style: { fontSize: 13, color: WA.sub, marginTop: 2 } }, c.n, c.resp ? ' · hoje com ' + (pessoaNome(lista, c.resp)) : ''),
+    /*#__PURE__*/React.createElement("input", {
+      value: motivo, onChange: function (e) { setMotivo(e.target.value); }, placeholder: "Motivo (opcional)", maxLength: 300, "aria-label": "Motivo da transferência",
+      style: { marginTop: 10, width: '100%', boxSizing: 'border-box', height: 38, padding: '0 12px', borderRadius: 10, border: 0, background: WA.field, color: WA.text, fontFamily: 'inherit', fontSize: 14, outline: 'none' }
+    })),
+  /*#__PURE__*/React.createElement("div", { style: { flex: 1, overflowY: 'auto', padding: '0 8px 8px' } },
+    lista.length ? lista.map(linha) : /*#__PURE__*/React.createElement("p", { style: { color: WA.sub, fontSize: 14, textAlign: 'center', padding: 20 } }, SB_ON ? 'Carregando a equipe...' : 'Ninguém na equipe.')),
+  /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 8, padding: '8px 12px 12px', borderTop: '1px solid ' + WA.line } },
+    c.resp ? /*#__PURE__*/React.createElement("button", { type: "button", disabled: salvando, onClick: encerrar,
+      style: { flex: 1, height: 38, borderRadius: 10, border: '1px solid ' + WA.line, background: 'transparent', color: WA.text, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer' } }, "Encerrar e devolver para a IA") : null,
+    /*#__PURE__*/React.createElement("button", { type: "button", onClick: onFechar,
+      style: { flex: c.resp ? 0 : 1, minWidth: 96, height: 38, borderRadius: 10, border: 0, background: WA.head, color: WA.text, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer' } }, "Cancelar"))));
+}
+function pessoaNome(lista, uid) { var u = lista.find(function (x) { return x.id === uid; }); return u ? (u.eu ? 'você' : u.nome) : 'alguém da equipe'; }
 // aviso quando o Agente de IA está em modo teste (só quem enxerga a tabela, o administrador master, vê)
 function WaAvisoTeste() {
   var _s = React.useState(null),

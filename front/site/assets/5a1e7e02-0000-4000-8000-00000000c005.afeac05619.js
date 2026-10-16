@@ -66,7 +66,7 @@ var KIND_UI = {
   audio: 'audio',
   documento: 'file',
   figurinha: 'sticker',
-  sistema: 'text'
+  sistema: 'sys'
 };
 // "pendente" ainda não saiu (o WhatsApp não está conectado) e "falhou" não chegou: nunca mostrar como enviada
 var TICK = {
@@ -145,6 +145,8 @@ var convTela = function convTela(c) {
     leadId: c.lead_id,
     ia: c.ia_ativa,
     arq: c.arquivada,
+    // pessoa da equipe responsável pela conversa (transferência entre a equipe)
+    resp: c.atendente_usuario_id || null,
     // a IA passou a conversa para a equipe e ninguém resolveu ainda
     equipe: (c.transf || (MSG_CONV[c.id] || {}).transf || []).some(function (x) {
       return x.status === 'aberta' || x.status === 'em_atendimento';
@@ -563,7 +565,8 @@ function _aoMudarMensagens() {
               }] : []);
               publicarInbox(INBOX.map(function (x) {
                 return x.id === c.id ? _objectSpread(_objectSpread({}, x), {}, {
-                  equipe: convTela(c).equipe
+                  equipe: convTela(c).equipe,
+                  resp: c.atendente_usuario_id || null
                 }) : x;
               }));
             }
@@ -835,6 +838,28 @@ var MsgSvc = {
         }
       }, _callee3, null, [[1, 20]]);
     }))();
+  },
+  // passa a conversa para uma pessoa da clínica (ou para quem está logado); a IA fica pausada enquanto a pessoa atende
+  transferir: function transferir(c, usuarioId, motivo) {
+    if (!SB_ON || !ehUuid(c.id)) return Promise.reject(new Error('Disponível só com o sistema conectado.'));
+    return DB.rpc('transferir_conversa', { p_conversa: c.id, p_para_usuario: usuarioId, p_motivo: motivo || null }, 'Não foi possível transferir a conversa').then(function (r) {
+      if (MSG_CONV[c.id]) { MSG_CONV[c.id].atendente_usuario_id = usuarioId; MSG_CONV[c.id].ia_ativa = false; }
+      c.resp = usuarioId;
+      c.ia = false;
+      publicarInbox(Object.keys(MSG_CONV).map(function (k) { return convTela(MSG_CONV[k]); }));
+      return r;
+    });
+  },
+  // encerra o atendimento da pessoa: a conversa fica sem responsável e, se pedido, a IA volta a responder
+  liberar: function liberar(c, religarIA) {
+    if (!SB_ON || !ehUuid(c.id)) return Promise.reject(new Error('Disponível só com o sistema conectado.'));
+    return DB.rpc('liberar_conversa', { p_conversa: c.id, p_religar_ia: !!religarIA }, 'Não foi possível encerrar o atendimento').then(function (r) {
+      if (MSG_CONV[c.id]) { MSG_CONV[c.id].atendente_usuario_id = null; if (religarIA) MSG_CONV[c.id].ia_ativa = true; MSG_CONV[c.id].transf = []; }
+      c.resp = null;
+      if (religarIA) c.ia = true;
+      publicarInbox(Object.keys(MSG_CONV).map(function (k) { return convTela(MSG_CONV[k]); }));
+      return r;
+    });
   },
   // liga ou pausa a IA só nesta conversa (o lead ligado acompanha pelo gatilho do banco)
   alternarIA: function alternarIA(c, ativa) {

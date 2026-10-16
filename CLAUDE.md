@@ -92,6 +92,11 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `sinal_expirar` (via `ia_manutencao`, a cada minuto) cancela reservas vencidas. No "Recebi pagamento" e em "Nova receita", o sinal pago do
   paciente aparece para abater (`sinal_disponivel` / `sinal_abater`). A política antiga `agente_ia.politica_sinal` continua só para
   "aprovação humana"; os modos "obrigatório" passam a usar a regra nova quando a clínica a liga.
+- Transferência entre a equipe (2026-10-16, grátis, sem n8n): em Conversas, o botão "Transferir" do cabeçalho abre a janela "Transferir para" (pessoas
+  ativas da clínica, "Assumir" para si, motivo opcional). RPC `transferir_conversa(conversa, usuario, motivo)` grava `conversas.atendente_usuario_id`, pausa a IA,
+  mantém UMA `transferencias_humanas` aberta por conversa (`atribuida_a`), escreve uma nota `mensagens.tipo = 'sistema'` (não vai para o WhatsApp: `mensagem_automacao`
+  sai cedo) e avisa quem recebe no sino. `liberar_conversa(conversa, religar_ia)` encerra. Na lista: selo "Com Fulano"/"Com você" (azul/verde) ou "Aguardando equipe"
+  (amarelo) e o filtro "Minhas". Departamentos, fila e SLA por departamento NÃO foram feitos (dependeriam de branch paga do Supabase e fluxos n8n).
 - Armazenamento por clínica (2026-10-13): RPC `armazenamento_uso(clinica)` soma os arquivos do Storage (pasta `<clinica_id>/...` em todos os
   buckets, por tipo) e o tamanho das linhas de conversas e cadastros. Tela: Minha conta › Plano e cobrança › "Armazenamento usado", abaixo do uso da IA.
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.

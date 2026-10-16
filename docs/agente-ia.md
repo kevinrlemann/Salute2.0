@@ -59,6 +59,23 @@ qualquer outro papel.
   (padrão `convertido`), se `crm_mover_automatico` estiver ligado. Não mexe em lead que já está em etapa final.
   Gatilho `tg_agendamentos_crm_finalizado`, migration `crm_atendimento_finalizado`. A regra entra em `agente_ia_regras`. [confirmado]
 
+## Transferência entre pessoas da equipe (2026-10-16) [confirmado]
+
+Pedido do fundador: dentro de Conversas, transferir o atendimento para outra pessoa da mesma clínica, só com o que é grátis.
+Migration `20261016120000_transferir_conversa_equipe.sql`, tudo aditivo:
+
+- `transferir_conversa(p_conversa, p_para_usuario, p_motivo)`: exige `pode(clinica, 'mensagens')` e que a pessoa seja membro ativo da clínica; grava
+  `conversas.atendente_usuario_id`, pausa a IA (conversa e lead), mantém uma `transferencias_humanas` aberta por conversa (`status = 'em_atendimento'`,
+  `atribuida_a`), cancela follow ups pendentes, escreve a nota `mensagens.tipo = 'sistema'` ("Kevin transferiu esta conversa para Ana: motivo") e avisa a pessoa
+  no sino (`notificacoes`, tipo `nova_mensagem`, `conversa_id`). Transferir para si mesmo = "assumiu esta conversa", sem aviso.
+- `liberar_conversa(p_conversa, p_religar_ia)`: tira o responsável, resolve a transferência aberta e, se pedido, religa a IA; também deixa nota.
+- `mensagem_automacao()` ganhou uma saída logo no começo para `tipo = 'sistema'`: a nota nunca entra em `envios_pendentes` nem agenda follow up.
+- `nome_usuario_curto(uuid)` monta o nome para a nota. Índice parcial `conversas_atendente_idx`.
+- Front (`366b46a2`, `c005`): botão "Transferir"/"Com Fulano" ao lado do botão da IA, janela `WaTransferir` (`Z.dialogo`, `data-overlay`), selo na lista,
+  filtro "Minhas", nota centralizada no chat (`KIND_UI.sistema = 'sys'`), `MsgSvc.transferir` e `MsgSvc.liberar`. Tempo real já cobre `conversas` e `mensagens`.
+- Não feito (decisão do fundador, custo): departamentos, fila por departamento, SLA por departamento e fluxos n8n novos. WF07 continua avisando gestores
+  quando uma transferência passa do SLA da clínica, o que também vale para as transferências entre a equipe.
+
 ## Atenção: segunda implementação no mesmo banco (confirmado, não resolvido)
 
 Na madrugada de 2026-10-09, **outra sessão fora desta** aplicou no mesmo Supabase as migrations
