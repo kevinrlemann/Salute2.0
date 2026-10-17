@@ -8,6 +8,8 @@ Projeto Supabase: **"Salute IA novo visual"** (`gbhsslyoybqjvjznlave`). Nenhum d
 Legenda: **[confirmado]** = visto no código ou no catálogo do banco · **[inferido]** = conclusão lógica, não testada ·
 **[não confirmado]** = não dá para verificar pelo código nem pelo banco (normalmente está no painel do Supabase).
 
+Plano de ação por função do NIST CSF 2.0 (2026-10-17): [`plano-ciberseguranca.md`](plano-ciberseguranca.md).
+
 Este documento não repete a auditoria. Para evidência linha a linha, siga as referências (A1, M3, B6...) até a 05.
 
 ---

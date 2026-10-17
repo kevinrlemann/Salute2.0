@@ -273,6 +273,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
 - Permissão de verdade fica no banco (RLS/RPC), nunca só na tela. Tabela nova precisa de RLS, `clinica_id` e políticas
   com `minhas_clinicas()` / `clinicas_permitidas('<módulo>')` / `clinicas_gestao()` / `eh_admin_plataforma()`.
 - `SECURITY DEFINER` só com checagem de clínica e `set search_path`. Revogue `execute` de `anon` quando a função não for pública.
+  Desde 2026-10-17 (migration `20261017230000`) função nova do `postgres` não nasce executável por PUBLIC/anon; função pública de
+  propósito precisa de `grant execute ... to anon` explícito. Plano completo de cibersegurança (NIST CSF 2.0): `docs/plano-ciberseguranca.md`.
 - HTML montado como texto (impressão etc.) precisa escapar TODO dado (`escHtml`). Veja o achado A1 da auditoria 05.
 - Dados de paciente vão para OpenAI/ElevenLabs. Trate isso como risco de LGPD (achado A3) e não amplie sem decisão do fundador.
 - Riscos abertos e prioridades: `docs/security.md` e `docs/backlog.md`.
