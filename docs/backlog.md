@@ -645,6 +645,20 @@ publicação só com aprovação do fundador. Mudança de banco sempre como migr
 - **Teste:** convite, cadastro e senha chegam na caixa de entrada (não no spam) de Gmail e Outlook.
 - **Esforço:** P a M.
 
+### P2-07a — Planejado (pedido do fundador, 2026-10-17): e-mail de "esqueci a senha" e convites com a marca da Salute
+- **O que já existe:** a tela de entrada tem "Esqueci minha senha" (`SB.auth.resetPasswordForEmail`, `c001`) e o Supabase Auth manda o
+  e-mail pelo servidor padrão dele (limite baixo, cerca de 2 e-mails por hora por projeto, remetente genérico). Funciona, mas não escala.
+- **O que fazer (ordem de custo, grátis primeiro):**
+  1. **Brevo (ex-Sendinblue), plano grátis: 300 e-mails por dia.** Criar conta, verificar o domínio `saluteia.site` (SPF e DKIM no DNS da
+     Hostinger), pegar o SMTP (`smtp-relay.brevo.com`, porta 587) e colar em Supabase → Authentication → SMTP Settings. Remetente
+     `nao-responda@saluteia.site`. Sem código.
+  2. **Resend, plano grátis: 3.000 e-mails por mês (100 por dia).** Mesma configuração; vale se preferir a interface mais simples.
+  3. Pago só se passar disso (Brevo a partir de ~R$ 50/mês).
+- **Depois do SMTP:** personalizar os modelos "Reset password", "Confirm signup" e "Invite user" no Supabase (texto em português, logo
+  da Salute) e conferir as Redirect URLs (`https://saluteia.site` e o artifact) — P1-16.
+- **Teste:** "Esqueci minha senha" em Gmail e Outlook: chega na caixa de entrada, o link abre o `saluteia.site` e a senha nova entra.
+- **Esforço:** P (1 a 2 horas, sem código). **Dependências:** acesso ao DNS da Hostinger e ao painel do Supabase.
+
 ### P2-08 — Verificação em 2 etapas real (MFA)
 - **Problema:** não há MFA (ver P1-17).
 - **Evidência:** Auditoria 05 M7.

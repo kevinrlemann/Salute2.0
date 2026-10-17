@@ -65,7 +65,7 @@ var PLANS = [{
   preco: 197,
   sub: 'Gestão completa da clínica com o WhatsApp no mesmo lugar.',
   limite: 0,
-  itens: ['Pacientes, prontuário e agenda', 'Anamnese com assinatura digital', 'Financeiro, estoque e CRM de leads', 'WhatsApp da clínica no sistema (1 número)', 'Até 3 profissionais e 5 usuários', 'Saluteflix e Salute Cast']
+  itens: ['Pacientes, prontuário e agenda', 'Anamnese com assinatura digital', 'Financeiro, estoque e CRM de leads', 'WhatsApp da clínica no sistema (1 número)', '2 usuários incluídos e até 3 profissionais', 'Saluteflix e Salute Cast']
 }, {
   id: 'assistente',
   anual: 3970,
@@ -77,7 +77,7 @@ var PLANS = [{
   preco: 397,
   sub: 'A Renata IA ajuda a equipe dentro do sistema.',
   limite: 1500,
-  itens: ['Tudo do plano Inicial', 'Renata IA dentro do sistema (1.500 perguntas por mês)', 'Renata por voz (60 minutos por mês)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', 'Até 6 profissionais e 10 usuários']
+  itens: ['Tudo do plano Inicial', 'Renata IA dentro do sistema (1.500 perguntas por mês)', 'Renata por voz (60 minutos por mês)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', '2 usuários incluídos e até 6 profissionais']
 }, {
   id: 'iapro',
   anual: 9970,
@@ -90,18 +90,7 @@ var PLANS = [{
   sub: 'A Renata IA atende, agenda e confirma pelo WhatsApp.',
   destaque: true,
   limite: 10000,
-  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', 'Até 10 mil mensagens de IA por mês', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', 'Até 10 profissionais e 20 usuários']
-}, {
-  id: 'enterprise',
-  anual: null,
-  implantacao: 2997,
-  usuarios: null,
-  profissionais: null,
-  nome: 'Enterprise',
-  preco: null,
-  sub: 'A partir de R$ 1.997 por mês. Para redes, várias unidades e alto volume.',
-  limite: null,
-  itens: ['Tudo do plano IA Pro', '30 mil mensagens de IA ou mais por mês', 'Várias unidades e várias IAs', 'API oficial do WhatsApp (Meta)', 'Consultor dedicado e suporte com prazo', 'Profissionais e usuários sem limite']
+  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', 'Até 10 mil mensagens de IA por mês', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', '2 usuários incluídos e até 10 profissionais']
 }];
 var PLAN_STORE = makeStore('iapro');
 // valores adicionais: cobrados à parte quando a clínica passa do limite do plano (vêm da tabela planos_adicionais)
@@ -152,10 +141,6 @@ function planoCondicoes(p, dark) {
   var u = achar('usuario_extra'), g = achar('armazenamento_25'), m = achar('mensagens_ia_2000'), r = achar('renata_500');
   if (u && p.usuarios) acima.push(['Mais de ' + p.usuarios + ' usuários', fmt(u.preco) + ' por usuário a mais, por mês']);
   if (g && p.armazenamentoGb) acima.push(['Mais de ' + p.armazenamentoGb + ' GB guardados', fmt(g.preco) + ' por mês a cada ' + g.quantidade + ' GB a mais']);
-  if (p.limite) {
-    if (m && p.id !== 'assistente') acima.push(['Mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' mensagens de IA no mês', fmt(m.preco) + ' a cada ' + Number(m.quantidade).toLocaleString('pt-BR') + ' mensagens a mais']);
-    else if (r) acima.push(['Mais de ' + Number(p.limite).toLocaleString('pt-BR') + ' perguntas à Renata no mês', fmt(r.preco) + ' a cada ' + r.quantidade + ' perguntas a mais']);
-  }
   if (!linhas.length && !acima.length) return null;
   var cor = dark ? 'rgba(255,255,255,.85)' : 'var(--text-muted)';
   return /*#__PURE__*/React.createElement("div", {
@@ -261,6 +246,39 @@ function armFmt(bytes, forcaGb) {
   if (mb >= 1) return (mb >= 100 ? mb.toFixed(0) : mb.toFixed(1)).replace('.', ',') + ' MB';
   return Math.max(1, Math.round(b / 1024)) + ' KB';
 }
+var ARM_STORE = makeStore(null);
+// Resumo do que a clínica paga: plano base + usuários além dos incluídos + GB além do limite (estimativa pelo uso de agora)
+function ResumoCobranca(_ref) {
+  var mobile = _ref.mobile, cur = _ref.cur;
+  var _a = useStore(ARM_STORE), armBytes = _a[0];
+  useStore(TEAM_STORE);
+  var pl = PLANS.find(function (x) { return x.id === cur; });
+  if (!pl || !pl.preco) return null;
+  var ad = ADICIONAIS_STORE.v || [];
+  var adU = ad.find(function (x) { return x.codigo === 'usuario_extra'; }) || { preco: 49.9 };
+  var adG = ad.find(function (x) { return x.codigo === 'armazenamento_25'; }) || { preco: 29, quantidade: 25 };
+  var ativos = planoUsuariosAtivos(), inclU = pl.usuarios || 0, extraU = Math.max(0, ativos - inclU), custoU = extraU * Number(adU.preco || 0);
+  var gbUsado = armBytes === null ? null : armBytes / 1073741824, inclG = pl.armazenamentoGb || 0;
+  var pacotes = gbUsado === null ? 0 : Math.max(0, Math.ceil((gbUsado - inclG) / Number(adG.quantidade || 25))), custoG = pacotes * Number(adG.preco || 0);
+  var total = Number(pl.preco) + custoU + custoG;
+  var brl2 = function (v) { return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var gbTxt = function (v) { return v < 1 ? Math.round(v * 1024) + ' MB' : v.toFixed(v < 10 ? 2 : 1).replace('.', ',') + ' GB'; };
+  var linha = function (titulo, sub, valor, forte) {
+    return /*#__PURE__*/React.createElement("div", { key: titulo, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderTop: forte ? '1.5px solid rgba(214,226,242,.9)' : 0 } },
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 } },
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: forte ? 16 : 14, fontWeight: 600, color: 'var(--text-strong)' } }, titulo),
+        sub ? /*#__PURE__*/React.createElement("span", { style: { fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.45 } }, sub) : null),
+      /*#__PURE__*/React.createElement("span", { style: { fontSize: forte ? 20 : 15, fontWeight: 700, color: 'var(--text-strong)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' } }, valor));
+  };
+  return /*#__PURE__*/React.createElement("div", { "data-resumo-cobranca": "1", style: { display: 'flex', flexDirection: 'column', padding: mobile ? '12px 14px' : '14px 20px', borderRadius: 20, background: 'rgba(255,255,255,.5)', border: '1.5px solid rgba(255,255,255,.95)' } },
+    /*#__PURE__*/React.createElement("div", { style: { paddingBottom: 6 } },
+      /*#__PURE__*/React.createElement("h4", { style: { margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-strong)' } }, "Quanto esta cl\xEDnica paga por m\xEAs"),
+      /*#__PURE__*/React.createElement("p", { style: { margin: '3px 0 0', fontSize: 12.5, color: 'var(--text-muted)' } }, "Plano base mais o que passa do inclu\xEDdo: usu\xE1rios e espa\xE7o guardado. Estimativa com o uso de agora.")),
+    linha('Plano ' + pl.nome, 'Inclui ' + inclU + ' usu\xE1rios e ' + inclG + ' GB de armazenamento.', brl2(pl.preco)),
+    linha('Usu\xE1rios', ativos + ' ativos \xB7 ' + inclU + ' inclu\xEDdos' + (extraU ? ' \xB7 ' + extraU + ' a mais \xD7 ' + brl2(adU.preco) : ' \xB7 nenhum a mais'), extraU ? '+ ' + brl2(custoU) : 'R$ 0,00'),
+    linha('Armazenamento', (gbUsado === null ? 'calculando' : gbTxt(gbUsado) + ' usados') + ' \xB7 ' + inclG + ' GB inclu\xEDdos' + (pacotes ? ' \xB7 ' + pacotes + ' \xD7 ' + adG.quantidade + ' GB a mais \xD7 ' + brl2(adG.preco) : ' \xB7 dentro do limite'), pacotes ? '+ ' + brl2(custoG) : 'R$ 0,00'),
+    linha('Total estimado', 'A cobran\xE7a autom\xE1tica dos adicionais ainda n\xE3o est\xE1 ligada: o valor acima \xE9 o que vale pela tabela.', brl2(total), true));
+}
 function Armazenamento(_ref) {
   var mobile = _ref.mobile;
   var _st = React.useState(null),
@@ -288,6 +306,7 @@ function Armazenamento(_ref) {
       setErro(true);
     });
   }, []);
+  React.useEffect(function () { if (dados) { ARM_STORE.v = Number(dados.total_bytes || 0); avisar(ARM_STORE); } }, [dados]);
   if (erro || !dados) return null;
   var total = Number(dados.total_bytes || 0);
   var tipos = (dados.tipos || []).filter(function (t) {
@@ -808,12 +827,15 @@ function PlanosSection(_ref2) {
     }
   }, used.toLocaleString('pt-BR'), " de ", PLAN_LIMIT.toLocaleString('pt-BR'), " usadas \xB7 renova dia ", SB_ON ? diaRenova() : 10)) : null), /*#__PURE__*/React.createElement(UsoIA, {
     mobile: mobile
+  }), /*#__PURE__*/React.createElement(ResumoCobranca, {
+    mobile: mobile,
+    cur: cur
   }), /*#__PURE__*/React.createElement(Armazenamento, {
     mobile: mobile
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: mobile ? '1fr' : 'repeat(2, minmax(0,1fr))',
+      gridTemplateColumns: mobile ? '1fr' : 'repeat(3, minmax(0,1fr))',
       gap: 16,
       alignItems: 'stretch'
     }
@@ -973,9 +995,7 @@ function PlanosSection(_ref2) {
         boxShadow: dark ? 'none' : '0 10px 22px -10px rgba(11,63,217,.7)'
       }
     }, p.preco ? 'Mudar para este plano' : 'Falar com consultor'));
-  })), /*#__PURE__*/React.createElement(PlanosAdicionais, {
-    mobile: mobile
-  }), msg ? /*#__PURE__*/React.createElement("div", {
+  })), msg ? /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',

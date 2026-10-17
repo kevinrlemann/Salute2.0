@@ -137,6 +137,12 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `clinica_suporte()`; `trocar_plano` aceita o suporte; o resto já aceitava `eh_admin_plataforma()`). Migration `20261016210000`.
 - Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
   (só capa e informações; migration `20261016180000`). Parcerias com logo (`parceiros.logo_path`, bucket `conteudos/parceiros`), no visual de Certificações.
+- Plano e cobrança (2026-10-17): bloco "Quanto esta clínica paga por mês" (`ResumoCobranca` em `30c3fd71`: plano base + usuários ativos além dos
+  2 incluídos × `planos_adicionais.usuario_extra` + pacotes de 25 GB além de `limite_armazenamento_gb` × `armazenamento_25`; estimativa, a
+  cobrança automática não está ligada). Planos Inicial, Assistente e IA Pro lado a lado; Enterprise desligado no banco (`planos.ativo = false`,
+  migration `20261017100000`, volta com `ativo = true`); tabela "Valores adicionais" saiu da tela e "Acima do limite" só mostra usuários e GB.
+  Contagem do uso conferida no banco: `renata` manda `p_origem` texto/voz (`corpo.voz`), `n8n_finalizar_turno` conta `whatsapp`; tela via `ia_uso`.
+  Notificações: 4 sons (Cristal, Suave, Pop, Sino em `TONES`, `d41989a4`). E-mail de "esqueci a senha" com SMTP próprio: planejado em `docs/backlog.md` P2-07a.
 - Filtros e períodos (2026-10-17): Financeiro › Receitas/Despesas e Nota fiscal têm o botão "Filtros" ao lado de "Todos os status" (painel `filtrosCampos`
   em `d47643ae`: lançamento, paciente, procedimento, profissional, atendente, categoria, atendimento, valor, vencimento, desconto, pagamento, status;
   despesas: descrição, fornecedor, responsável; NF: data, tomador, CPF/CNPJ, serviço, valor, ISS, situação). `PeriodSelect` (Visão geral do Financeiro e

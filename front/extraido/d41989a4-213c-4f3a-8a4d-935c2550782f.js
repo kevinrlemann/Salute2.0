@@ -648,6 +648,11 @@ var TONES = {
     label: 'Pop',
     notes: [[523.3, 0, 0.12], [1046.5, 0.06, 0.18]],
     type: 'sine'
+  },
+  sino: {
+    label: 'Sino',
+    notes: [[880, 0, 0.7], [1318.5, 0.18, 0.9], [1760, 0.36, 1.1]],
+    type: 'sine'
   }
 };
 function playMsgSound(tone, vol) {
