@@ -182,9 +182,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   roda no navegador: indicador = cursor (faixa central da câmera cobre a tela), pinça polegar+indicador = clique (`gestosClicar` dispara pointer/mouse/click no
   elemento sob o cursor), indicador+médio esticados = rolagem, aviso azul embaixo desliga. Prévia da câmera opcional; preferência em `salute-kit:gestos`
   (religa ao abrir). CSP do `netlify.toml`: `connect-src` ganhou unpkg.com e storage.googleapis.com só para isso. Não funciona no artifact (CSP do host).
-  PENDENTE (2026-10-17): o site ainda serve o cabeçalho CSP antigo (sem unpkg/googleapis) mesmo com o `netlify.toml` certo na `producao` e o deploy dizendo
-  "2 header rules processed"; as outras regras do toml (cache de `/assets/*`) estão no ar. Falta um "Clear cache and deploy site" no painel da Netlify
-  (projeto `saluteia` › Deploys › Trigger deploy); até lá o controle por gestos não carrega a biblioteca no site (funciona no teste local).
+  Resolvido em 2026-10-17: a Netlify só passou a servir o cabeçalho CSP novo depois de "Clear cache and deploy site" no painel (mudança de cabeçalho no
+  `netlify.toml` pode exigir isso; conferir com `curl -sI https://saluteia.site/ | grep -i content-security`).
 - Leads por canal (decisão do fundador, 2026-10-17): só Orgânico, Indicação, Tráfego pago (subcanais) e Não informado. Migration `20261017150000`:
   `origem_garantir`, `origem_organico`, `origem_do_anuncio(clinica, conversas.origem_anuncio)` (URL/utm_source/título → TikTok Ads, Google Ads, Instagram Ads,
   Facebook Ads, Outros anúncios, filhos de Tráfego pago), `funil_garantir_lead` nasce com anúncio ou Orgânico, `origem_whatsapp` agora devolve Orgânico e o canal
