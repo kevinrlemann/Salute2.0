@@ -113,7 +113,9 @@ var estTela = function estTela() {
     sinalValor: g.sinal_valor != null ? String(g.sinal_valor) : '',
     sinalPix: g.sinal_chave_pix || '',
     sinalInstrucoes: g.sinal_instrucoes || '',
-    sinalPrazo: g.sinal_prazo_horas != null ? String(g.sinal_prazo_horas) : '24'
+    sinalPrazo: g.sinal_prazo_horas != null ? String(g.sinal_prazo_horas) : '24',
+    // agenda por profissional: ligado, cada pessoa só vê as agendas liberadas para ela (gestão vê todas)
+    agendaRestrita: !!g.agenda_restrita
   };
 };
 // DIAS começa na segunda; no banco 0 é domingo
@@ -220,7 +222,8 @@ var ClinSvc = {
               sinal_valor: Math.max(0, Number(String(est.sinalValor || '0').replace(',', '.')) || 0),
               sinal_chave_pix: (est.sinalPix || '').trim() || null,
               sinal_instrucoes: (est.sinalInstrucoes || '').trim() || null,
-              sinal_prazo_horas: Math.max(1, parseInt(est.sinalPrazo, 10) || 24)
+              sinal_prazo_horas: Math.max(1, parseInt(est.sinalPrazo, 10) || 24),
+              agenda_restrita: !!est.agendaRestrita
             };
             if (cfg.sinal_ativo && cfg.sinal_modo === 'valor' && !(cfg.sinal_valor > 0)) {
               avisoErro('Informe o valor do sinal', 'Com o sinal ligado e no modo "valor fixo", o valor precisa ser maior que zero.');
@@ -452,15 +455,24 @@ var EquipeSvc = {
 };
 
 /* ---------- Profissionais ---------- */
-var PROF_SEL = 'id,nome,especialidade,registro_conselho,cor_agenda,foto_path,usuario_id,ordem,sinal_modo,sinal_valor,profissionais_procedimentos(procedimento_id,excluido_em)';
+var PROF_SEL = 'id,nome,especialidade,registro_conselho,cor_agenda,foto_path,usuario_id,ordem,sinal_modo,sinal_valor,profissionais_procedimentos(procedimento_id,excluido_em),agendas_acesso(usuario_id,excluido_em)';
 var ProfSvc = {
+  // salva o profissional e, se a gestão mexeu em "Quem pode ver esta agenda", grava a liberação (agenda_acesso_definir)
   salvar: function salvar(ed) {
+    if (!ed.dbId && !ed.novoDbId) ed = _objectSpread(_objectSpread({}, ed), {}, { novoDbId: novoId() });
+    var id = ed.dbId || ed.novoDbId;
+    var depois = Array.isArray(ed.agendaUsuarios) ? function (r) {
+      return DB.rpc('agenda_acesso_definir', { p_clinica: CLI(), p_profissional: id, p_usuarios: ed.agendaUsuarios }, 'Não foi possível salvar quem vê esta agenda').then(function () { return r; });
+    } : function (r) { return r; };
+    return ProfSvc.salvarBase(ed).then(depois);
+  },
+  salvarBase: function salvarBase(ed) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee4() {
       var existente, id, foto, dados, quer, tem, _iterator2, _step2, pid, entra, r, np, _t8;
       return _regenerator().w(function (_context5) {
         while (1) switch (_context5.p = _context5.n) {
           case 0:
-            existente = !!ed.dbId, id = ed.dbId || novoId();
+            existente = !!ed.dbId, id = ed.dbId || ed.novoDbId || novoId();
             foto = ed.fotoPath || null;
             if (!(ed.foto && /^data:/.test(ed.foto))) {
               _context5.n = 2;

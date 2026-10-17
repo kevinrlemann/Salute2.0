@@ -101,6 +101,16 @@ CARGAS.catalogos = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(
     }
   }, _callee);
 }));
+// espelho local da função agenda_visivel do banco (a tela filtra; a permissão de verdade está no RLS de agendamentos)
+function agendaVisivelLocal(p) {
+  var cfg = CAT.v.config || {};
+  if (!cfg.agenda_restrita) return true;
+  var cl = (SESSAO.v && SESSAO.v.clinica) || {};
+  if (cl.dono || cl.papel === 'dono' || cl.papel === 'gestor' || cl.suporte || SESSAO.v && SESSAO.v.suporte) return true;
+  var eu = UID();
+  if (p.usuario_id && p.usuario_id === eu) return true;
+  return (p.agendas_acesso || []).some(function (a) { return !a.excluido_em && a.usuario_id === eu; });
+}
 function hidratarCatalogos() {
   if (!SB_ON) return;
   var c = CAT.v,
@@ -123,10 +133,13 @@ function hidratarCatalogos() {
       fotoPath: p.foto_path,
       usuarioId: p.usuario_id,
       sinalModo: p.sinal_modo || 'clinica',
-      sinalValor: p.sinal_valor != null ? Number(p.sinal_valor) : ''
+      sinalValor: p.sinal_valor != null ? Number(p.sinal_valor) : '',
+      agendaUsuarios: (p.agendas_acesso || []).filter(function (a) { return !a.excluido_em; }).map(function (a) { return a.usuario_id; }),
+      agendaVisivel: agendaVisivelLocal(p)
     };
   }));
-  substituir(PROS, profs.map(function (p) {
+  // a agenda (PROS) só lista os profissionais cuja agenda a pessoa pode ver; o banco (RLS) garante o resto
+  substituir(PROS, profs.filter(agendaVisivelLocal).map(function (p) {
     return {
       n: p.nome,
       r: p.especialidade || '',

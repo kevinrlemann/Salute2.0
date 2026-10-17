@@ -59,4 +59,11 @@ for f in os.listdir(raiz):
     p = os.path.join(raiz, f)
     if os.path.isfile(p) and f != 'index.html' and not f.startswith('.'):
         shutil.copy(p, os.path.join(dest, f))
+# pastas estáticas que acompanham o site (ex.: modelos de mapeamento em front/modelos)
+for pasta in ['modelos']:
+    o = os.path.join(raiz, pasta)
+    if os.path.isdir(o):
+        d = os.path.join(dest, pasta); os.makedirs(d, exist_ok=True)
+        for f in os.listdir(o):
+            if not f.startswith('.'): shutil.copy(os.path.join(o, f), os.path.join(d, f))
 print('site gerado em', dest, '| index.html', os.path.getsize(os.path.join(dest, 'index.html')), 'bytes |', len(novos), 'arquivos em assets/')
