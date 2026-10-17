@@ -2901,7 +2901,16 @@ var RN_AI = makeStore(SB_ON ? {
 // voz única da Renata: Sarah, voz padrão da ElevenLabs liberada no plano grátis (fala português com flash v2.5)
 var RN_VOZ_OFICIAL = 'EXAVITQu4vr4xnSDxMaL';
 // silêncio que encerra a fala da pessoa no modo voz (dá tempo de pensar entre uma frase e outra)
-var RN_SILENCIO_MS = 1500; // era 2,2 s; 1,5 s responde mais rápido sem cortar frases normais
+var RN_SILENCIO_MS = 2200; // 2,2 s (decisão do fundador, 2026-10-17): a Renata espera mais antes de "ir pensando", sem cortar quem fala pausado
+// erro da Renata em linguagem de gente (2026-10-17): sem internet, limite de perguntas ou problema interno
+function rnErroAmigavel(e, prefixo) {
+  var txt = String(e && (e.message || e.code || e) || '').toLowerCase();
+  var semRede = (typeof navigator !== 'undefined' && navigator.onLine === false) || /failed to fetch|networkerror|load failed|network request failed|err_internet|err_network|offline/.test(txt);
+  if (semRede) return 'N\xE3o consigo te responder agora porque estou sem acesso \xE0 internet. Assim que a conex\xE3o voltar, \xE9 s\xF3 falar comigo de novo.';
+  if (e && e.code === 'rate_limited') return 'Recebi muitas perguntas seguidas. Me d\xE1 um minutinho e pergunta de novo?';
+  if (e && e.code === 'limite_mensagens' || /limite/.test(txt)) return 'A cl\xEDnica chegou ao limite de mensagens de IA deste m\xEAs. A equipe da Salute pode ampliar o plano.';
+  return (prefixo || 'Tive um probleminha aqui do meu lado e n\xE3o consegui terminar.') + ' Pode repetir em alguns segundos? Se continuar, avise a equipe da Salute.';
+}
 var RN_VOICE = makeStore(function () {
   var s = SB_ON ? {} : lsGet('salute-kit:renata-voz', {}) || {};
   return {
@@ -4624,7 +4633,7 @@ function _rnAnswerCore() {
           }) : demo());
         case 22:
           keep = _t26 && _t26.text ? _t26.text + '\n\n' : '';
-          msg = _t26 && _t26.code === 'rate_limited' ? 'Muitas perguntas seguidas. Espere um pouco e tente de novo.' : 'Não consegui terminar a resposta agora. Tente de novo.';
+          msg = rnErroAmigavel(_t26);
           _onText(keep + msg);
           return _context34.a(2, {
             text: keep + msg,
@@ -11846,7 +11855,7 @@ function _rnExecCmd() {
           _context38.p = 3;
           _t29 = _context38.v;
           a.falhou = true;
-          return _context38.a(2, 'Não consegui concluir agora: ' + (typeof MSG_ERRO === 'function' ? MSG_ERRO(_t29) : String(_t29 && _t29.message || _t29)) + '.');
+          return _context38.a(2, rnErroAmigavel(_t29, 'N\xE3o consegui concluir essa a\xE7\xE3o agora.'));
       }
     }, _callee37, null, [[0, 3]]);
   }));

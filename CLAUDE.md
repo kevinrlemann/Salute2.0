@@ -106,7 +106,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   relatório e tudo fica em `consultas_relatorios` (RLS `clinicas_permitidas('pacientes')`) e no histórico do paciente (tipo `consulta`).
 - Painel (2026-10-16): período por indicador (`PAINEL_PER`: pacientes/agendamentos/funil/canais abrem no mês; IA/atendimentos nos últimos 7 dias;
   30 dias e datas livres via `PeriodoChip`, dentro de cada cartão: `StatCard.headerRight`), RPC `painel_periodo(clinica, ini, fim)` (período anterior do mesmo tamanho).
-- Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
+- Renata (2026-10-17): silêncio volta a 2,2 s (`RN_SILENCIO_MS`, pedido do fundador: esperar mais antes de "ir pensando"); erros em linguagem simples por
+  `rnErroAmigavel` (sem internet, muitas perguntas, limite de mensagens, problema interno) no chat e nas ações por voz.
+- Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`, superado acima), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
   reconhecedor), transcrição com `language_code: 'por'`. Dinheiro a receber: ela pergunta a data prevista e lança nessa data; entende parcelas
   (`parcelas` em `propor_lancamento_financeiro` → `FinSvc.criar` com `parc`/`venc`: UMA conta com `numero_parcelas` e N linhas em `parcelas`, vencimentos mensais).
 - Agenda (2026-10-16): a grade 6h–20h cresce quando há agendamento fora desse horário na semana visível (`slotsGrade`).
