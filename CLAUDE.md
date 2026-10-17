@@ -133,7 +133,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   chips da equipe (gestão marcada "sempre vê"); `ProfSvc.salvar` grava a liberação depois do profissional (`ed.agendaUsuarios`, id novo em `ed.novoDbId`).
 - Modelos de mapeamento com imagem (2026-10-17): `front/modelos/` (rosto-feminino.jpg, rosto-masculino.jpg, labios.jpg, gluteo-lateral-direita.jpg,
   gluteo-lateral-esquerda.jpg, gluteo-posterior.jpg, tronco-feminino-lateral.jpg, mandibula-lateral-vasos-direita/esquerda.jpg, perfil-feminino-direita/esquerda.jpg,
-  perfil-masculino-direita.jpg, dentes-permanentes.jpg, dentes-deciduos.jpg;
+  perfil-masculino-direita/esquerda.jpg, tronco-feminino-frontal.jpg, tronco-feminino-lateral-esquerda.jpg (a antiga tronco-feminino-lateral.jpg é a direita), dentes-permanentes.jpg,
+  dentes-deciduos.jpg; 17 modelos; "esquerda" = virado para a esquerda de quem olha; nomes curtos "(esquerda)/(frontal)/(direita)" em até 2 linhas no `tile`;
   imagens enviadas pelo fundador, compostas sobre `#F4F7FC`, JPEG até 1600 px), copiados pelo `tools/site.py` para `front/site/modelos/`; `SYS_MODELS_IMG` em `d47643ae` aponta para `MODELOS_BASE`
   e vem antes dos desenhos; ordem (pedido do fundador): face feminina, face masculina, lábios, corpo, dentes, sempre lateral esquerda, frontal, lateral direita.
   Os desenhos Facial, Corporal e Glúteo saíram de `SYS_MODELS` (ficou só Dental); mapas antigos com fundo `face`/`corpo`/`gluteo` continuam abrindo (`FaceArt`)
