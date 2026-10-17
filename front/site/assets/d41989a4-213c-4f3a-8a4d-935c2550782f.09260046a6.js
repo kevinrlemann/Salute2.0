@@ -990,6 +990,178 @@ function setLang(l) {
     return s();
   });
 }
+/* ---------- Controle por gestos pela câmera (2026-10-17) ----------
+   A ponta do dedo indicador vira o cursor; juntar polegar e indicador (pinça) é o clique; indicador e médio esticados rolam a tela.
+   O reconhecimento de mãos (MediaPipe Hand Landmarker, do Google, grátis) roda no próprio navegador: o vídeo nunca sai do aparelho.
+   Biblioteca e modelo vêm de fora só na primeira vez (unpkg.com e storage.googleapis.com, liberados na CSP do netlify.toml). */
+var GESTOS_PREF_KEY = 'salute-kit:gestos';
+var GESTOS_CDN = window.GESTOS_CDN || 'https://unpkg.com/@mediapipe/tasks-vision@0.10.14';
+var GESTOS_MODELO = window.GESTOS_MODELO || 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+var GESTOS = makeStore(Object.assign({ on: false, status: 'desligado', erro: null, previa: true, mao: false }, lsGet(GESTOS_PREF_KEY, {}) || {}, { on: false, status: 'desligado', erro: null, mao: false }));
+var gestosCtx = null;
+function gestosAvisar(patch) {
+  GESTOS.v = Object.assign({}, GESTOS.v, patch);
+  GESTOS.subs.forEach(function (s) { return s(); });
+}
+function gestosGuardar() { lsSet(GESTOS_PREF_KEY, { on: GESTOS.v.on, previa: GESTOS.v.previa }); }
+function gestosErroTexto(e) {
+  var n = e && (e.name || '');
+  if (n === 'NotAllowedError' || n === 'SecurityError') return 'A câmera foi bloqueada. Libere a câmera para este site no navegador e tente de novo.';
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'Nenhuma câmera encontrada neste aparelho.';
+  if (n === 'NotReadableError') return 'A câmera está em uso por outro programa.';
+  return 'Não foi possível carregar o reconhecimento de mãos. Confira a internet e tente de novo.';
+}
+function gestosEl(tag, estilo) {
+  var el = document.createElement(tag);
+  Object.assign(el.style, estilo);
+  return el;
+}
+function gestosLigar() {
+  if (gestosCtx) return Promise.resolve();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    gestosAvisar({ on: false, status: 'erro', erro: 'Este navegador não dá acesso à câmera.' });
+    return Promise.resolve();
+  }
+  var ctx = { x: null, y: null, pinca: false, pincaT: 0, pincaX: 0, pincaY: 0, rolY: null, ultimoT: -1, semMao: 0 };
+  gestosCtx = ctx;
+  gestosAvisar({ on: true, status: 'carregando', erro: null });
+  gestosGuardar();
+  var Zc = (window.Z && Z.aviso) || 700;
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }).then(function (stream) {
+    if (gestosCtx !== ctx) { stream.getTracks().forEach(function (t) { t.stop(); }); throw new Error('cancelado'); }
+    ctx.stream = stream;
+    var v = gestosEl('video', { position: 'fixed', right: '16px', bottom: '16px', width: '160px', height: '120px', objectFit: 'cover', borderRadius: '14px', border: '2px solid rgba(255,255,255,.95)', boxShadow: '0 10px 24px -12px rgba(23,73,170,.5)', transform: 'scaleX(-1)', zIndex: String(Zc), pointerEvents: 'none', display: GESTOS.v.previa ? 'block' : 'none', background: '#000' });
+    v.setAttribute('aria-hidden', 'true');
+    v.playsInline = true; v.muted = true; v.autoplay = true; v.srcObject = stream;
+    document.body.appendChild(v);
+    ctx.video = v;
+    return v.play();
+  }).then(function () {
+    return import(GESTOS_CDN + '/vision_bundle.mjs');
+  }).then(function (mp) {
+    return mp.FilesetResolver.forVisionTasks(GESTOS_CDN + '/wasm').then(function (vision) {
+      return mp.HandLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: GESTOS_MODELO, delegate: 'GPU' }, runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.6, minTrackingConfidence: 0.5 });
+    });
+  }).then(function (landmarker) {
+    if (gestosCtx !== ctx) { landmarker.close(); return; }
+    ctx.landmarker = landmarker;
+    var c = gestosEl('div', { position: 'fixed', left: '0', top: '0', width: '28px', height: '28px', marginLeft: '-14px', marginTop: '-14px', borderRadius: '50%', border: '3px solid #1F5EFF', background: 'rgba(31,94,255,.18)', boxShadow: '0 0 0 3px rgba(255,255,255,.9), 0 6px 16px -6px rgba(11,63,217,.6)', pointerEvents: 'none', zIndex: String(Zc + 1), transition: 'transform 60ms linear, background 120ms, opacity 200ms', opacity: '0', willChange: 'transform' });
+    c.setAttribute('data-gestos-cursor', '1');
+    document.body.appendChild(c);
+    ctx.cursor = c;
+    var b = gestosEl('button', { position: 'fixed', left: '50%', bottom: '14px', transform: 'translateX(-50%)', display: 'inline-flex', alignItems: 'center', gap: '8px', height: '36px', padding: '0 14px', borderRadius: '999px', border: '1.5px solid rgba(255,255,255,.95)', background: 'rgba(11,63,217,.92)', color: '#fff', fontFamily: 'inherit', fontSize: '13px', fontWeight: '600', cursor: 'pointer', zIndex: String(Zc), boxShadow: '0 10px 24px -12px rgba(11,63,217,.8)' });
+    b.type = 'button';
+    b.setAttribute('data-gestos-aviso', '1');
+    b.textContent = 'Gestos ativos · pinça = clique · toque aqui para desligar';
+    b.onclick = function () { gestosDesligar(); };
+    document.body.appendChild(b);
+    ctx.aviso = b;
+    gestosAvisar({ status: 'ativo' });
+    ctx.raf = requestAnimationFrame(gestosLoop);
+  })["catch"](function (e) {
+    if (e && e.message === 'cancelado') return;
+    gestosDesligar(true);
+    gestosAvisar({ on: false, status: 'erro', erro: gestosErroTexto(e) });
+    gestosGuardar();
+  });
+}
+function gestosDesligar(silencio) {
+  var ctx = gestosCtx;
+  gestosCtx = null;
+  if (ctx) {
+    if (ctx.raf) cancelAnimationFrame(ctx.raf);
+    if (ctx.landmarker) { try { ctx.landmarker.close(); } catch (e) {} }
+    if (ctx.stream) ctx.stream.getTracks().forEach(function (t) { t.stop(); });
+    ['video', 'cursor', 'aviso'].forEach(function (k) { if (ctx[k] && ctx[k].parentNode) ctx[k].parentNode.removeChild(ctx[k]); });
+  }
+  if (!silencio) { gestosAvisar({ on: false, status: 'desligado', erro: null, mao: false }); gestosGuardar(); }
+}
+function gestosPrevia(mostrar) {
+  gestosAvisar({ previa: !!mostrar });
+  gestosGuardar();
+  if (gestosCtx && gestosCtx.video) gestosCtx.video.style.display = mostrar ? 'block' : 'none';
+}
+function gestosLoop() {
+  var ctx = gestosCtx;
+  if (!ctx || !ctx.landmarker) return;
+  var v = ctx.video;
+  if (v && v.readyState >= 2 && v.currentTime !== ctx.ultimoT) {
+    ctx.ultimoT = v.currentTime;
+    var r = null;
+    try { r = ctx.landmarker.detectForVideo(v, performance.now()); } catch (e) { r = null; }
+    var lm = r && r.landmarks && r.landmarks[0];
+    if (lm) gestosProcessa(ctx, lm);else gestosSemMao(ctx);
+  }
+  ctx.raf = requestAnimationFrame(gestosLoop);
+}
+function gestosDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+function gestosSemMao(ctx) {
+  ctx.semMao++;
+  if (ctx.semMao === 12) {
+    if (ctx.cursor) ctx.cursor.style.opacity = '0';
+    ctx.pinca = false; ctx.rolY = null;
+    if (GESTOS.v.mao) gestosAvisar({ mao: false });
+  }
+}
+function gestosProcessa(ctx, lm) {
+  ctx.semMao = 0;
+  if (!GESTOS.v.mao) gestosAvisar({ mao: true });
+  var W = window.innerWidth, H = window.innerHeight;
+  // a faixa central da imagem (15% a 85%) cobre a tela inteira: o braço se mexe menos
+  var mapa = function mapa(v) { return Math.min(1, Math.max(0, (v - 0.15) / 0.7)); };
+  var tx = mapa(1 - lm[8].x) * W, ty = mapa(lm[8].y) * H;
+  var a = 0.38;
+  ctx.x = ctx.x === null ? tx : ctx.x + (tx - ctx.x) * a;
+  ctx.y = ctx.y === null ? ty : ctx.y + (ty - ctx.y) * a;
+  var escala = gestosDist(lm[0], lm[9]) || 0.1;
+  var pinca = gestosDist(lm[4], lm[8]) / escala < 0.42;
+  var estic = function estic(p, m) { return lm[p].y < lm[m].y - 0.02; };
+  var rolagem = !pinca && estic(8, 6) && estic(12, 10) && !estic(16, 14) && !estic(20, 18);
+  var c = ctx.cursor;
+  c.style.opacity = '1';
+  c.style.transform = 'translate(' + ctx.x.toFixed(1) + 'px,' + ctx.y.toFixed(1) + 'px) scale(' + (pinca ? 0.72 : ctx.hover ? 1.18 : 1) + ')';
+  c.style.background = pinca ? 'rgba(31,94,255,.75)' : rolagem ? 'rgba(45,191,106,.35)' : 'rgba(31,94,255,.18)';
+  var el = document.elementFromPoint(ctx.x, ctx.y);
+  var alvo = el && el.closest ? el.closest('button,a,[role=button],[role=tab],input,select,textarea,label,summary,[onclick],[tabindex]') : null;
+  ctx.hover = !!alvo;
+  if (rolagem) {
+    if (ctx.rolY !== null) gestosRolar(el, (ctx.rolY - ctx.y) * 2.4);
+    ctx.rolY = ctx.y;
+  } else ctx.rolY = null;
+  if (pinca && !ctx.pinca) {
+    ctx.pinca = true; ctx.pincaT = Date.now(); ctx.pincaX = ctx.x; ctx.pincaY = ctx.y;
+  } else if (!pinca && ctx.pinca) {
+    ctx.pinca = false;
+    var dur = Date.now() - ctx.pincaT, mov = Math.hypot(ctx.x - ctx.pincaX, ctx.y - ctx.pincaY);
+    if (dur < 900 && mov < 30) gestosClicar(ctx.pincaX, ctx.pincaY);
+  }
+}
+function gestosRolar(el, dy) {
+  var n = el;
+  while (n && n !== document.body) {
+    var cs = getComputedStyle(n);
+    if (/(auto|scroll)/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 4) { n.scrollTop += dy; return; }
+    n = n.parentElement;
+  }
+  window.scrollBy(0, dy);
+}
+function gestosClicar(x, y) {
+  var el = document.elementFromPoint(x, y);
+  if (!el) return;
+  var alvo = el.closest('button,a,[role=button],[role=tab],input,select,textarea,label,summary,[onclick],[tabindex]') || el;
+  var opts = { bubbles: true, cancelable: true, clientX: x, clientY: y, view: window, button: 0, pointerId: 1, pointerType: 'mouse', isPrimary: true };
+  try {
+    ['pointerdown', 'mousedown', 'pointerup', 'mouseup'].forEach(function (t) {
+      alvo.dispatchEvent(t.indexOf('pointer') === 0 && window.PointerEvent ? new PointerEvent(t, opts) : new MouseEvent(t, opts));
+    });
+    if (typeof alvo.focus === 'function') alvo.focus({ preventScroll: true });
+    alvo.click();
+  } catch (e) {}
+  var c = gestosCtx && gestosCtx.cursor;
+  if (c) { c.style.boxShadow = '0 0 0 10px rgba(31,94,255,.25)'; setTimeout(function () { if (c) c.style.boxShadow = '0 0 0 3px rgba(255,255,255,.9), 0 6px 16px -6px rgba(11,63,217,.6)'; }, 180); }
+}
+// se a pessoa deixou ligado, volta a ligar ao abrir (a permissão da câmera já concedida não pede de novo)
+if ((lsGet(GESTOS_PREF_KEY, {}) || {}).on) setTimeout(function () { gestosLigar(); }, 2500);
 Object.assign(window, {
   makeStore: makeStore,
   useStore: useStore,
@@ -1013,5 +1185,9 @@ Object.assign(window, {
   LANG: LANG,
   setLang: setLang,
   applyLang: applyLang,
-  startLangObserver: startLangObserver
+  startLangObserver: startLangObserver,
+  GESTOS: GESTOS,
+  gestosLigar: gestosLigar,
+  gestosDesligar: gestosDesligar,
+  gestosPrevia: gestosPrevia
 });

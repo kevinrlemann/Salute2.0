@@ -143,6 +143,17 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (`perJanela = null`; o período fica em "Filtros" › Lançamento/Vencimento). Parcerias sem chips de categoria; cartão = logo, nome, descrição, Categoria e
   Status (Parceiro oficial/Ativo). Plano e cobrança: "Uso da IA" e "Armazenamento" lado a lado com detalhes recolhidos ("Ver meses anteriores",
   "Ver o que ocupa espaço"), sem o mini-cartão duplicado do topo, e "Quanto esta clínica paga por mês" abaixo dos planos.
+- Controle por gestos (2026-10-17): Minha conta › "Controle por gestos" (`GestosSection` em `30c3fd71`; motor em `d41989a4`: `GESTOS`, `gestosLigar/Desligar/Previa`).
+  MediaPipe Hand Landmarker (`@mediapipe/tasks-vision@0.10.14` do unpkg, modelo em storage.googleapis.com; `window.GESTOS_CDN`/`GESTOS_MODELO` para testes)
+  roda no navegador: indicador = cursor (faixa central da câmera cobre a tela), pinça polegar+indicador = clique (`gestosClicar` dispara pointer/mouse/click no
+  elemento sob o cursor), indicador+médio esticados = rolagem, aviso azul embaixo desliga. Prévia da câmera opcional; preferência em `salute-kit:gestos`
+  (religa ao abrir). CSP do `netlify.toml`: `connect-src` ganhou unpkg.com e storage.googleapis.com só para isso. Não funciona no artifact (CSP do host).
+- Leads por canal (decisão do fundador, 2026-10-17): só Orgânico, Indicação, Tráfego pago (subcanais) e Não informado. Migration `20261017150000`:
+  `origem_garantir`, `origem_organico`, `origem_do_anuncio(clinica, conversas.origem_anuncio)` (URL/utm_source/título → TikTok Ads, Google Ads, Instagram Ads,
+  Facebook Ads, Outros anúncios, filhos de Tráfego pago), `funil_garantir_lead` nasce com anúncio ou Orgânico, `origem_whatsapp` agora devolve Orgânico e o canal
+  WhatsApp ficou inativo (leads movidos). Gatilhos: `tg_conversas_anuncio_origem` (anúncio que chega depois) e `tg_mensagens_indicacao_origem` (mensagem
+  recebida com "indicação/indicou/recomendou" → Indicação). Só trocam origem "automática" (`origem_eh_automatica`: Orgânico, Não informado, WhatsApp); origem
+  escolhida pela equipe fica. Painel: clicar em "Tráfego pago" abre os subcanais (`LeadsPorCanal` em `25352dc7`, demo em `CANAIS0`). Selo BETA virou "EM BREVE" (`BetaPill`).
 - Painel › "Faturamento pela Renata IA" (2026-10-17): 4º cartão do Início (`stats[3]`, seção `renata` em `PAINEL_PER`, padrão 30 dias). Bloco
   `renata_faturamento` em `painel_mes` e `painel_periodo` (migration `20261017120000`): receitas (`contas_receber.valor_liquido`, recebidas ou a receber)
   ligadas a consultas com `agendamentos.origem = 'renata_ia'` não canceladas, pela data da consulta; agendamento feito pela equipe fica de fora.

@@ -17,7 +17,7 @@ var _window$SaluteProjeto = window.SaluteProjetoDesigner_8b4683,
   FIcon = _window$SaluteProjeto.Icon,
   FBtn = _window$SaluteProjeto.Button,
   FInput = _window$SaluteProjeto.Input;
-var SET_ITEMS = [['conta', 'Conta', 'user'], ['seguranca', 'Segurança', 'lock'], ['plano', 'Plano e cobrança', 'credit-card'], ['notif', 'Notificações', 'bell'], ['idioma', 'Idioma', 'globe']];
+var SET_ITEMS = [['conta', 'Conta', 'user'], ['seguranca', 'Segurança', 'lock'], ['plano', 'Plano e cobrança', 'credit-card'], ['notif', 'Notificações', 'bell'], ['gestos', 'Controle por gestos', 'hand'], ['idioma', 'Idioma', 'globe']];
 var field = {
   height: 52,
   borderRadius: 14,
@@ -1358,6 +1358,40 @@ function IdiomaSection(_ref6) {
     }
   }, "Menus, t\xEDtulos, abas e bot\xF5es s\xE3o traduzidos. Nomes de pacientes, valores e mensagens continuam como foram escritos."));
 }
+/* ---------- Controle por gestos (câmera como mouse), 2026-10-17 ---------- */
+function GestosSection(_ref10) {
+  var mobile = _ref10.mobile;
+  var g = useStore(GESTOS)[0];
+  var st = g.status;
+  var cor = st === 'ativo' ? '#1E8E4E' : st === 'erro' ? '#E5484D' : st === 'carregando' ? '#B98400' : 'var(--text-muted)';
+  var texto = st === 'ativo' ? g.mao ? 'Ativo: mão encontrada.' : 'Ativo: mostre a mão para a câmera.' : st === 'carregando' ? 'Ligando a câmera e carregando o reconhecimento de mãos (a primeira vez leva alguns segundos).' : st === 'erro' ? g.erro || 'Não foi possível ligar.' : 'Desligado.';
+  var passo = function passo(ic, t, d) {
+    return /*#__PURE__*/React.createElement("div", { key: t, style: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 16, background: 'rgba(255,255,255,.6)', border: '1.5px solid rgba(255,255,255,.95)' } },
+      /*#__PURE__*/React.createElement("span", { style: { width: 36, height: 36, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(31,94,255,.1)', color: '#1F5EFF' } }, /*#__PURE__*/React.createElement(FIcon, { name: ic, size: 18 })),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 2 } },
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: 14, fontWeight: 600, color: 'var(--text-strong)' } }, t),
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45 } }, d)));
+  };
+  return /*#__PURE__*/React.createElement("section", {
+    style: _objectSpread(_objectSpread({}, glass), {}, { padding: mobile ? 16 : 26, display: 'flex', flexDirection: 'column', gap: 16 })
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", { style: { margin: 0, fontSize: mobile ? 19 : 22, fontWeight: 600, color: 'var(--text-strong)' } }, "Controle por gestos"),
+    /*#__PURE__*/React.createElement("p", { style: { margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Use a c\xE2mera do computador ou do celular para mexer no sistema sem tocar em nada: o dedo indicador vira o mouse. \xDAtil com luvas ou durante um procedimento.")),
+  /*#__PURE__*/React.createElement(Block, {
+    title: "Usar a c\xE2mera como mouse",
+    desc: "O v\xEDdeo \xE9 analisado no pr\xF3prio aparelho e n\xE3o \xE9 enviado para lugar nenhum.",
+    right: /*#__PURE__*/React.createElement(MiniToggle, { on: !!g.on, label: "Usar a c\xE2mera como mouse", onChange: function onChange(v) { if (v) gestosLigar();else gestosDesligar(); } })
+  }, /*#__PURE__*/React.createElement("div", { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
+    /*#__PURE__*/React.createElement("div", { "data-gestos-status": st, style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: cor, fontWeight: 500 } },
+      /*#__PURE__*/React.createElement("span", { style: { width: 9, height: 9, borderRadius: '50%', background: cor, flexShrink: 0 } }), texto),
+    /*#__PURE__*/React.createElement("label", { style: { display: 'inline-flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: 'var(--text-strong)', cursor: 'pointer' } },
+      /*#__PURE__*/React.createElement("input", { type: "checkbox", checked: !!g.previa, onChange: function onChange(e) { return gestosPrevia(e.target.checked); } }), "Mostrar a pr\xE9via da c\xE2mera no canto da tela (ajuda a mirar)"))),
+  /*#__PURE__*/React.createElement("div", { style: { display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(2, minmax(0,1fr))', gap: 10 } },
+    passo('pointer', 'Mover', 'Aponte com o dedo indicador. O c\xEDrculo azul acompanha a ponta do dedo.'),
+    passo('hand', 'Clicar', 'Junte a ponta do polegar com a do indicador (pin\xE7a) e solte. O c\xEDrculo pisca quando o clique acontece.'),
+    passo('move-vertical', 'Rolar a tela', 'Estique o indicador e o m\xE9dio juntos, com os outros dedos fechados, e mova a m\xE3o para cima ou para baixo.'),
+    passo('camera-off', 'Desligar', 'Toque no aviso azul embaixo da tela, ou desligue aqui. A c\xE2mera \xE9 liberada na hora.')),
+  /*#__PURE__*/React.createElement("span", { style: { fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 } }, "Funciona melhor com boa luz e a m\xE3o entre 40 e 80 cm da c\xE2mera. Para digitar, use o teclado ou a Renata por voz. N\xE3o funciona na vers\xE3o aberta dentro do Claude (artifact), s\xF3 no site saluteia.site e no aplicativo instalado."));
+}
 function NotifSection(_ref9) {
   var mobile = _ref9.mobile;
   var _React$useState11 = React.useState(SB_ON ? notifTela() : {
@@ -1773,6 +1807,9 @@ function PerfilScreen(_ref0) {
       mobile: mobile
     }),
     notif: /*#__PURE__*/React.createElement(NotifSection, {
+      mobile: mobile
+    }),
+    gestos: /*#__PURE__*/React.createElement(GestosSection, {
       mobile: mobile
     }),
     idioma: /*#__PURE__*/React.createElement(IdiomaSection, {

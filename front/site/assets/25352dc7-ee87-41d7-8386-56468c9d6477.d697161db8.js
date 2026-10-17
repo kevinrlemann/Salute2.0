@@ -277,7 +277,8 @@ var CANAIS0 = [{
   value: 98,
   color: '#0A3FE0',
   icon: 'megaphone',
-  conv: '19%'
+  conv: '19%',
+  subcanais: [{ label: 'TikTok Ads', value: 41, color: '#111111', icon: 'music-2', conv: '17%' }, { label: 'Google Ads', value: 33, color: '#1A73E8', icon: 'search', conv: '24%' }, { label: 'Instagram Ads', value: 24, color: '#E1306C', icon: 'instagram', conv: '15%' }]
 }, {
   label: 'Orgânico',
   value: 52,
@@ -322,6 +323,8 @@ var BigNum = function BigNum(_ref4) {
 function LeadsPorCanal(_ref5) {
   var canais = _ref5.canais;
   var CHANNELS = canais || CANAIS0;
+  // canal com subcanais (Tráfego pago: TikTok Ads, Google Ads, Instagram Ads...) abre ao toque
+  var _ab = React.useState(null), aberto = _ab[0], setAberto = _ab[1];
   var total = CHANNELS.reduce(function (a, c) {
     return a + c.value;
   }, 0) || 1;
@@ -354,12 +357,24 @@ function LeadsPorCanal(_ref5) {
     });
   })), CHANNELS.map(function (c) {
     var pct = c.value / total * 100;
-    return /*#__PURE__*/React.createElement("div", {
-      key: c.label,
+    var subs = (c.subcanais || []).filter(function (f) { return f.value > 0; });
+    var temSub = subs.length > 0;
+    var estaAberto = aberto === c.label;
+    return /*#__PURE__*/React.createElement("div", { key: c.label, style: { display: 'flex', flexDirection: 'column', gap: 8 } }, /*#__PURE__*/React.createElement("div", {
+      role: temSub ? 'button' : undefined,
+      tabIndex: temSub ? 0 : undefined,
+      "aria-expanded": temSub ? estaAberto : undefined,
+      "data-canal": c.label,
+      onClick: temSub ? function () { setAberto(estaAberto ? null : c.label); } : undefined,
+      onKeyDown: temSub ? function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAberto(estaAberto ? null : c.label); } } : undefined,
+      title: temSub ? (estaAberto ? 'Esconder de onde vieram' : 'Ver de onde vieram') : undefined,
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 12
+        gap: 12,
+        cursor: temSub ? 'pointer' : 'default',
+        borderRadius: 14,
+        outline: 'none'
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -434,7 +449,10 @@ function LeadsPorCanal(_ref5) {
         color: 'var(--text-strong)',
         fontWeight: 600
       }
-    }, c.conv))));
+    }, c.conv), temSub ? /*#__PURE__*/React.createElement("span", { style: { marginLeft: 8, color: '#1F5EFF', fontWeight: 600 } }, estaAberto ? 'Esconder' : 'Ver de onde vieram') : null)), temSub ? /*#__PURE__*/React.createElement(SIcon, { name: estaAberto ? 'chevron-up' : 'chevron-down', size: 16, style: { color: 'var(--text-muted)', flexShrink: 0 } }) : null), temSub && estaAberto ? /*#__PURE__*/React.createElement("div", { "data-subcanais": c.label, style: { display: 'flex', flexDirection: 'column', gap: 8, marginLeft: 52, padding: '10px 12px', borderRadius: 14, background: 'rgba(255,255,255,.55)', border: '1.5px solid rgba(255,255,255,.95)' } }, subs.map(function (f) {
+      var fp = c.value ? f.value / c.value * 100 : 0;
+      return /*#__PURE__*/React.createElement("div", { key: f.label, style: { display: 'flex', flexDirection: 'column', gap: 4 } }, /*#__PURE__*/React.createElement("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, fontSize: 13.5 } }, /*#__PURE__*/React.createElement("span", { style: { display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-body)' } }, /*#__PURE__*/React.createElement("span", { style: { width: 9, height: 9, borderRadius: '50%', background: f.color } }), f.label), /*#__PURE__*/React.createElement("span", { style: { color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' } }, /*#__PURE__*/React.createElement("b", { style: { color: 'var(--text-strong)', fontWeight: 600 } }, f.value), " \xB7 ", fp.toFixed(0), "% \xB7 convers\xE3o ", f.conv)), /*#__PURE__*/React.createElement("div", { style: { height: 5, borderRadius: 999, background: 'rgba(214,226,242,.7)', overflow: 'hidden' } }, /*#__PURE__*/React.createElement("div", { style: { width: fp + '%', height: '100%', borderRadius: 999, background: f.color } })));
+    })) : null);
   }));
 }
 function PatientsTable(_ref6) {
