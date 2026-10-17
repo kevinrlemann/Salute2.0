@@ -1444,6 +1444,8 @@ function PainelScreen(_ref14) {
     return /*#__PURE__*/React.createElement(StatCard, _extends({
       key: s.title
     }, s, {
+      // sem o chip de comparação com o período anterior (pedido do fundador, 2026-10-17)
+      trend: null,
       // o período fica dentro do cartão, no cabeçalho, ao lado do título
       headerRight: /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia', 'renata'][si], compacto: true }),
       style: _objectSpread(_objectSpread({}, glass), {}, {

@@ -141,8 +141,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   e fisioterapêuticas; regras 7, 22 e 23 mandam responder como chat de consultoria (faixa, lógica, cálculo com os dados da clínica pelas ferramentas, ações), sempre
   marcando o que é referência e o que é dado da clínica, sem inventar fonte. Isolamento entre clínicas (regra 20) continua.
 - Início, cartões (2026-10-17): `StatCard` do design system (`7bf00496`) reorganizado: título até 2 linhas sem cortar, período à direita no cabeçalho, número sozinho,
-  comparação abaixo (quebra linha sem sair do cartão), detalhes em 2 colunas com linha fina acima. `TrendPill` sem o ícone de seta. Cartão "IA economizou seu tempo":
-  comparação curta e "Estimativa: N min por conversa" nos detalhes.
+  comparação abaixo (quebra linha sem sair do cartão), detalhes em 2 colunas com linha fina acima. `TrendPill` sem o ícone de seta. Os 4 cartões do Início não mostram mais o chip de comparação
+  (`trend: null` em `25352dc7`, pedido do fundador); "IA economizou seu tempo" traz "Estimativa: N min por conversa" nos detalhes.
 - Renata, círculo que acompanha a voz (2026-10-17): `RN_NIVEL`/`rnEnvelope` (`1b7a2c45`) decodificam o áudio da ElevenLabs à parte (envelope de 50 pontos/s, sem mudar a
   rota do som) e `RenataOrb` em `speaking` troca a animação fixa por `transform: scale` seguindo o nível (`rnNivelOuvir`); voz do aparelho pulsa por palavra (`onboundary`
   → `rnNivelPulso`). Espera adaptativa antes de responder: `rnSilencioPara(texto)`: frase curta/completa ou com "?" 0,75 s (`RN_SILENCIO_CURTO_MS`), frase parada em
