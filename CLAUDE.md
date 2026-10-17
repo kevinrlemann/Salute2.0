@@ -143,6 +143,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (`perJanela = null`; o período fica em "Filtros" › Lançamento/Vencimento). Parcerias sem chips de categoria; cartão = logo, nome, descrição, Categoria e
   Status (Parceiro oficial/Ativo). Plano e cobrança: "Uso da IA" e "Armazenamento" lado a lado com detalhes recolhidos ("Ver meses anteriores",
   "Ver o que ocupa espaço"), sem o mini-cartão duplicado do topo, e "Quanto esta clínica paga por mês" abaixo dos planos.
+- Planos nos cartões (2026-10-17): sem "mais usuários: R$ 49,90" e sem a caixa "Acima do limite" (a conta fica em "Quanto esta clínica paga por mês");
+  limite de IA único por mensagens (texto + voz + WhatsApp somados: 1.500 no Assistente, 10.000 no IA Pro), sem minutos de voz à parte.
+  Textos em `planos.itens` (migration `20261017160000`) e no demo `PLANS` (`30c3fd71`).
 - Controle por gestos (2026-10-17): Minha conta › "Controle por gestos" (`GestosSection` em `30c3fd71`; motor em `d41989a4`: `GESTOS`, `gestosLigar/Desligar/Previa`).
   MediaPipe Hand Landmarker (`@mediapipe/tasks-vision@0.10.14` do unpkg, modelo em storage.googleapis.com; `window.GESTOS_CDN`/`GESTOS_MODELO` para testes)
   roda no navegador: indicador = cursor (faixa central da câmera cobre a tela), pinça polegar+indicador = clique (`gestosClicar` dispara pointer/mouse/click no

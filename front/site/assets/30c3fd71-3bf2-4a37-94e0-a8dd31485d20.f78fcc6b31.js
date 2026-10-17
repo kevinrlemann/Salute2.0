@@ -77,7 +77,7 @@ var PLANS = [{
   preco: 397,
   sub: 'A Renata IA ajuda a equipe dentro do sistema.',
   limite: 1500,
-  itens: ['Tudo do plano Inicial', 'Renata IA dentro do sistema (1.500 perguntas por mês)', 'Renata por voz (60 minutos por mês)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', '2 usuários incluídos e até 6 profissionais']
+  itens: ['Tudo do plano Inicial', 'Renata IA por texto e por voz dentro do sistema', '1.500 mensagens de IA por mês (Renata por texto, por voz e WhatsApp somados)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', '2 usuários incluídos e até 6 profissionais']
 }, {
   id: 'iapro',
   anual: 9970,
@@ -90,7 +90,7 @@ var PLANS = [{
   sub: 'A Renata IA atende, agenda e confirma pelo WhatsApp.',
   destaque: true,
   limite: 10000,
-  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', 'Até 10 mil mensagens de IA por mês', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', '2 usuários incluídos e até 10 profissionais']
+  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', '10.000 mensagens de IA por mês (Renata por texto, por voz e WhatsApp somados)', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', '2 usuários incluídos e até 10 profissionais']
 }];
 var PLAN_STORE = makeStore('iapro');
 // valores adicionais: cobrados à parte quando a clínica passa do limite do plano (vêm da tabela planos_adicionais)
@@ -139,8 +139,6 @@ function planoCondicoes(p, dark) {
   // o que é cobrado acima do limite: [o que passou, quanto custa]
   var acima = [];
   var u = achar('usuario_extra'), g = achar('armazenamento_25'), m = achar('mensagens_ia_2000'), r = achar('renata_500');
-  if (u && p.usuarios) acima.push(['Mais de ' + p.usuarios + ' usuários', fmt(u.preco) + ' por usuário a mais, por mês']);
-  if (g && p.armazenamentoGb) acima.push(['Mais de ' + p.armazenamentoGb + ' GB guardados', fmt(g.preco) + ' por mês a cada ' + g.quantidade + ' GB a mais']);
   if (!linhas.length && !acima.length) return null;
   var cor = dark ? 'rgba(255,255,255,.85)' : 'var(--text-muted)';
   return /*#__PURE__*/React.createElement("div", {
