@@ -1369,6 +1369,22 @@ function PainelScreen(_ref14) {
       label: 'Agendou',
       value: 64
     }]
+  }, {
+    icon: 'hand-coins',
+    iconTone: 'success',
+    title: 'Faturamento pela Renata IA',
+    value: 'R$ 18,4 mil',
+    trend: {
+      value: '9,2%',
+      label: 'vs 30 dias anteriores'
+    },
+    breakdown: [{
+      label: 'Consultas pela IA',
+      value: 23
+    }, {
+      label: 'Recebido',
+      value: 'R$ 15,1 mil'
+    }]
   }];
   var narrow = useNarrow();
   var feriadoMap = React.useMemo(function () {
@@ -1403,7 +1419,7 @@ function PainelScreen(_ref14) {
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: mobile ? '1fr' : narrow ? 'repeat(auto-fit, minmax(280px,1fr))' : 'repeat(3, minmax(0,1fr))',
+      gridTemplateColumns: mobile ? '1fr' : narrow ? 'repeat(auto-fit, minmax(260px,1fr))' : 'repeat(4, minmax(0,1fr))',
       gap: g
     }
   }, stats.map(function (s, si) {
@@ -1411,7 +1427,7 @@ function PainelScreen(_ref14) {
       key: s.title
     }, s, {
       // o período fica dentro do cartão, no cabeçalho, ao lado do título
-      headerRight: /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia'][si], compacto: true }),
+      headerRight: /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia', 'renata'][si], compacto: true }),
       style: _objectSpread(_objectSpread({}, glass), {}, {
         padding: mobile ? 18 : 22,
         flex: 1

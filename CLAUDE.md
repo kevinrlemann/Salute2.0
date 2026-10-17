@@ -143,6 +143,12 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (`perJanela = null`; o período fica em "Filtros" › Lançamento/Vencimento). Parcerias sem chips de categoria; cartão = logo, nome, descrição, Categoria e
   Status (Parceiro oficial/Ativo). Plano e cobrança: "Uso da IA" e "Armazenamento" lado a lado com detalhes recolhidos ("Ver meses anteriores",
   "Ver o que ocupa espaço"), sem o mini-cartão duplicado do topo, e "Quanto esta clínica paga por mês" abaixo dos planos.
+- Painel › "Faturamento pela Renata IA" (2026-10-17): 4º cartão do Início (`stats[3]`, seção `renata` em `PAINEL_PER`, padrão 30 dias). Bloco
+  `renata_faturamento` em `painel_mes` e `painel_periodo` (migration `20261017120000`): receitas (`contas_receber.valor_liquido`, recebidas ou a receber)
+  ligadas a consultas com `agendamentos.origem = 'renata_ia'` não canceladas, pela data da consulta; agendamento feito pela equipe fica de fora.
+  Ligação receita → consulta: `contas_receber.agendamento_id` (ou via `procedimentos_realizados.agendamento_id`); o gatilho `tg_contas_receber_liga_agendamento`
+  (migration `20261017130000`) preenche `agendamento_id` ao inserir uma receita sem consulta quando o paciente tem UMA consulta não cancelada no dia do lançamento
+  (receitas antigas preenchidas uma vez). Com duas consultas no dia não adivinha.
 - CRM (decisão do fundador, 2026-10-17): mover o lead para Convertido = a pessoa compareceu. Gatilho `tg_leads_convertido_compareceu`
   (`lead_convertido_compareceu`, migration `20261017110000`): consultas já passadas do lead (ou do paciente ligado) em agendado/confirmado/aguardando/
   em atendimento viram "Atendido" (conta como atendimento no Painel); futuras, canceladas e faltas não mudam. Vale para tela, IA e importações; grava em `auditoria`.

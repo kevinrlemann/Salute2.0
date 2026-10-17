@@ -56,7 +56,7 @@ CARGAS.painel = /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(fun
    Cada cartão do Painel tem o seu período: ao entrar na tela, "Este mês" para pacientes, agendamentos, funil e canais
    e "Últimos 7 dias" para a IA e os atendimentos. A pessoa pode trocar (7 dias, 30 dias, mês ou datas escolhidas).
    'mes' usa os dados de painel_mes (mês escolhido no chip do mês); os outros vêm de painel_periodo. */
-var PAINEL_PER_PADRAO = { pacientes: 'mes', agendamentos: 'mes', ia: '7d', funil: 'mes', canais: 'mes', atendimentos: '7d' };
+var PAINEL_PER_PADRAO = { pacientes: 'mes', agendamentos: 'mes', ia: '7d', renata: '30d', funil: 'mes', canais: 'mes', atendimentos: '7d' };
 var PAINEL_PER = makeStore(_objectSpread({}, PAINEL_PER_PADRAO));
 var PAINEL_DADOS = makeStore({});
 var PAINEL_CARREGANDO = {};
@@ -122,6 +122,7 @@ function painelTelaPeriodos(base, per, dados) {
   if (x = de('pacientes')) D.stats[0] = x.stats[0];
   if (x = de('agendamentos')) D.stats[1] = x.stats[1];
   if (x = de('ia')) D.stats[2] = x.stats[2];
+  if (x = de('renata')) D.stats[3] = x.stats[3];
   if (x = de('funil')) { D.funil = x.funil; D.funilTotal = x.funilTotal; D.perdidos = x.perdidos; D.funilTrend = x.funilTrend; D.conv = x.conv; D.diasMedios = x.diasMedios; }
   if (x = de('canais')) { D.canais = x.canais; D.leads = x.leads; }
   if (x = de('atendimentos')) { D.atend = x.atend; D.atendTrend = x.atendTrend; D.week = x.week; D.weekMax = x.weekMax; D.weekAgendados = x.weekAgendados; }
@@ -245,11 +246,20 @@ var STATUS_PAC = {
   consulta: 'consulta',
   concluido: 'concluido'
 };
+// dinheiro em formato curto para o cartão: R$ 4,6 mil / R$ 1,2 mi
+function painelBrl(v) {
+  v = Number(v || 0);
+  var a = Math.abs(v);
+  if (a >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
+  if (a >= 1e4) return 'R$ ' + (v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil';
+  return 'R$ ' + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+}
 function painelTela(r, rotuloAnterior) {
   r = r || {};
   var pac = r.pacientes || {},
     ag = r.agendamentos || {},
     ia = r.ia || {},
+    rf = r.renata_faturamento || {},
     at = r.atendimentos || {},
     gen = r.genero || {},
     fu = r.funil || {};
@@ -364,6 +374,20 @@ function painelTela(r, rotuloAnterior) {
       }, {
         label: 'Agendou',
         value: ia.agendou || 0
+      }]
+    }, {
+      icon: 'hand-coins',
+      iconTone: 'success',
+      title: 'Faturamento pela Renata IA',
+      // receitas ligadas às consultas que a própria Renata agendou (origem renata_ia); agendamento feito pela equipe fica de fora
+      value: painelBrl(rf.faturado || 0),
+      trend: tr(Number(rf.faturado || 0), Number(rf.faturado_anterior || 0)),
+      breakdown: [{
+        label: 'Consultas pela IA',
+        value: rf.consultas || 0
+      }, {
+        label: 'Recebido',
+        value: painelBrl(rf.recebido || 0)
       }]
     }],
     funil: etapas.length ? etapas : [{
