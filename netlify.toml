@@ -5,6 +5,12 @@
   publish = "front/site"
   command = ""
 
+# Links rastreáveis dos anúncios (UTM): /w/<codigo> abre a página que conta o clique e manda para o WhatsApp da clínica.
+[[redirects]]
+  from = "/w/*"
+  to = "/w.html"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

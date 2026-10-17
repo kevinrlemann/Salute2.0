@@ -274,11 +274,11 @@ function FlowFunnel(_ref3) {
 }
 var CANAIS0 = [{
   label: 'Tráfego pago',
-  value: 98,
+  value: 124,
   color: '#0A3FE0',
   icon: 'megaphone',
   conv: '19%',
-  subcanais: [{ label: 'TikTok Ads', value: 41, color: '#111111', icon: 'music-2', conv: '17%' }, { label: 'Google Ads', value: 33, color: '#1A73E8', icon: 'search', conv: '24%' }, { label: 'Instagram Ads', value: 24, color: '#E1306C', icon: 'instagram', conv: '15%' }]
+  subcanais: [{ label: 'TikTok Ads', value: 41, color: '#111111', icon: 'music-2', conv: '17%' }, { label: 'Google Ads', value: 33, color: '#1A73E8', icon: 'search', conv: '24%' }, { label: 'Meta Ads', value: 18, color: '#0866FF', icon: 'infinity', conv: '20%' }, { label: 'Instagram Ads', value: 24, color: '#E1306C', icon: 'instagram', conv: '15%' }, { label: 'Facebook Ads', value: 8, color: '#1877F2', icon: 'facebook', conv: '13%' }]
 }, {
   label: 'Orgânico',
   value: 52,
@@ -1388,7 +1388,7 @@ function PainelScreen(_ref14) {
       value: 64
     }]
   }, {
-    icon: 'hand-coins',
+    icon: 'ia-dinheiro',
     iconTone: 'success',
     title: 'Faturamento pela Renata IA',
     value: 'R$ 18,4 mil',

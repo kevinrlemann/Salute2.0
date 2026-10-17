@@ -533,6 +533,19 @@ function ensureLucide() {
   return lucidePromise;
 }
 const toPascal = n => String(n).split(/[-_ ]/).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+// Ícones desenhados para o Salute, no formato do Lucide ([tag, atributos]) e na grade 24x24.
+// 'ia-dinheiro' (2026-10-17, pedido do fundador): moeda com cifrão e o brilho da IA, para "Faturamento pela Renata IA".
+const ICONES_SALUTE = {
+  'ia-dinheiro': [
+    ['circle', { cx: '10', cy: '14', r: '7.5' }],
+    ['path', { d: 'M12.6 11.4h-3.3a1.65 1.65 0 0 0 0 3.3h1.4a1.65 1.65 0 0 1 0 3.3H7.4' }],
+    ['path', { d: 'M10 9.6v1.8' }],
+    ['path', { d: 'M10 18v1.6' }],
+    ['path', { d: 'M18.5 1.8l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z' }],
+    ['path', { d: 'M22 9.2v1.6' }],
+    ['path', { d: 'M21.2 10h1.6' }]
+  ]
+};
 function Icon({
   name,
   size = 20,
@@ -548,7 +561,8 @@ function Icon({
   }, []);
   const lib = typeof window !== 'undefined' ? window.lucide : null;
   const key = toPascal(name);
-  const node = lib && (lib.icons && lib.icons[key] || lib[key]);
+  // ícones próprios do Salute (mesmo traço do Lucide) têm prioridade sobre a biblioteca
+  const node = ICONES_SALUTE[name] || lib && (lib.icons && lib.icons[key] || lib[key]);
   let kids = [];
   if (Array.isArray(node)) {
     const list = node[0] === 'svg' ? node[2] || [] : node;

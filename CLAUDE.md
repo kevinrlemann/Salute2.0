@@ -150,6 +150,17 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   relatório completo e a transcrição bruta. O PDF vai para Documentação Clínica (`documentos_paciente`, `origem = 'relatorio_consulta'`, migration `20261017210000`)
   e aparece em Registros como "Relatório da consulta (PDF)" (`salvarDocRegistro`, que também atende a imagem do mapa). O histórico recebe só a linha curta
   "Relatório da consulta gerado por áudio" + "Relatório completo em PDF salvo em Documentação Clínica. Profissional: X." (sem o texto inteiro).
+- Links rastreáveis dos anúncios (UTM) (2026-10-17, pedido do fundador, migration `20261017220000`, grátis e sem n8n): Configurações › Integrações ›
+  "Links rastreáveis dos anúncios (UTM)" (`LinksRastreio` em `d47643ae`; base em `LINK_RASTREIO_BASE`, porque `LINK_BASE` já é global do `c003`). A clínica cria
+  um link por anúncio (canal TikTok Ads, Google Ads, Meta Ads, Facebook Ads, Instagram Ads ou outro; campanha, criativo e mensagem opcionais) e cola no anúncio:
+  `https://saluteia.site/w/<codigo>?utm_source=...`. A página `front/w.html` (Netlify reescreve `/w/*` para ela) chama `link_rastreio_abrir` (anônima: conta o
+  clique, guarda só utm_*/gclid/fbclid/ttclid em `links_rastreio_cliques`) e abre `wa.me` com a mensagem terminando em "(cód. XXXXXX)". O gatilho
+  `tg_mensagens_link_origem` reconhece o código na mensagem recebida e grava `conversas.origem_anuncio` (origem 'link', canal, utm), e o fluxo de anúncio que já existia
+  põe o lead em Tráfego pago › canal (`origem_do_anuncio` agora respeita `canal` e ganhou "Meta Ads"). Lead com origem escolhida pela equipe não muda. Tabela
+  `links_rastreio` com RLS (mensagens/painel/gestão); `links_rastreio_resumo(clinica)` dá cliques, leads e convertidos por link. Só funciona no site (o artifact
+  não hospeda `/w/`).
+- Ícones próprios (2026-10-17): `ICONES_SALUTE` no componente `Icon` do design system (`7bf00496`) tem prioridade sobre o Lucide; `ia-dinheiro` (moeda com cifrão
+  e brilho de IA) é o ícone do cartão "Faturamento pela Renata IA".
 - Renata como consultora de gestão (2026-10-17, pedido do fundador): `RENATA_BENCH` (`1b7a2c45`) entra nas regras com faixas de referência do mercado brasileiro
   (faltas, ocupação, funil, ticket, faturamento por profissional, custos, inadimplência, retenção, aquisição, reputação) para clínicas médicas, estéticas, odontológicas
   e fisioterapêuticas; regras 7, 22 e 23 mandam responder como chat de consultoria (faixa, lógica, cálculo com os dados da clínica pelas ferramentas, ações), sempre

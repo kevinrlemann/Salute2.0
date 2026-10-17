@@ -379,7 +379,7 @@ function painelTela(r, rotuloAnterior) {
         value: (ia.minutos_por_conversa || 5) + ' min por conversa'
       }]
     }, {
-      icon: 'hand-coins',
+      icon: 'ia-dinheiro',
       iconTone: 'success',
       title: 'Faturamento pela Renata IA',
       // receitas ligadas às consultas que a própria Renata agendou (origem renata_ia); agendamento feito pela equipe fica de fora
