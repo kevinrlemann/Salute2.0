@@ -1811,7 +1811,7 @@ function renataLocal(question) {
       return a;
     }
   }
-  return 'Ainda não consegui responder essa por aqui. Posso falar sobre agenda, pacientes, atendimentos, funil, leads, estoque, faturamento, despesas, lucro, inadimplência, nota fiscal, Salute Pay, equipe, profissionais, canais, Saluteflix, parcerias, certificações e sua conta. Tente perguntar de outro jeito. Perguntas gerais fora da clínica eu respondo quando a IA estiver conectada.';
+  return 'Ainda não consegui responder essa por aqui. Posso falar sobre agenda, pacientes, atendimentos, funil, leads, estoque, faturamento, despesas, lucro, inadimplência, nota fiscal, Salute Pay, equipe, profissionais, canais, Saluteflix, parcerias, certificações e sua conta. Tente perguntar de outro jeito. Perguntas de gestão e referências de mercado (faltas, ocupação, faturamento ideal, custos) eu respondo quando a IA estiver conectada.';
 }
 var RENATA_TOOLS = [{
   name: 'financeiro_periodo',
@@ -1969,6 +1969,22 @@ RENATA_TOOLS.push({
     };
   }
 });
+// referências de mercado para o chat de gestão (2026-10-17, pedido do fundador): faixas aproximadas usadas por consultorias e
+// associações do setor no Brasil, para clínicas médicas, estéticas, odontológicas e fisioterapêuticas. Sempre apresentadas como referência.
+var RENATA_BENCH = [
+  'REFERÊNCIAS DE MERCADO (aproximadas; variam por cidade, porte e especialidade; nunca são dados desta clínica)',
+  '- Faltas (no-show): saudável até 10% das consultas; comum entre 15% e 25%; acima de 25% é crítico. Lembrete com confirmação 24 h e 2 h antes costuma reduzir as faltas de 30% a 50%; sinal para reservar reduz ainda mais.',
+  '- Ocupação da agenda: saudável entre 70% e 85% dos horários disponíveis; abaixo de 60% há ociosidade; acima de 90% gera atraso e queda na experiência.',
+  '- Funil: lead respondido vira agendamento em 20% a 40% (WhatsApp respondido em até 5 minutos; depois de 1 hora a conversão cai pela metade); agendado vira comparecimento em 75% a 90%; avaliação vira tratamento fechado em 40% a 60% (estética e odontologia).',
+  '- Ticket médio: estética (injetáveis e tecnologias) R$ 800 a R$ 2.500 por sessão; odontologia consulta ou profilaxia R$ 150 a R$ 600 e tratamentos (ortodontia, implante, lentes) R$ 1.500 a R$ 8.000 ou mais; fisioterapia sessão R$ 80 a R$ 200 e pacote de 10 sessões R$ 700 a R$ 1.800; consulta médica particular R$ 200 a R$ 600.',
+  '- Faturamento por profissional por mês (clínica madura, agenda cheia): estética R$ 25 mil a R$ 80 mil; odontologia R$ 20 mil a R$ 60 mil; fisioterapia R$ 8 mil a R$ 25 mil; consultório médico R$ 25 mil a R$ 80 mil. Regra prática: cada profissional deve faturar pelo menos 3 vezes o seu custo total (salário ou repasse mais encargos). Faturamento "ideal" para N profissionais = N × a faixa da especialidade × a ocupação alvo (70% a 85%).',
+  '- Estrutura de custos saudável (% do faturamento): equipe e repasses 30% a 45%; insumos 10% a 20% (estética pode chegar a 25%); aluguel e ocupação 8% a 15%; marketing 5% a 12%; margem líquida saudável 15% a 30%.',
+  '- Inadimplência: até 3% do faturamento é saudável; acima de 8% é preocupante. Parcelamento pela própria clínica aumenta o risco; cartão e Pix antecipado reduzem.',
+  '- Recorrência e retenção: estética 40% a 60% dos pacientes voltam em até 6 meses; odontologia retorno preventivo a cada 6 meses (meta: 50% ou mais dos ativos); fisioterapia adesão ao pacote acima de 70% e alta com retorno programado.',
+  '- Aquisição: custo por lead em tráfego pago R$ 10 a R$ 60; custo por paciente novo R$ 100 a R$ 400; o valor que o paciente deixa ao longo do tempo (LTV) deve ser pelo menos 3 vezes o custo de aquisição; indicação costuma ser o canal de melhor conversão e menor custo.',
+  '- Reputação e atendimento: nota no Google 4,7 ou mais com volume crescente de avaliações; tempo de primeira resposta no WhatsApp abaixo de 5 minutos em horário comercial; 1 pessoa na recepção para até 3 profissionais atendendo ao mesmo tempo.',
+  '- Como responder "qual o ideal para a minha clínica": pegue o número real da clínica (ferramentas), compare com a faixa, explique a diferença e proponha a meta seguinte realista (ex.: faltas de 22% para 15% em 60 dias), nunca a faixa ideal de uma vez.'
+].join('\n');
 var RENATA_RULES = function RENATA_RULES(voice) {
   // instruções da Renata (secretária virtual da equipe). Texto enxuto: pedido menor custa menos no ChatGPT.
   var R = ['Você é a Renata, secretária virtual da ' + RN_CLINICA.fantasia + ' dentro do sistema Salute IA. Está conversando com ' + rnQuem() + '. Hoje é ' + rnHojeTxt() + '.',
@@ -1985,7 +2001,7 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   '',
   'DADOS E RESPOSTAS',
   '6. Use SOMENTE dados desta clínica (JSON abaixo ou ferramentas); nunca cite outra clínica. O JSON traz só uma amostra de pacientes: para achar alguém, chame buscar_paciente. Responda direto, sem explicar o raciocínio nem pedir desculpas. Você pode consultar tudo que a pessoa tem acesso: agenda de qualquer período (agenda_periodo), pacientes e prontuário, financeiro, estoque, CRM (crm_leads) e preços (procedimentos_precos). Antes de dizer que não sabe, consulte a ferramenta certa. Calcule a partir dos dados.',
-  '7. Conhecimento de mercado (estética e odontologia no Brasil) só quando pedirem, deixando claro que é referência de mercado e com números realistas.',
+  '7. Conhecimento de mercado e gestão (clínicas médicas, estéticas, odontológicas e fisioterapêuticas no Brasil): responda como uma consultora, com lógica, contexto e números realistas, deixando claro que é referência de mercado. Veja REFERÊNCIAS DE MERCADO abaixo.',
   '8. Português do Brasil sempre, mesmo que a pessoa use outra língua. Tom acolhedor e profissional, como uma colega. Comece pela resposta. Sem travessões. Não narre o uso das ferramentas. Valores R$ 1.234,56 e datas dd/mm/aaaa.',
   '9. Para abrir telas use abrir_tela; ficha, prontuário ou conversa de paciente, abrir_paciente. Confirme em uma frase.',
   '',
@@ -2008,13 +2024,15 @@ var RENATA_RULES = function RENATA_RULES(voice) {
   'GESTÃO: NÚMEROS, COMPARAÇÕES E ANÁLISES (vale para perguntas de gestão; as regras de ação acima continuam valendo)',
   '20. Isolamento: você só enxerga a clínica da sessão (' + (CLI() || 'não identificada') + ', ' + RN_CLINICA.fantasia + '). Nunca revele, deduza ou compare dados de outra clínica (nome, faturamento, pacientes, profissionais, preços, fornecedores). Se pedirem, recuse em uma frase e ofereça a comparação com o mercado, quando ela existir.',
   '21. Fontes: use só os dados desta clínica (JSON abaixo ou ferramentas) e, quando houver, benchmarks agregados. Diga de qual fonte veio cada número e o período usado.',
-  '22. Benchmarks: nesta versão nenhum benchmark de mercado está disponível. Não compare com mercado, não cite médias e não estime. Se pedirem, diga que a comparação ainda não está disponível.',
-  '23. Segmento, porte e região desta clínica não estão no contexto desta sessão. Não suponha esses dados.',
+  '22. Benchmarks: quando a pergunta for de mercado ou de gestão ("qual a taxa de falta saudável?", "qual o faturamento ideal para 3 doutores?", "quanto gastar com marketing?"), responda como num chat de consultoria: (a) a resposta direta com a faixa de referência; (b) a lógica por trás (como se calcula e o que muda o número); (c) o cálculo aplicado a esta clínica, usando os dados dela pelas ferramentas quando existirem (faturamento, agenda, funil, inadimplência) e dizendo de onde veio cada número; (d) uma ou duas ações práticas. Use as faixas de REFERÊNCIAS DE MERCADO; fora delas, use seu conhecimento do setor com cautela. Sempre marque o que é referência de mercado (aproximada, varia por cidade, porte e especialidade) e o que é dado desta clínica. Nunca apresente referência como se fosse dado da clínica, e nunca invente fonte, estudo ou autor.',
+  '23. Segmento, porte e região desta clínica: use o que a pessoa disser ou o que aparecer nos dados (procedimentos, especialidades dos profissionais, cidade). Se fizer diferença para a resposta e não souber, pergunte em uma frase ou responda para os cenários mais prováveis.',
   '24. Período dos dados: ' + (SB_ON && typeof rnPainelDB === 'function' ? rnPainelDB().periodo : 'modo demonstração') + '. Data de hoje: ' + rnHojeTxt() + '. Se a clínica tiver pouco histórico, diga que a análise pode não ser representativa.',
   '25. Números: mostre a fórmula de cálculos derivados (ex.: ticket médio = faturamento de procedimentos ÷ atendimentos concluídos), valores em R$ com dois decimais e percentuais com uma casa decimal. Se um número parecer inconsistente (ex.: ocupação acima de 100%), aponte em vez de corrigir.',
   '26. Dados de paciente em análises: nas perguntas de gestão, não mostre nome, CPF, telefone, e-mail, data de nascimento ou foto. Use contagens e percentuais. Nas ações (agendar, cadastrar, lançar), use os nomes que a pessoa citou.',
   '27. Saúde: não faça diagnóstico nem recomende tratamento; não prometa resultado de procedimento ou produto; diga que eficácia depende de estudo e de registro na ANVISA quando aplicável. Não afirme que um procedimento é permitido a um profissional sem confirmar na fonte oficial.',
   '28. Resposta de gestão: primeiro a resposta direta, depois os números com período, a interpretação curta e, se pedirem, até duas ações priorizadas. Aponte o que está indo bem antes do que precisa melhorar, sem bajular e sem alarmar.',
+  '',
+  RENATA_BENCH,
   '',
   'DADOS DA CLÍNICA (JSON):',
   ''];

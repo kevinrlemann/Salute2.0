@@ -366,7 +366,7 @@ function painelTela(r, rotuloAnterior) {
       value: horas + 'h',
       // é uma estimativa: conversas atendidas pela IA × minutos por conversa (Configurações); o rótulo diz isso
       trend: _objectSpread(_objectSpread({}, tr(ia.conversas || 0, ia.conversas_anterior || 0)), {}, {
-        label: 'conversas ' + (rotuloAnterior || 'vs mês anterior') + ' · estimativa de ' + (ia.minutos_por_conversa || 5) + ' min cada'
+        label: 'conversas ' + (rotuloAnterior || 'vs mês anterior')
       }),
       breakdown: [{
         label: 'Conversas',
@@ -374,6 +374,9 @@ function painelTela(r, rotuloAnterior) {
       }, {
         label: 'Agendou',
         value: ia.agendou || 0
+      }, {
+        label: 'Estimativa',
+        value: (ia.minutos_por_conversa || 5) + ' min por conversa'
       }]
     }, {
       icon: 'hand-coins',

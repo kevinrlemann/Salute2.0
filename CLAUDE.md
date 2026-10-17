@@ -124,6 +124,13 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   também na apresentação e na saudação de `agente_ia`, criando a linha se não existir). Migration `20261017190000`. `agente_ia_regras` usa o nome escolhido só no canal
   WhatsApp; no canal assistente (Renata dentro do sistema) o nome é sempre Renata. O resto da aba Agente de IA continua só do administrador master.
 - ChatGPT (OpenAI) é o motor nos três pontos (confirmado 2026-10-17): relatório da consulta e Renata do sistema pela função `renata`; IA do WhatsApp pelo n8n WF01 (chave no n8n).
+- Renata como consultora de gestão (2026-10-17, pedido do fundador): `RENATA_BENCH` (`1b7a2c45`) entra nas regras com faixas de referência do mercado brasileiro
+  (faltas, ocupação, funil, ticket, faturamento por profissional, custos, inadimplência, retenção, aquisição, reputação) para clínicas médicas, estéticas, odontológicas
+  e fisioterapêuticas; regras 7, 22 e 23 mandam responder como chat de consultoria (faixa, lógica, cálculo com os dados da clínica pelas ferramentas, ações), sempre
+  marcando o que é referência e o que é dado da clínica, sem inventar fonte. Isolamento entre clínicas (regra 20) continua.
+- Início, cartões (2026-10-17): `StatCard` do design system (`7bf00496`) reorganizado: título até 2 linhas sem cortar, período à direita no cabeçalho, número sozinho,
+  comparação abaixo (quebra linha sem sair do cartão), detalhes em 2 colunas com linha fina acima. `TrendPill` sem o ícone de seta. Cartão "IA economizou seu tempo":
+  comparação curta e "Estimativa: N min por conversa" nos detalhes.
 - Renata, círculo que acompanha a voz (2026-10-17): `RN_NIVEL`/`rnEnvelope` (`1b7a2c45`) decodificam o áudio da ElevenLabs à parte (envelope de 50 pontos/s, sem mudar a
   rota do som) e `RenataOrb` em `speaking` troca a animação fixa por `transform: scale` seguindo o nível (`rnNivelOuvir`); voz do aparelho pulsa por palavra (`onboundary`
   → `rnNivelPulso`). Espera adaptativa antes de responder: `rnSilencioPara(texto)`: frase curta/completa ou com "?" 0,75 s (`RN_SILENCIO_CURTO_MS`), frase parada em

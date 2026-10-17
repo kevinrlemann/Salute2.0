@@ -943,11 +943,7 @@ function TrendPill({
       boxSizing: 'border-box',
       ...style
     }
-  }, /*#__PURE__*/React.createElement(__ds_scope.Icon, {
-    name: direction === 'down' ? 'trending-down' : 'trending-up',
-    size: 14,
-    strokeWidth: 2
-  }), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", {
     style: {
       fontVariantNumeric: 'tabular-nums'
     }
@@ -2925,6 +2921,8 @@ function StatCard({
   headerRight,
   style
 }) {
+  // 2026-10-17: cabeçalho com título (até 2 linhas, sem cortar) e o período à direita; número sozinho na linha;
+  // comparação logo abaixo, podendo quebrar linha sem sair do cartão; detalhes em colunas alinhadas, separados por uma linha fina.
   return /*#__PURE__*/React.createElement("section", {
     style: {
       position: 'relative',
@@ -2934,7 +2932,7 @@ function StatCard({
       minWidth: 0,
       display: 'flex',
       flexDirection: 'column',
-      gap: compact ? 12 : 16,
+      gap: compact ? 12 : 14,
       background: 'var(--surface-card)',
       border: '1.5px solid var(--border-glass)',
       boxShadow: 'var(--shadow-card), var(--shadow-inset-glass)',
@@ -2947,7 +2945,8 @@ function StatCard({
     style: {
       display: 'flex',
       alignItems: 'center',
-      gap: 12
+      gap: 12,
+      flexWrap: 'wrap'
     }
   }, /*#__PURE__*/React.createElement(__ds_scope.CardIcon, {
     name: icon,
@@ -2955,24 +2954,20 @@ function StatCard({
     size: compact ? 32 : 40
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      flex: 1,
+      flex: '1 1 120px',
       minWidth: 0,
       fontSize: compact ? 13 : 16,
       lineHeight: 1.25,
       fontWeight: 500,
       color: 'var(--text-strong)',
-      ...(compact ? {
-        display: '-webkit-box',
-        WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden'
-      } : {
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis'
-      })
+      display: '-webkit-box',
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden'
     }
-  }, title), onMenu !== undefined ? /*#__PURE__*/React.createElement("button", {
+  }, title), headerRight ? /*#__PURE__*/React.createElement("span", {
+    style: { display: 'flex', flexShrink: 0, marginLeft: 'auto' }
+  }, headerRight) : null, onMenu !== undefined ? /*#__PURE__*/React.createElement("button", {
     type: "button",
     "aria-label": "Mais op\xE7\xF5es",
     onClick: onMenu,
@@ -2988,14 +2983,13 @@ function StatCard({
   }, /*#__PURE__*/React.createElement(__ds_scope.Icon, {
     name: "ellipsis-vertical",
     size: 18
-  })) : null), headerRight ? /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', justifyContent: 'flex-end', marginTop: -6 }
-  }, headerRight) : null, /*#__PURE__*/React.createElement("div", {
+  })) : null), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      flexWrap: 'wrap'
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: 8,
+      minWidth: 0
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
@@ -3006,22 +3000,43 @@ function StatCard({
       letterSpacing: 'var(--tracking-tight)',
       fontVariantNumeric: 'tabular-nums'
     }
-  }, value), trend ? /*#__PURE__*/React.createElement(__ds_scope.TrendPill, trend) : null), breakdown.length ? /*#__PURE__*/React.createElement("div", {
+  }, value), trend ? /*#__PURE__*/React.createElement(__ds_scope.TrendPill, {
+    ...trend,
     style: {
-      display: 'flex',
-      gap: 20,
-      flexWrap: 'wrap'
+      maxWidth: '100%',
+      height: 'auto',
+      minHeight: 24,
+      padding: '3px 10px',
+      whiteSpace: 'normal',
+      lineHeight: 1.3,
+      flexWrap: 'wrap',
+      ...(trend.style || {})
+    }
+  }) : null), breakdown.length ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(' + Math.min(2, breakdown.length) + ', minmax(0, 1fr))',
+      gap: compact ? '8px 12px' : '10px 16px',
+      paddingTop: compact ? 10 : 12,
+      borderTop: '1px solid var(--border-subtle)'
     }
   }, breakdown.map(b => /*#__PURE__*/React.createElement("span", {
     key: b.label,
     style: {
-      display: 'inline-flex',
-      alignItems: 'baseline',
-      gap: 6,
-      fontSize: 13,
-      color: 'var(--text-muted)'
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2,
+      minWidth: 0
     }
-  }, b.label, /*#__PURE__*/React.createElement("strong", {
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12.5,
+      color: 'var(--text-muted)',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    }
+  }, b.label), /*#__PURE__*/React.createElement("strong", {
     style: {
       fontSize: 15,
       fontWeight: 600,
