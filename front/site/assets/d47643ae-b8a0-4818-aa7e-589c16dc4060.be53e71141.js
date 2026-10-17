@@ -183,10 +183,35 @@ var CONSULTA_SYS = 'Você é a Renata, assistente de uma clínica de estética e
   + 'Avaliação e observações do profissional; Procedimentos realizados ou propostos; Orientações dadas ao paciente; Combinados e próximos passos '
   + '(retorno, prazos e valores, se citados); Pendências. Não invente nada que não esteja na transcrição. Quando faltar informação, escreva "não mencionado". '
   + 'Use frases curtas. Não use formatação markdown (sem asteriscos ou cerquilhas).';
+// apoio à decisão (2026-10-17, pedido do fundador): depois do registro fiel, a IA atua como especialista da área do profissional
+// e sugere hipóteses e condutas. Só nesses dois blocos ela pode ir além da transcrição. A decisão final é do profissional.
+function consultaSys(prof) {
+  var esp = String((prof && prof.esp) || '').trim() || 'estética e odontologia';
+  var quem = prof && prof.nome ? ' (profissional responsável: ' + prof.nome + ')' : '';
+  return CONSULTA_SYS
+    + ' Depois de Pendências, acrescente dois blocos de apoio à decisão clínica. Neles, e só neles, você pode ir além da transcrição, '
+    + 'raciocinando como um especialista experiente em ' + esp + quem + ', com base no que foi relatado. '
+    + 'Bloco "Hipóteses e direcionamento clínico (apoio da IA)": de 1 a 4 hipóteses compatíveis com o relato, da mais provável para a menos provável; '
+    + 'para cada uma, o porquê (sinais e falas da conversa), o grau de confiança (alta, média ou baixa) e o que falta perguntar, examinar ou pedir para confirmar ou afastar. '
+    + 'Aponte sinais de alerta que peçam avaliação presencial, exame ou encaminhamento. '
+    + 'Bloco "Sugestões de conduta e tratamento (apoio da IA)": para cada hipótese, as condutas usuais da especialidade: procedimentos indicados e os que devem ser evitados, '
+    + 'cuidados em casa, exercícios e frequência, orientações, e, quando fizer sentido, medicamentos com a posologia habitual, contraindicações e interações relevantes; '
+    + 'exames ou avaliações a pedir antes; prazo de retorno sugerido. '
+    + 'Toda hipótese e toda sugestão precisa vir da base científica da área, não de opinião solta: diretrizes e consensos de sociedades médicas e odontológicas '
+    + '(brasileiras primeiro, depois internacionais), bulas aprovadas pela Anvisa e revisões sistemáticas. Ao lado de cada sugestão, escreva a base entre parênteses: '
+    + 'nome da diretriz ou sociedade e ano, e o nível de evidência (forte, moderada ou fraca). Cite só fontes que você conhece com segurança; se não tiver certeza da fonte, '
+    + 'escreva "prática clínica usual, sem diretriz específica" em vez de inventar referência, autor ou ano. Nada fora do contexto da especialidade e do relato. '
+    + 'Seja direto, estratégico e verdadeiro: quando a evidência for fraca ou a transcrição não der base, diga isso em vez de preencher. '
+    + 'Não dê diagnóstico fechado, não invente dados do paciente e não repita o que já está nos blocos anteriores. '
+    + 'Termine o relatório com a frase: Estas sugestões são apoio à decisão. A avaliação e a decisão final são do profissional responsável.';
+}
 function consultaRelatorioDemo(texto) {
   var t = String(texto || '').trim();
   return 'Motivo da consulta\n' + (t.split(/[.!?]/)[0] || 'não mencionado').trim() + '.\n\nQueixas e histórico relatado\n' + (t.length > 160 ? t.slice(0, 160) + '...' : t)
-    + '\n\nAvaliação e observações do profissional\nnão mencionado\n\nProcedimentos realizados ou propostos\nnão mencionado\n\nOrientações dadas ao paciente\nnão mencionado\n\nCombinados e próximos passos\nnão mencionado\n\nPendências\nnenhuma\n\n(Relatório de demonstração: conecte o sistema para a IA escrever o relatório de verdade.)';
+    + '\n\nAvaliação e observações do profissional\nnão mencionado\n\nProcedimentos realizados ou propostos\nnão mencionado\n\nOrientações dadas ao paciente\nnão mencionado\n\nCombinados e próximos passos\nnão mencionado\n\nPendências\nnenhuma'
+    + '\n\nHipóteses e direcionamento clínico (apoio da IA)\n1. Hipótese de exemplo (confiança média): compatível com a queixa relatada. Falta confirmar com exame clínico.'
+    + '\n\nSugestões de conduta e tratamento (apoio da IA)\nConduta de exemplo para a hipótese 1: orientações em casa, exercícios 3 vezes por semana e retorno em 15 dias (base: diretriz da sociedade da especialidade, evidência moderada).'
+    + '\n\nEstas sugestões são apoio à decisão. A avaliação e a decisão final são do profissional responsável.\n\n(Relatório de demonstração: conecte o sistema para a IA escrever o relatório de verdade.)';
 }
 function consultaFmtSeg(s) { s = Math.max(0, Math.round(s || 0)); var m = Math.floor(s / 60); var r = s % 60; return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r; }
 // lê a resposta em streaming da função renata (formato de eventos do Claude) e entrega só o texto
@@ -220,6 +245,10 @@ function ConsultaWorkspace(_ref) {
   var _r = React.useState(''), relatorio = _r[0], setRelatorio = _r[1];
   var _e = React.useState(null), erro = _e[0], setErro = _e[1];
   var _s = React.useState(0), seg = _s[0], setSeg = _s[1];
+  var profs = (typeof PROF0 !== 'undefined' ? PROF0 : []).filter(function (x) { return x && x.nome; });
+  var meuId = typeof UID === 'function' ? UID() : null;
+  var _pr = React.useState(function () { var m = meuId && profs.find(function (x) { return x.usuarioId === meuId; }); return (m || profs[0] || {}).nome || ''; }), profNome = _pr[0], setProfNome = _pr[1];
+  var profSel = profs.find(function (x) { return x.nome === profNome; }) || null;
   var ref = React.useRef({ ativo: false, ouvinte: null, texto: '', t0: 0, timer: null, inicio: null, fim: null, acum: 0 });
   var motor = typeof rnMotorVoz === 'function' ? rnMotorVoz() : null; // 'web' (grátis, no navegador) | 'eleven' | null
   React.useEffect(function () { return function () { ref.current.ativo = false; clearInterval(ref.current.timer); if (ref.current.ouvinte) try { ref.current.ouvinte.cancelar(); } catch (e) {} }; }, []);
@@ -263,8 +292,9 @@ function ConsultaWorkspace(_ref) {
     setErro(null); setFase('gerando'); setRelatorio('');
     if (!SB_ON) { setTimeout(function () { setRelatorio(consultaRelatorioDemo(t)); setFase('pronto'); }, 600); return; }
     var hoje = new Date();
-    rnFn({ acao: 'chat', primeira: true, voz: false, payload: { model: 'claude-sonnet-5-5', max_tokens: 1800, system: CONSULTA_SYS, stream: true,
-      messages: [{ role: 'user', content: 'Paciente: ' + (p.nome || '') + '. Data da consulta: ' + hoje.toLocaleDateString('pt-BR') + '. Duração gravada: ' + consultaFmtSeg(seg) + '.\n\nTranscrição:\n' + t }] } })
+    var quem = profSel ? 'Profissional: ' + profSel.nome + (profSel.esp ? ' (' + profSel.esp + ')' : '') + '. ' : '';
+    rnFn({ acao: 'chat', primeira: true, voz: false, payload: { model: 'claude-sonnet-5-5', max_tokens: 2000, system: consultaSys(profSel), stream: true,
+      messages: [{ role: 'user', content: 'Paciente: ' + (p.nome || '') + '. ' + quem + 'Data da consulta: ' + hoje.toLocaleDateString('pt-BR') + '. Duração gravada: ' + consultaFmtSeg(seg) + '.\n\nTranscrição:\n' + t }] } })
       .then(function (r) {
         if (!r.ok) return r.json()["catch"](function () { return {}; }).then(function (j) { throw new Error(j.erro === 'sem_chave' ? 'A IA ainda não foi configurada em Conexões da Renata.' : j.erro || 'A IA não respondeu agora.'); });
         return consultaLerStream(r, setRelatorio);
@@ -279,6 +309,7 @@ function ConsultaWorkspace(_ref) {
     var dur = consultaFmtSeg(seg);
     if (!SB_ON || !p.dbId) { onFeito({ id: null, relatorio: rel, transcricao: texto, duracao: seg ? dur : '' }); return; }
     DB.ins('consultas_relatorios', { paciente_id: p.dbId, inicio_em: ref.current.inicio, fim_em: ref.current.fim || new Date().toISOString(), duracao_segundos: seg,
+      profissional_id: (profSel && profSel.dbId) || null,
       motor: motor || 'digitado', transcricao: String(texto || ''), relatorio: rel, modelo_ia: 'claude-sonnet-5-5' }, 'Não foi possível salvar o relatório')
       .then(function (r) { onFeito({ id: r && r.id, relatorio: rel, transcricao: texto, duracao: seg ? dur : '' }); })
       ["catch"](function () { setFase('pronto'); });
@@ -306,6 +337,10 @@ function ConsultaWorkspace(_ref) {
             motor === 'web' ? 'A transcrição é feita pelo navegador, sem custo. Fale perto do aparelho.' : motor === 'eleven' ? 'A transcrição usa a ElevenLabs em trechos de até 90 segundos.' : 'Este navegador não transcreve voz: digite o que foi tratado abaixo.'))),
       area(texto, function (v) { setTexto(v); ref.current.texto = v; }, 'A conversa aparece aqui enquanto você fala. Você também pode digitar ou corrigir o texto.', 6),
       parcial ? React.createElement("div", { style: { fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' } }, parcial) : null,
+      profs.length ? React.createElement("div", { style: { display: 'grid', gridTemplateColumns: wide ? 'minmax(220px, 360px) 1fr' : '1fr', gap: 12, alignItems: 'end' } },
+        React.createElement(OSelect, { label: "Profissional da consulta", value: profNome, options: profs.map(function (x) { return x.nome; }), onChange: function (e) { setProfNome(e.target.value); } }),
+        React.createElement("span", { style: { fontSize: 12.5, color: 'var(--text-muted)', paddingBottom: 6 } },
+          'A IA raciocina como especialista em ' + ((profSel && profSel.esp) || 'estética e odontologia') + ' e sugere hipóteses e condutas no fim do relatório, com a base científica de cada uma. A decisão é sempre do profissional.')) : null,
       React.createElement("div", { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
         React.createElement(OBtn, { iconLeft: "sparkles", loading: fase === 'gerando', disabled: gravando || !String(texto).trim(), onClick: gerar }, relatorio ? 'Gerar o relatório de novo' : 'Gerar relatório com a IA')),
       erro ? React.createElement("div", { role: "alert", style: { fontSize: 13, color: '#B42318' } }, erro) : null),

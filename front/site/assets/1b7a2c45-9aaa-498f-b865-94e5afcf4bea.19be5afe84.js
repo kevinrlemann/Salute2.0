@@ -3212,12 +3212,15 @@ function rnFalaCedo(aoComecar) {
   var primeira = '',
     terminouPrimeira = false,
     resto = null,
+    restoPronto = null,
     depois = null;
   var seguir = function seguir() {
     if (!terminouPrimeira || resto === null) return;
-    var r = resto;
+    var r = resto,
+      pr = restoPronto;
     resto = null;
-    if (r.trim()) rnSpeak(r, depois);else depois && depois();
+    restoPronto = null;
+    if (r.trim()) rnSpeak(r, depois, pr);else depois && depois();
   };
   return {
     comecou: function comecou() {
@@ -3247,6 +3250,8 @@ function rnFalaCedo(aoComecar) {
       completo = String(completo || '');
       if (!primeira) return rnSpeak(rnVoice(completo).now, cb);
       resto = completo.indexOf(primeira) === 0 ? completo.slice(primeira.length) : completo;
+      // o áudio do resto começa a ser gerado agora, enquanto a primeira frase ainda toca (sem pausa entre as duas)
+      if (!terminouPrimeira && resto.trim() && typeof rnPrepararFala === 'function') restoPronto = rnPrepararFala(resto);
       seguir();
     }
   };
@@ -3438,7 +3443,45 @@ function rnPartesFala(t) {
   return partes.length ? partes : [t];
 }
 var _rnSpeakInteiro = rnSpeak;
-rnSpeak = function rnSpeak(text, onEnd) {
+// prepara o áudio de um texto (todas as partes, duas por vez) sem tocar: quem chama passa o resultado
+// para rnSpeak e a fala sai sem esperar o servidor. Pedido do fundador (2026-10-17): sem pausa longa entre as frases.
+function rnPrepararFala(text) {
+  var cfg = RN_VOICE.v;
+  var t = rnSpeech(text).slice(0, 1600);
+  var partes = t ? rnPartesFala(t) : [],
+    pedidos = [];
+  var buscar = function buscar(i) {
+    if (i >= partes.length) return null;
+    if (!pedidos[i]) {
+      pedidos[i] = rnFn({
+        acao: 'voz',
+        texto: partes[i],
+        voice_id: cfg.voiceId,
+        modelo: cfg.model || 'eleven_flash_v2_5'
+      }).then(function (r) {
+        if (!r.ok) throw new Error('ElevenLabs ' + r.status);
+        rnAvisoVozReserva(r);
+        return r.blob();
+      });
+      pedidos[i].then(function () {
+        var p = buscar(i + 2);
+        p && p["catch"](function () {});
+      }, function () {});
+    }
+    return pedidos[i];
+  };
+  var a = buscar(0),
+    b = buscar(1);
+  a && a["catch"](function () {});
+  b && b["catch"](function () {});
+  return {
+    t: t,
+    partes: partes,
+    pedidos: pedidos,
+    buscar: buscar
+  };
+}
+rnSpeak = function rnSpeak(text, onEnd, pronto) {
   var cfg = RN_VOICE.v;
   if (!(SB_ON && cfg.key && cfg.voiceId && RN_PLAYER && !RN_VOZ_OFF)) return _rnSpeakInteiro(text, onEnd);
   rnStopSpeak();
@@ -3454,23 +3497,11 @@ rnSpeak = function rnSpeak(text, onEnd) {
     done();
     return Promise.resolve('none');
   }
-  var partes = rnPartesFala(t),
-    pedidos = [],
+  var prep = pronto && pronto.t === t ? pronto : rnPrepararFala(text);
+  var partes = prep.partes,
+    pedidos = prep.pedidos,
+    buscar = prep.buscar,
     tocou = false;
-  var buscar = function buscar(i) {
-    if (i >= partes.length) return null;
-    if (!pedidos[i]) pedidos[i] = rnFn({
-      acao: 'voz',
-      texto: partes[i],
-      voice_id: cfg.voiceId,
-      modelo: cfg.model || 'eleven_flash_v2_5'
-    }).then(function (r) {
-      if (!r.ok) throw new Error('ElevenLabs ' + r.status);
-      rnAvisoVozReserva(r);
-      return r.blob();
-    });
-    return pedidos[i];
-  };
   var tocar = function tocar(i) {
     if (tok !== __rnTok) return Promise.resolve('eleven');
     if (i >= partes.length) {
@@ -3508,6 +3539,7 @@ rnSpeak = function rnSpeak(text, onEnd) {
     return _rnSpeakInteiro(tocou ? partes.slice(pedidos.length - 1).join(' ') : text, onEnd);
   });
 };
+window.rnPrepararFala = rnPrepararFala;
 var RN_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 var RN_IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
 var RN_BARGE = !!RN_SR && !RN_IS_MOBILE && /Chrome|Edg\//.test(navigator.userAgent);

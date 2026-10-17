@@ -261,3 +261,10 @@ limite baixo de envios por hora e é feito para teste. [inferido: SMTP não conf
 | WhatsApp "enviado" falso | "Aguardando envio", Renata honesta, sem QR falso | `c005`, `366b`, `1b7a`, `c007`, `d476` |
 | Segredos no repositório | busca automática no CI | `tools/verificar_segredos.py` |
 
+## Atualização 2026-10-17: apoio à decisão no relatório da consulta (ampliação do achado A3)
+
+Confirmado: a IA (OpenAI, via função `renata`) passa a sugerir hipóteses e condutas no fim do relatório da consulta, com base científica citada e aviso de que a
+decisão é do profissional. A transcrição da consulta (dado de saúde) já ia para a OpenAI; nada novo sai do sistema, mas a resposta agora orienta conduta clínica.
+Mitigações: só a equipe com acesso ao módulo de pacientes gera o relatório; o texto pode ser corrigido antes de salvar; a IA é instruída a não inventar referência.
+Risco residual: sugestão errada seguida sem revisão. Decisão do fundador (2026-10-17): aceitar, com o aviso fixo no fim do relatório.
+

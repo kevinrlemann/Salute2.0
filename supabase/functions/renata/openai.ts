@@ -13,7 +13,7 @@ const EXTRAS: Record<string, Record<string, unknown>> = {};
 
 // o resumo da clínica é cortado neste tamanho (caracteres); o resto a Renata consulta pelas ferramentas.
 // O ChatGPT aceita pedidos grandes, mas quanto maior o pedido, maior o custo por mensagem.
-export const MAX_SISTEMA = 24000, MAX_DESC_FERRAMENTA = 300, MAX_DESC_CAMPO = 120, MAX_RESPOSTA = 1000;
+export const MAX_SISTEMA = 24000, MAX_DESC_FERRAMENTA = 300, MAX_DESC_CAMPO = 120, MAX_RESPOSTA = 2000;
 // espera máxima (segundos) quando os modelos estão no limite por minuto
 export const MAX_ESPERA = 4;
 // só o código do erro do provedor vai para os registros (nada do conteúdo do pedido ou da resposta)

@@ -111,6 +111,16 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (vínculo usuário×clínica 5 min, `agente_ia_regras` 2 min, chave e ajustes da voz 5 min) e chave+voz da ElevenLabs buscadas em paralelo.
   Erros em linguagem simples por `rnErroAmigavel` (sem internet, muitas perguntas, limite de mensagens, problema interno) no chat e nas ações por voz.
   Armazenamento usado: detalhe por tipo aberto por padrão.
+- Relatório da consulta com apoio à decisão (2026-10-17, pedido do fundador): em Prontuário › Transcrição e relatório há o seletor "Profissional da consulta"
+  (padrão: o profissional ligado ao usuário logado, `PROF0[].usuarioId === UID()`; gravado em `consultas_relatorios.profissional_id`). A instrução `consultaSys(prof)`
+  (`d47643ae`) manda a IA raciocinar como especialista na `especialidade` do profissional e acrescentar dois blocos no fim do relatório: "Hipóteses e direcionamento
+  clínico (apoio da IA)" (1 a 4 hipóteses, porquê, confiança, o que falta investigar, sinais de alerta) e "Sugestões de conduta e tratamento (apoio da IA)"
+  (procedimentos, cuidados, exercícios, medicamentos com posologia, exames, retorno). Cada sugestão vem com a base científica entre parênteses (diretriz ou sociedade e
+  ano, nível de evidência); sem fonte segura, escreve "prática clínica usual, sem diretriz específica" em vez de inventar. Só nesses blocos a IA vai além da transcrição;
+  termina com "Estas sugestões são apoio à decisão. A avaliação e a decisão final são do profissional responsável." Resposta até 2.000 tokens (`MAX_RESPOSTA` em
+  `openai.ts`, função `renata` v21). É dado de saúde indo para a OpenAI (achado A3): decisão do fundador.
+- Renata sem pausa entre as frases (2026-10-17): `rnPrepararFala(texto)` (`1b7a2c45`) pede o áudio de todas as partes (duas por vez) sem tocar; `rnSpeak(texto, fim, pronto)`
+  aceita esse preparo. `rnFalaCedo` prepara o resto da resposta assim que o texto completo chega, enquanto a primeira frase ainda toca, então a fala segue sem esperar o servidor.
 - Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`, superado acima), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
   reconhecedor), transcrição com `language_code: 'por'`. Dinheiro a receber: ela pergunta a data prevista e lança nessa data; entende parcelas
   (`parcelas` em `propor_lancamento_financeiro` → `FinSvc.criar` com `parc`/`venc`: UMA conta com `numero_parcelas` e N linhas em `parcelas`, vencimentos mensais).
