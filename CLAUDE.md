@@ -137,6 +137,12 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `clinica_suporte()`; `trocar_plano` aceita o suporte; o resto já aceitava `eh_admin_plataforma()`). Migration `20261016210000`.
 - Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
   (só capa e informações; migration `20261016180000`). Parcerias com logo (`parceiros.logo_path`, bucket `conteudos/parceiros`), no visual de Certificações.
+- Filtros e períodos (2026-10-17): Financeiro › Receitas/Despesas e Nota fiscal têm o botão "Filtros" ao lado de "Todos os status" (painel `filtrosCampos`
+  em `d47643ae`: lançamento, paciente, procedimento, profissional, atendente, categoria, atendimento, valor, vencimento, desconto, pagamento, status;
+  despesas: descrição, fornecedor, responsável; NF: data, tomador, CPF/CNPJ, serviço, valor, ISS, situação). `PeriodSelect` (Visão geral do Financeiro e
+  Relatórios do Estoque) aceita 7/14/30/60/90 dias ou "Escolher datas" (valor `'c:AAAA-MM-DD:AAAA-MM-DD'`, helpers `perInfo`/`perRotulo`; consumo do
+  estoque em datas livres via `EstSvc.consumoEntre`). Receitas/Despesas ganharam o chip "Últimos 7 dias". Parcerias: logo, nome, descrição, categoria e
+  "Cupom de desconto: Sim/Não". Tradução automática do navegador bloqueada (`translate=no` + `meta notranslate`): o seletor PT/EN/ES do sistema continua.
 - Armazenamento por clínica (2026-10-13): RPC `armazenamento_uso(clinica)` soma os arquivos do Storage (pasta `<clinica_id>/...` em todos os
   buckets, por tipo) e o tamanho das linhas de conversas e cadastros. Tela: Minha conta › Plano e cobrança › "Armazenamento usado", abaixo do uso da IA.
 - Anamnese: a assinatura guarda nome, CPF, traços, aceite, IP, navegador, local (GPS) e hash.

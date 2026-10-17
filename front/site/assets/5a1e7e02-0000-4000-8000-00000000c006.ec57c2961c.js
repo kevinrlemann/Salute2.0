@@ -814,6 +814,28 @@ var unisEst = function unisEst(c) {
   });
 };
 var EstSvc = {
+  // Consumo (saídas) por produto entre duas datas (AAAA-MM-DD), para o período personalizado dos Relatórios do estoque.
+  consumoEntre: function consumoEntre(ini, fim) {
+    return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee90() {
+      var movs, out;
+      return _regenerator().w(function (_context90) {
+        while (1) switch (_context90.n) {
+          case 0:
+            _context90.n = 1;
+            return DB.tudo(function () {
+              return DB.sel('movimentacoes_estoque', 'produto_id,quantidade,data').eq('tipo', 'saida').gte('data', ini + 'T00:00:00').lt('data', addD(new Date(fim + 'T00:00:00'), 1).toISOString().slice(0, 10) + 'T00:00:00').order('data').order('id');
+            });
+          case 1:
+            movs = _context90.v;
+            out = {};
+            movs.forEach(function (m) {
+              out[m.produto_id] = (out[m.produto_id] || 0) + Number(m.quantidade);
+            });
+            return _context90.a(2, out);
+        }
+      }, _callee90);
+    }))();
+  },
   criar: function criar(p) {
     return _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee9() {
       return _regenerator().w(function (_context9) {
