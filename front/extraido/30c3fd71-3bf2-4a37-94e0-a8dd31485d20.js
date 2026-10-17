@@ -281,6 +281,10 @@ function ResumoCobranca(_ref) {
 }
 function Armazenamento(_ref) {
   var mobile = _ref.mobile;
+  var _det = React.useState(false), det = _det[0], setDet = _det[1];
+  var verMais = function verMais(a, b) {
+    return /*#__PURE__*/React.createElement("button", { type: "button", onClick: function () { setDet(!det); }, style: { alignSelf: 'flex-start', border: 0, background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#1F5EFF' } }, det ? b : a);
+  };
   var _st = React.useState(null),
     dados = _st[0],
     setDados = _st[1];
@@ -378,7 +382,7 @@ function Armazenamento(_ref) {
       fontSize: 12.5,
       color: 'var(--text-muted)'
     }
-  }, "Tudo o que esta cl\xEDnica guarda no sistema: arquivos (fotos, \xE1udios, v\xEDdeos, documentos) e o texto das conversas e dos cadastros. Calculado agora, no banco.")), /*#__PURE__*/React.createElement("div", {
+  }, "Arquivos, conversas e cadastros desta cl\xEDnica.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -397,13 +401,13 @@ function Armazenamento(_ref) {
       /*#__PURE__*/React.createElement("div", { style: { height: 6, borderRadius: 999, background: 'rgba(214,226,242,.8)', overflow: 'hidden', margin: '6px 0' } },
         /*#__PURE__*/React.createElement("div", { style: { width: pctA + '%', height: '100%', background: pctA >= 100 ? '#E5484D' : pctA >= 80 ? '#F59E0B' : '#1F5EFF' } })),
       ad ? /*#__PURE__*/React.createElement("span", null, 'Acima de ' + gb + ' GB: ' + planoBrl(ad.preco) + ' por mês a cada ' + ad.quantidade + ' GB a mais.') : null);
-  })(), card('Total', armFmt(total, true), total < 1073741824 ? 'o mesmo que ' + armFmt(total) : 'em GB', true), card('Arquivos', armFmt(dados.arquivos_bytes), n(dados.arquivos) + (Number(dados.arquivos) === 1 ? ' arquivo' : ' arquivos')), card('Conversas e cadastros', armFmt(dados.dados_bytes), 'texto guardado no banco')), /*#__PURE__*/React.createElement("div", {
+  })(), card('Total', armFmt(total, true), total < 1073741824 ? 'o mesmo que ' + armFmt(total) : 'em GB', true), det ? card('Arquivos', armFmt(dados.arquivos_bytes), n(dados.arquivos) + (Number(dados.arquivos) === 1 ? ' arquivo' : ' arquivos')) : null, det ? card('Conversas e cadastros', armFmt(dados.dados_bytes), 'texto guardado no banco') : null, verMais('Ver o que ocupa espa\xE7o', 'Esconder detalhes')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 8
     }
-  }, tipos.map(function (t) {
+  }, det ? tipos.map(function (t) {
     var b = Number(t.bytes || 0);
     var pct = total ? Math.round(b / total * 100) : 0;
     return /*#__PURE__*/React.createElement("div", {
@@ -446,7 +450,7 @@ function Armazenamento(_ref) {
         background: '#1F5EFF'
       }
     })));
-  })));
+  }) : null));
 }
 /* ---------- uso da IA no mês: Renata por texto, Renata por voz, WhatsApp e a soma ---------- */
 var USO_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -465,6 +469,10 @@ function UsoIA(_ref0) {
     aviso = _React$useState13[0],
     setAviso = _React$useState13[1];
   var master = !!(window.SESSAO && SESSAO.v && SESSAO.v.admin);
+  var _det = React.useState(false), det = _det[0], setDet = _det[1];
+  var verMais = function verMais(a, b) {
+    return /*#__PURE__*/React.createElement("button", { type: "button", onClick: function () { setDet(!det); }, style: { alignSelf: 'flex-start', border: 0, background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#1F5EFF' } }, det ? b : a);
+  };
   var carregar = function carregar() {
     if (!SB_ON) {
       setDados({
@@ -620,7 +628,7 @@ function UsoIA(_ref0) {
       fontSize: 12.5,
       color: 'var(--text-muted)'
     }
-  }, "Cada pergunta feita \xE0 Renata (texto ou voz) e cada resposta da IA no WhatsApp contam 1 mensagem. ", a.ilimitado ? 'Este plano não tem limite.' : 'Limite do mês: ' + n(limite) + (dados.limite_clinica !== null && dados.limite_clinica !== undefined ? ' (definido pela Salute para esta clínica)' : dados.plano ? ' (plano ' + dados.plano + ')' : ' (padrão)') + '.')), /*#__PURE__*/React.createElement("div", {
+  }, "Cada pergunta \xE0 Renata e cada resposta da IA no WhatsApp contam 1 mensagem. ", a.ilimitado ? 'Este plano não tem limite.' : 'Limite do mês: ' + n(limite) + (dados.limite_clinica !== null && dados.limite_clinica !== undefined ? ' (definido pela Salute para esta clínica)' : dados.plano ? ' (plano ' + dados.plano + ')' : ' (padrão)') + '.')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -647,7 +655,7 @@ function UsoIA(_ref0) {
       color: pct >= 100 ? '#E5484D' : 'var(--text-muted)',
       marginTop: 4
     }
-  }, pct >= 100 ? 'Limite do mês atingido: a Renata e a IA do WhatsApp param até o mês virar ou até a Salute ampliar o limite.' : pct + '% usado')), dados.meses && dados.meses.length ? /*#__PURE__*/React.createElement("div", {
+  }, pct >= 100 ? 'Limite do mês atingido: a Renata e a IA do WhatsApp param até o mês virar ou até a Salute ampliar o limite.' : pct + '% usado')), dados.meses && dados.meses.length ? /*#__PURE__*/React.createElement(React.Fragment, null, verMais('Ver meses anteriores', 'Esconder meses anteriores'), det ? /*#__PURE__*/React.createElement("div", {
     style: {
       overflowX: 'auto'
     }
@@ -703,7 +711,7 @@ function UsoIA(_ref0) {
         fontWeight: 700
       }
     }, n(m.total)));
-  })))) : null, master ? /*#__PURE__*/React.createElement("div", {
+  })))) : null) : null, master ? /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -789,50 +797,13 @@ function PlanosSection(_ref2) {
     nome: ''
   }).nome), " \xB7 pr\xF3xima cobran\xE7a em ", SB_ON ? proxCobranca() : '10/10/2026')), (PLANS.find(function (p) {
     return p.id === cur;
-  }) || {}).limite > 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      minWidth: 260,
-      flex: mobile ? 1 : 'none',
-      padding: '12px 14px',
-      borderRadius: 16,
-      background: 'rgba(255,255,255,.65)',
-      border: '1.5px solid rgba(255,255,255,.95)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      fontSize: 13,
-      color: 'var(--text-muted)'
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "Mensagens de IA este m\xEAs"), /*#__PURE__*/React.createElement(B, null, pct.toFixed(0), "%")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 8,
-      borderRadius: 999,
-      background: 'rgba(214,226,242,.8)',
-      overflow: 'hidden',
-      margin: '6px 0'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: pct + '%',
-      height: '100%',
-      borderRadius: 999,
-      background: 'var(--gradient-brand)'
-    }
-  })), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 12,
-      color: 'var(--text-muted)'
-    }
-  }, used.toLocaleString('pt-BR'), " de ", PLAN_LIMIT.toLocaleString('pt-BR'), " usadas \xB7 renova dia ", SB_ON ? diaRenova() : 10)) : null), /*#__PURE__*/React.createElement(UsoIA, {
+  }) || {}).limite > 0 ? null : null), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'repeat(2, minmax(0,1fr))', gap: 16, alignItems: 'start' }
+  }, /*#__PURE__*/React.createElement(UsoIA, {
     mobile: mobile
-  }), /*#__PURE__*/React.createElement(ResumoCobranca, {
-    mobile: mobile,
-    cur: cur
   }), /*#__PURE__*/React.createElement(Armazenamento, {
     mobile: mobile
-  }), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: mobile ? '1fr' : 'repeat(3, minmax(0,1fr))',
@@ -995,7 +966,10 @@ function PlanosSection(_ref2) {
         boxShadow: dark ? 'none' : '0 10px 22px -10px rgba(11,63,217,.7)'
       }
     }, p.preco ? 'Mudar para este plano' : 'Falar com consultor'));
-  })), msg ? /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement(ResumoCobranca, {
+    mobile: mobile,
+    cur: cur
+  }), msg ? /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',

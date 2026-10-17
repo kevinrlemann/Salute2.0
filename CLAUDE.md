@@ -137,6 +137,15 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `clinica_suporte()`; `trocar_plano` aceita o suporte; o resto já aceitava `eh_admin_plataforma()`). Migration `20261016210000`.
 - Saluteflix (2026-10-16): categorias fixas Técnico, Comercial, Gestão, Marketing e Sistema (`flix_categorias`) com conteúdos de exemplo em `flix_conteudos`
   (só capa e informações; migration `20261016180000`). Parcerias com logo (`parceiros.logo_path`, bucket `conteudos/parceiros`), no visual de Certificações.
+- Ajustes de usabilidade (2026-10-17): Início sem o botão de três pontos nos cartões (`StatCard` sem `onMenu` em `25352dc7`). Financeiro › Visão geral:
+  período só 7 dias, 30 dias ou datas (`PeriodSelect` normaliza valores antigos para 30); todos os indicadores e o gráfico seguem o período;
+  o gráfico perdeu os rótulos laterais (Faturou/Custos/Lucro ao lado) e a linha "Próximos 30 dias". Receitas/Despesas sem a linha de chips de período
+  (`perJanela = null`; o período fica em "Filtros" › Lançamento/Vencimento). Parcerias sem chips de categoria; cartão = logo, nome, descrição, Categoria e
+  Status (Parceiro oficial/Ativo). Plano e cobrança: "Uso da IA" e "Armazenamento" lado a lado com detalhes recolhidos ("Ver meses anteriores",
+  "Ver o que ocupa espaço"), sem o mini-cartão duplicado do topo, e "Quanto esta clínica paga por mês" abaixo dos planos.
+- CRM (decisão do fundador, 2026-10-17): mover o lead para Convertido = a pessoa compareceu. Gatilho `tg_leads_convertido_compareceu`
+  (`lead_convertido_compareceu`, migration `20261017110000`): consultas já passadas do lead (ou do paciente ligado) em agendado/confirmado/aguardando/
+  em atendimento viram "Atendido" (conta como atendimento no Painel); futuras, canceladas e faltas não mudam. Vale para tela, IA e importações; grava em `auditoria`.
 - Plano e cobrança (2026-10-17): bloco "Quanto esta clínica paga por mês" (`ResumoCobranca` em `30c3fd71`: plano base + usuários ativos além dos
   2 incluídos × `planos_adicionais.usuario_extra` + pacotes de 25 GB além de `limite_armazenamento_gb` × `armazenamento_25`; estimativa, a
   cobrança automática não está ligada). Planos Inicial, Assistente e IA Pro lado a lado; Enterprise desligado no banco (`planos.ativo = false`,

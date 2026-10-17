@@ -1412,10 +1412,6 @@ function PainelScreen(_ref14) {
     }, s, {
       // o período fica dentro do cartão, no cabeçalho, ao lado do título
       headerRight: /*#__PURE__*/React.createElement(PeriodoChip, { secao: ['pacientes', 'agendamentos', 'ia'][si], compacto: true }),
-      // celular: os três pontos do cartão abrem a tela de Configurações (mesmo caminho do item da aba Mais)
-      onMenu: mobile ? function onMenu() {
-        if (window.abrirConfiguracoes) window.abrirConfiguracoes();else if (onNavigate) onNavigate('perfil');
-      } : function onMenu() {},
       style: _objectSpread(_objectSpread({}, glass), {}, {
         padding: mobile ? 18 : 22,
         flex: 1
