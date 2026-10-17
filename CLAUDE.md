@@ -106,8 +106,11 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   relatório e tudo fica em `consultas_relatorios` (RLS `clinicas_permitidas('pacientes')`) e no histórico do paciente (tipo `consulta`).
 - Painel (2026-10-16): período por indicador (`PAINEL_PER`: pacientes/agendamentos/funil/canais abrem no mês; IA/atendimentos nos últimos 7 dias;
   30 dias e datas livres via `PeriodoChip`, dentro de cada cartão: `StatCard.headerRight`), RPC `painel_periodo(clinica, ini, fim)` (período anterior do mesmo tamanho).
-- Renata (2026-10-17): silêncio volta a 2,2 s (`RN_SILENCIO_MS`, pedido do fundador: esperar mais antes de "ir pensando"); erros em linguagem simples por
-  `rnErroAmigavel` (sem internet, muitas perguntas, limite de mensagens, problema interno) no chat e nas ações por voz.
+- Renata mais rápida (2026-10-17, pedido do fundador): silêncio de 1,3 s (`RN_SILENCIO_MS`), fala começa na primeira frase a partir de 14 caracteres
+  (`rnFalaCedo`), aquecimento da função ao abrir o painel e 5 s depois do login (`rnAquecer` → ação `status`). Função `renata` v20 com caches em memória
+  (vínculo usuário×clínica 5 min, `agente_ia_regras` 2 min, chave e ajustes da voz 5 min) e chave+voz da ElevenLabs buscadas em paralelo.
+  Erros em linguagem simples por `rnErroAmigavel` (sem internet, muitas perguntas, limite de mensagens, problema interno) no chat e nas ações por voz.
+  Armazenamento usado: detalhe por tipo aberto por padrão.
 - Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`, superado acima), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
   reconhecedor), transcrição com `language_code: 'por'`. Dinheiro a receber: ela pergunta a data prevista e lança nessa data; entende parcelas
   (`parcelas` em `propor_lancamento_financeiro` → `FinSvc.criar` com `parc`/`venc`: UMA conta com `numero_parcelas` e N linhas em `parcelas`, vencimentos mensais).

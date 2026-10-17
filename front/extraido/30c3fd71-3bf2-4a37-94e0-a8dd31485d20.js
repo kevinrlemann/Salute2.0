@@ -279,7 +279,8 @@ function ResumoCobranca(_ref) {
 }
 function Armazenamento(_ref) {
   var mobile = _ref.mobile;
-  var _det = React.useState(false), det = _det[0], setDet = _det[1];
+  // detalhe de onde vem o uso aberto por padrão (pedido do fundador, 2026-10-17)
+  var _det = React.useState(true), det = _det[0], setDet = _det[1];
   var verMais = function verMais(a, b) {
     return /*#__PURE__*/React.createElement("button", { type: "button", onClick: function () { setDet(!det); }, style: { alignSelf: 'flex-start', border: 0, background: 'transparent', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: '#1F5EFF' } }, det ? b : a);
   };

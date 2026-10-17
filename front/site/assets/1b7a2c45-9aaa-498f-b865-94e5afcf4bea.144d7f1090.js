@@ -2901,7 +2901,15 @@ var RN_AI = makeStore(SB_ON ? {
 // voz única da Renata: Sarah, voz padrão da ElevenLabs liberada no plano grátis (fala português com flash v2.5)
 var RN_VOZ_OFICIAL = 'EXAVITQu4vr4xnSDxMaL';
 // silêncio que encerra a fala da pessoa no modo voz (dá tempo de pensar entre uma frase e outra)
-var RN_SILENCIO_MS = 2200; // 2,2 s (decisão do fundador, 2026-10-17): a Renata espera mais antes de "ir pensando", sem cortar quem fala pausado
+var RN_SILENCIO_MS = 1300; // 1,3 s (2026-10-17): a Renata começa a responder mais rápido depois que a pessoa para de falar
+// aquece a função renata (sessão, vínculo e chaves ficam em cache no servidor) para a primeira resposta sair mais rápido
+function rnAquecer() {
+  if (!SB_ON || typeof rnFn !== 'function' || !window.CLI || !CLI()) return;
+  if (rnAquecer.em && Date.now() - rnAquecer.em < 4 * 60000) return;
+  rnAquecer.em = Date.now();
+  try { rnFn({ acao: 'status' }).then(function (r) { try { r.body && r.body.cancel && r.body.cancel(); } catch (e) {} }, function () {}); } catch (e) {}
+}
+setTimeout(rnAquecer, 5000);
 // erro da Renata em linguagem de gente (2026-10-17): sem internet, limite de perguntas ou problema interno
 function rnErroAmigavel(e, prefixo) {
   var txt = String(e && (e.message || e.code || e) || '').toLowerCase();
@@ -2976,6 +2984,7 @@ function RenataButton(_ref0) {
   return /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: function onClick() {
+      rnAquecer();
       return setSt(_objectSpread(_objectSpread({}, st), {}, {
         open: true
       }));
@@ -3222,7 +3231,7 @@ function rnFalaCedo(aoComecar) {
         m;
       while (m = re.exec(t)) {
         var cand = t.slice(0, m.index + 1);
-        if (cand.length < 20 || RN_ABREV.test(cand) || /\d$/.test(cand.slice(0, -1)) && /^\d/.test(t.slice(m.index + 2))) continue;
+        if (cand.length < 14 || RN_ABREV.test(cand) || /\d$/.test(cand.slice(0, -1)) && /^\d/.test(t.slice(m.index + 2))) continue;
         primeira = cand;
         break;
       }

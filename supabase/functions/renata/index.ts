@@ -32,6 +32,11 @@ const VOZ_RESERVA = 'EXAVITQu4vr4xnSDxMaL';
 const VOZ_PAGA = new Map<string, number>();
 // chave de IA por clínica, lembrada por 5 minutos (menos idas ao banco a cada pergunta)
 const IA_CACHE = new Map<string, { ate: number; ia: { key: string; propria: boolean } | null }>();
+// velocidade (2026-10-17): o que não muda a cada pergunta fica em memória por alguns minutos
+// (vínculo da pessoa com a clínica, regras do Agente de IA, chave e voz da ElevenLabs); menos idas ao banco antes da primeira palavra
+const VINCULO_CACHE = new Map<string, number>();
+const REGRAS_CACHE = new Map<string, { ate: number; regras: string }>();
+const VOZ_CACHE = new Map<string, { ate: number; key: string; v: Record<string, unknown> }>();
 const json = (obj: unknown, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'content-type': 'application/json' } });
 
 // o front ainda manda o nome do modelo do Claude; serve só para validar o pedido (o ChatGPT usa os seus)
@@ -84,9 +89,13 @@ Deno.serve(async (req) => {
 
   // só quem é membro ativo da clínica usa a Renata dela
   // (ou a equipe de suporte da Salute, com a entrada registrada e dentro do prazo)
-  const { data: vinc } = await adm.from('usuarios_clinicas').select('id')
-    .eq('clinica_id', clinica).eq('usuario_id', quem.user.id).eq('ativo', true).eq('status_convite', 'aceito').is('excluido_em', null).limit(1);
-  let liberado = !!(vinc && vinc.length);
+  const chaveVinc = quem.user.id + ':' + clinica;
+  let liberado = (VINCULO_CACHE.get(chaveVinc) || 0) > Date.now();
+  if (!liberado) {
+    const { data: vinc } = await adm.from('usuarios_clinicas').select('id')
+      .eq('clinica_id', clinica).eq('usuario_id', quem.user.id).eq('ativo', true).eq('status_convite', 'aceito').is('excluido_em', null).limit(1);
+    liberado = !!(vinc && vinc.length);
+  }
   if (!liberado) {
     const { data: perf } = await adm.from('perfis_usuario').select('admin_plataforma').eq('id', quem.user.id).limit(1);
     if (perf && perf[0] && perf[0].admin_plataforma) {
@@ -96,6 +105,7 @@ Deno.serve(async (req) => {
     }
   }
   if (!liberado) return json({ erro: 'Sem acesso a esta clínica.' }, 403);
+  VINCULO_CACHE.set(chaveVinc, Date.now() + 5 * 60_000);
 
   const chave = async (provedor: string, env: string) => {
     const { data } = await adm.rpc('ler_segredo', { p_clinica: clinica, p_provedor: provedor });
@@ -142,9 +152,13 @@ Deno.serve(async (req) => {
     const p = (corpo.payload || {}) as Record<string, unknown>;
     const msgsCedo = Array.isArray(p.messages) ? p.messages : [];
     // chave, regras da clínica e limite do mês buscados de uma vez só
+    const rc = REGRAS_CACHE.get(clinica);
     const [ia, { data: regras }, { data: lim }] = await Promise.all([
       escolherIA(),
-      adm.rpc('agente_ia_regras', { p_clinica: clinica, p_canal: 'assistente' }),
+      rc && rc.ate > Date.now() ? Promise.resolve({ data: rc.regras }) : adm.rpc('agente_ia_regras', { p_clinica: clinica, p_canal: 'assistente' }).then((r) => {
+        if (typeof r.data === 'string') REGRAS_CACHE.set(clinica, { ate: Date.now() + 2 * 60_000, regras: r.data });
+        return r;
+      }),
       ehPerguntaNova(msgsCedo) ? adm.rpc('renata_limite_mes', { p_clinica: clinica }) : Promise.resolve({ data: null }),
     ]);
     if (!ia) return json({ erro: 'sem_chave' }, 412);
@@ -194,10 +208,19 @@ Deno.serve(async (req) => {
   }
 
   if (acao === 'voz') {
-    const key = await chave('elevenlabs', 'ELEVENLABS_API_KEY');
+    // chave e ajustes da voz em paralelo, lembrados por 5 minutos (cada frase falada chamava o banco duas vezes)
+    let vc = VOZ_CACHE.get(clinica);
+    if (!vc || vc.ate <= Date.now()) {
+      const [k, { data: cfg }] = await Promise.all([
+        chave('elevenlabs', 'ELEVENLABS_API_KEY'),
+        adm.from('renata_voz').select('voice_id,modelo,estabilidade,similaridade,estilo').eq('clinica_id', clinica).is('excluido_em', null).limit(1),
+      ]);
+      vc = { ate: Date.now() + 5 * 60_000, key: k, v: (cfg && cfg[0]) || {} };
+      if (k) VOZ_CACHE.set(clinica, vc);
+    }
+    const key = vc.key;
     if (!key) return json({ erro: 'sem_chave' }, 412);
-    const { data: cfg } = await adm.from('renata_voz').select('voice_id,modelo,estabilidade,similaridade,estilo').eq('clinica_id', clinica).is('excluido_em', null).limit(1);
-    const v = (cfg && cfg[0]) || {};
+    const v = vc.v as Record<string, number | string | undefined>;
     const texto = String(corpo.texto || '').slice(0, 1600);
     const voz = String(corpo.voice_id || v.voice_id || 'RGymW84CSmfVugnA5tvA');
     // sempre Flash v2.5 com o idioma forçado em português: o Multilingual adivinha o idioma e, em frases
