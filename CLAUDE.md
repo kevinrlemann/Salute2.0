@@ -145,7 +145,14 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (`perJanela = null`; o período fica em "Filtros" › Lançamento/Vencimento). Parcerias sem chips de categoria; cartão = logo, nome, descrição, Categoria e
   Status (Parceiro oficial/Ativo). Plano e cobrança: "Uso da IA" e "Armazenamento" lado a lado com detalhes recolhidos ("Ver meses anteriores",
   "Ver o que ocupa espaço"), sem o mini-cartão duplicado do topo, e "Quanto esta clínica paga por mês" abaixo dos planos.
-- Planos nos cartões (2026-10-17): sem "mais usuários: R$ 49,90" e sem a caixa "Acima do limite" (a conta fica em "Quanto esta clínica paga por mês");
+- IA agenda só com quem faz (2026-10-17, migration `20261017170000`): `ia_profissional_faz(prof, proc)` (sem vínculo cadastrado para o procedimento, todos
+  os ativos servem; com vínculo, só os marcados em `profissionais_procedimentos`, que a equipe marca no cadastro do profissional) e `ia_quem_faz(clinica, proc)`.
+  `reservar_agendamento` recusa (`profissional_nao_faz_procedimento` / `profissional_inexistente_ou_inativo`, com `profissionais_que_fazem`); `n8n_ferramenta`
+  (`consultar_horarios` e `criar_agendamento`) devolve o mesmo código e a lista de quem faz; `ia_regra_agendamento` instrui a IA; `consultar_fatos` traz `quem_faz`
+  em cada procedimento. `horarios_disponiveis` e `n8n_contexto` (profissionais com seus procedimentos) já respeitavam. Testado na Clínica Lemann: Laser CO2 só
+  com a Dra. Ana. Regra de avaliação prévia continua em `configuracoes_clinica.ia_agenda_procedimento_direto` / `ia_primeira_vez_avaliacao`.
+- Planos nos cartões (2026-10-17): usuários incluídos valem para equipe ou profissionais (Inicial 2, Assistente 2, IA Pro 4; `planos.limite_usuarios`), sem limite
+  separado de profissionais na tela; sem "mais usuários: R$ 49,90" e sem a caixa "Acima do limite" (a conta fica em "Quanto esta clínica paga por mês");
   limite de IA único por mensagens (texto + voz + WhatsApp somados: 1.500 no Assistente, 10.000 no IA Pro), sem minutos de voz à parte.
   Textos em `planos.itens` (migration `20261017160000`) e no demo `PLANS` (`30c3fd71`).
 - Controle por gestos (2026-10-17): Minha conta › "Controle por gestos" (`GestosSection` em `30c3fd71`; motor em `d41989a4`: `GESTOS`, `gestosLigar/Desligar/Previa`).

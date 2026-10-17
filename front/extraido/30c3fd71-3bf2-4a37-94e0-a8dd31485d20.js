@@ -65,7 +65,7 @@ var PLANS = [{
   preco: 197,
   sub: 'Gestão completa da clínica com o WhatsApp no mesmo lugar.',
   limite: 0,
-  itens: ['Pacientes, prontuário e agenda', 'Anamnese com assinatura digital', 'Financeiro, estoque e CRM de leads', 'WhatsApp da clínica no sistema (1 número)', '2 usuários incluídos e até 3 profissionais', 'Saluteflix e Salute Cast']
+  itens: ['Pacientes, prontuário e agenda', 'Anamnese com assinatura digital', 'Financeiro, estoque e CRM de leads', 'WhatsApp da clínica no sistema (1 número)', '2 usuários incluídos (equipe ou profissionais)', 'Saluteflix e Salute Cast']
 }, {
   id: 'assistente',
   anual: 3970,
@@ -77,12 +77,12 @@ var PLANS = [{
   preco: 397,
   sub: 'A Renata IA ajuda a equipe dentro do sistema.',
   limite: 1500,
-  itens: ['Tudo do plano Inicial', 'Renata IA por texto e por voz dentro do sistema', '1.500 mensagens de IA por mês (Renata por texto, por voz e WhatsApp somados)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', '2 usuários incluídos e até 6 profissionais']
+  itens: ['Tudo do plano Inicial', 'Renata IA por texto e por voz dentro do sistema', '1.500 mensagens de IA por mês (Renata por texto, por voz e WhatsApp somados)', 'Lembretes automáticos de consulta', 'Envio automático de anamnese e documentos', '2 usuários incluídos (equipe ou profissionais)']
 }, {
   id: 'iapro',
   anual: 9970,
   implantacao: 997,
-  usuarios: 2,
+  usuarios: 4,
   profissionais: 10,
   armazenamentoGb: 25,
   nome: 'IA Pro',
@@ -90,7 +90,7 @@ var PLANS = [{
   sub: 'A Renata IA atende, agenda e confirma pelo WhatsApp.',
   destaque: true,
   limite: 10000,
-  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', '10.000 mensagens de IA por mês (Renata por texto, por voz e WhatsApp somados)', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', '2 usuários incluídos e até 10 profissionais']
+  itens: ['Tudo do plano Assistente', 'IA atendendo no WhatsApp 24 horas', '10.000 mensagens de IA por mês (Renata por texto, por voz e WhatsApp somados)', 'Agendamento, confirmação e follow-up automáticos', 'CRM que anda sozinho', '4 usuários incluídos (equipe ou profissionais)']
 }];
 var PLAN_STORE = makeStore('iapro');
 // valores adicionais: cobrados à parte quando a clínica passa do limite do plano (vêm da tabela planos_adicionais)

@@ -136,3 +136,16 @@ A aba some para os demais e saiu das permissões da equipe (`SUBMODS.perfil`). M
 - Transferência para a equipe aparece em tempo real com o selo "Aguardando equipe" na lista de Conversas e avisa a equipe
   mesmo sem responsáveis escolhidos. Falhas graves (`erros_automacao`) viram aviso para o dono/gestor.
 - Arquitetura para 100 clínicas: `docs/n8n-escala.md`. **Os fluxos do n8n estão desligados (404)**: ver `docs/pendencias-fundador.md`.
+
+## Quem faz o quê (2026-10-17) [confirmado]
+
+A IA só oferece e só agenda com profissional que faz o procedimento: vínculo em `profissionais_procedimentos` (cadastro do profissional › Serviços).
+`horarios_disponiveis` filtra, `reservar_agendamento` recusa com `profissional_nao_faz_procedimento` e devolve `profissionais_que_fazem`, e a ferramenta
+`consultar_horarios`/`criar_agendamento` responde o mesmo código para a IA corrigir a rota. `consultar_fatos` lista `quem_faz` por procedimento. Procedimento sem
+nenhum vínculo cadastrado vale para todos os profissionais ativos. Avaliação prévia: `ia_regra_agendamento` (direto ou avaliação antes; primeira vez vira avaliação).
+
+## Leads por canal (2026-10-17) [confirmado]
+
+Orgânico (conversa espontânea), Indicação (mensagem recebida com indicação/indicou/recomendou), Tráfego pago › TikTok Ads / Google Ads / Instagram Ads /
+Facebook Ads / Outros anúncios (pela URL e `utm_source` do anúncio de clique no WhatsApp, `conversas.origem_anuncio`) e Não informado (cadastro manual).
+O canal WhatsApp ficou inativo. Origem escolhida pela equipe nunca é trocada pelo sistema (`origem_eh_automatica`).
