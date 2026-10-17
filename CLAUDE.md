@@ -124,6 +124,10 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   também na apresentação e na saudação de `agente_ia`, criando a linha se não existir). Migration `20261017190000`. `agente_ia_regras` usa o nome escolhido só no canal
   WhatsApp; no canal assistente (Renata dentro do sistema) o nome é sempre Renata. O resto da aba Agente de IA continua só do administrador master.
 - ChatGPT (OpenAI) é o motor nos três pontos (confirmado 2026-10-17): relatório da consulta e Renata do sistema pela função `renata`; IA do WhatsApp pelo n8n WF01 (chave no n8n).
+- Renata, círculo que acompanha a voz (2026-10-17): `RN_NIVEL`/`rnEnvelope` (`1b7a2c45`) decodificam o áudio da ElevenLabs à parte (envelope de 50 pontos/s, sem mudar a
+  rota do som) e `RenataOrb` em `speaking` troca a animação fixa por `transform: scale` seguindo o nível (`rnNivelOuvir`); voz do aparelho pulsa por palavra (`onboundary`
+  → `rnNivelPulso`). Espera adaptativa antes de responder: `rnSilencioPara(texto)`: frase curta/completa ou com "?" 0,75 s (`RN_SILENCIO_CURTO_MS`), frase parada em
+  conectivo ou vírgula 1,9 s (`RN_SILENCIO_LONGO_MS`), resto 1,3 s; no caminho ElevenLabs (sem texto ao vivo) fala de até 2,5 s espera 0,9 s.
 - Renata sem pausa entre as frases (2026-10-17): `rnPrepararFala(texto)` (`1b7a2c45`) pede o áudio de todas as partes (duas por vez) sem tocar; `rnSpeak(texto, fim, pronto)`
   aceita esse preparo. `rnFalaCedo` prepara o resto da resposta assim que o texto completo chega, enquanto a primeira frase ainda toca, então a fala segue sem esperar o servidor.
 - Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`, superado acima), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do

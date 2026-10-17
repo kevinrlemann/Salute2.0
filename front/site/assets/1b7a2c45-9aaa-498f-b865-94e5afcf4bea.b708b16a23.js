@@ -2902,6 +2902,18 @@ var RN_AI = makeStore(SB_ON ? {
 var RN_VOZ_OFICIAL = 'EXAVITQu4vr4xnSDxMaL';
 // silêncio que encerra a fala da pessoa no modo voz (dá tempo de pensar entre uma frase e outra)
 var RN_SILENCIO_MS = 1300; // 1,3 s (2026-10-17): a Renata começa a responder mais rápido depois que a pessoa para de falar
+// espera adaptativa (2026-10-17, pedido do fundador): frase curta e completa ("boa tarde, tudo bem?") responde logo;
+// frase que parou no meio ("eu queria saber se...") espera um pouco mais, porque a pessoa ainda vai continuar
+var RN_SILENCIO_CURTO_MS = 750, RN_SILENCIO_LONGO_MS = 1900;
+var RN_FIM_ABERTO = /\b(e|mas|ou|que|de|do|da|dos|das|para|pra|com|por|em|no|na|nos|nas|um|uma|o|a|os|as|se|então|aí|tipo|porque|quando|como|qual|quanto|onde|me|te|lhe|meu|minha|seu|sua)$/i;
+function rnSilencioPara(texto) {
+  var t = String(texto || '').replace(/\s+/g, ' ').trim();
+  if (!t) return RN_SILENCIO_MS;
+  if (/[,:]$/.test(t) || RN_FIM_ABERTO.test(t.replace(/[.!?]+$/, ''))) return RN_SILENCIO_LONGO_MS;
+  var palavras = t.split(' ').length;
+  if (/\?$/.test(t) || palavras <= 5 || /^(oi|olá|ola|bom dia|boa tarde|boa noite|e aí|eai|opa)\b/i.test(t) && palavras <= 8) return RN_SILENCIO_CURTO_MS;
+  return RN_SILENCIO_MS;
+}
 // aquece a função renata (sessão, vínculo e chaves ficam em cache no servidor) para a primeira resposta sair mais rápido
 function rnAquecer() {
   if (!SB_ON || typeof rnFn !== 'function' || !window.CLI || !CLI()) return;
@@ -2939,9 +2951,30 @@ function RenataOrb(_ref9) {
     size = _ref9$size === void 0 ? 40 : _ref9$size,
     _ref9$state = _ref9.state,
     state = _ref9$state === void 0 ? 'idle' : _ref9$state;
-  var anim = state === 'speaking' ? 'rnTalk .9s ease-in-out infinite' : state === 'thinking' ? 'rnThink 1.4s ease-in-out infinite' : state === 'listening' ? 'rnBreath 2.4s ease-in-out infinite' : 'none';
+  var ref = React.useRef(null);
+  var vivo = state === 'speaking' && typeof rnNivelOuvir === 'function';
+  // falando: o tamanho segue a intensidade da voz (sem animação fixa); nas pausas volta ao repouso com uma respiração leve
+  React.useEffect(function () {
+    if (!vivo) return;
+    var t = 0;
+    var el = ref.current;
+    var parar = rnNivelOuvir(function (n) {
+      if (!ref.current) return;
+      t += 0.05;
+      var resp = 1 + Math.sin(t) * 0.012;
+      var esc = resp + n * 0.16;
+      ref.current.style.transform = 'scale(' + esc.toFixed(3) + ')';
+      ref.current.style.boxShadow = size > 60 ? '0 30px 60px -20px rgba(31,94,255,' + (0.55 + n * 0.3).toFixed(2) + '), inset 0 0 30px rgba(255,255,255,.35), 0 0 ' + Math.round(n * 28) + 'px rgba(79,123,230,' + (n * 0.5).toFixed(2) + ')' : '0 4px 12px -4px rgba(31,94,255,.6), 0 0 ' + Math.round(n * 10) + 'px rgba(79,123,230,' + (n * 0.6).toFixed(2) + ')';
+    });
+    return function () {
+      parar();
+      if (el) { el.style.transform = ''; el.style.boxShadow = ''; }
+    };
+  }, [vivo, size]);
+  var anim = state === 'speaking' ? vivo ? 'none' : 'rnTalk .9s ease-in-out infinite' : state === 'thinking' ? 'rnThink 1.4s ease-in-out infinite' : state === 'listening' ? 'rnBreath 2.4s ease-in-out infinite' : 'none';
   return /*#__PURE__*/React.createElement("span", {
     "aria-hidden": "true",
+    ref: ref,
     style: {
       position: 'relative',
       display: 'inline-block',
@@ -3144,6 +3177,56 @@ function rnVoice(text) {
 var RN_SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 var RN_PLAYER = typeof Audio !== 'undefined' ? new Audio() : null;
 var __rnTok = 0;
+/* ---------- intensidade da fala (2026-10-17, pedido do fundador) ----------
+   O círculo da Renata acompanha a voz: pulsa quando ela fala forte ou rápido e repousa nas pausas.
+   O áudio da ElevenLabs é decodificado à parte (envelope de 50 pontos por segundo) e lido pelo tempo do player,
+   sem mudar a rota do som. A voz do aparelho não dá o áudio: cada palavra (onboundary) vira um pulso. */
+var RN_NIVEL = { v: 0, env: null, taxa: 50, ouvintes: [], loop: false, pulso: 0, ctx: null };
+function rnEnvelope(blob) {
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC || !blob || !blob.arrayBuffer) return Promise.resolve(null);
+  return blob.arrayBuffer().then(function (ab) {
+    if (!RN_NIVEL.ctx) RN_NIVEL.ctx = new AC();
+    return new Promise(function (ok) {
+      try {
+        RN_NIVEL.ctx.decodeAudioData(ab.slice(0), function (buf) {
+          var d = buf.getChannelData(0), passo = Math.max(1, Math.floor(buf.sampleRate / RN_NIVEL.taxa)), n = Math.ceil(d.length / passo), env = new Float32Array(n), pico = 0.0001;
+          for (var i = 0; i < n; i++) {
+            var s = 0, a = i * passo, b = Math.min(d.length, a + passo);
+            for (var j = a; j < b; j++) s += d[j] * d[j];
+            env[i] = Math.sqrt(s / Math.max(1, b - a));
+            if (env[i] > pico) pico = env[i];
+          }
+          for (var k = 0; k < n; k++) env[k] = Math.min(1, env[k] / pico * 1.15);
+          ok(env);
+        }, function () { ok(null); });
+      } catch (e) { ok(null); }
+    });
+  })["catch"](function () { return null; });
+}
+function rnNivelLoop() {
+  if (RN_NIVEL.loop) return;
+  RN_NIVEL.loop = true;
+  var passo = function passo() {
+    if (!RN_NIVEL.ouvintes.length) { RN_NIVEL.loop = false; RN_NIVEL.v = 0; return; }
+    var alvo = 0;
+    if (RN_NIVEL.env && RN_PLAYER && !RN_PLAYER.paused && !RN_PLAYER.ended) {
+      alvo = RN_NIVEL.env[Math.min(RN_NIVEL.env.length - 1, Math.floor(RN_PLAYER.currentTime * RN_NIVEL.taxa))] || 0;
+    }
+    if (RN_NIVEL.pulso > 0) { alvo = Math.max(alvo, RN_NIVEL.pulso); RN_NIVEL.pulso *= 0.82; if (RN_NIVEL.pulso < 0.05) RN_NIVEL.pulso = 0; }
+    // sobe rápido e desce devagar, como a respiração
+    RN_NIVEL.v += (alvo - RN_NIVEL.v) * (alvo > RN_NIVEL.v ? 0.5 : 0.16);
+    RN_NIVEL.ouvintes.forEach(function (f) { try { f(RN_NIVEL.v); } catch (e) {} });
+    requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
+}
+function rnNivelOuvir(f) {
+  RN_NIVEL.ouvintes.push(f);
+  rnNivelLoop();
+  return function () { RN_NIVEL.ouvintes = RN_NIVEL.ouvintes.filter(function (x) { return x !== f; }); };
+}
+function rnNivelPulso(v) { RN_NIVEL.pulso = Math.max(RN_NIVEL.pulso, v || 0.9); rnNivelLoop(); }
 // a voz oficial (ElevenLabs) recusou por chave ou permissão: usa a voz do aparelho direto
 // nesta sessão, sem esperar a recusa a cada fala; volta a tentar quando as conexões são salvas
 var RN_VOZ_OFF = false;
@@ -3393,6 +3476,8 @@ function _rnSpeak() {
               u.lang = 'pt-BR';
               u.rate = 1.06;
               u.pitch = 1.05;
+              u.onboundary = function () { rnNivelPulso(0.85); };
+              u.onstart = function () { rnNivelPulso(0.7); };
               if (i === chunks.length - 1) u.onend = done;
               u.onerror = function (e) {
                 if (i === chunks.length - 1 && e.error !== 'interrupted' && e.error !== 'canceled') done();
@@ -3462,6 +3547,9 @@ function rnPrepararFala(text) {
         if (!r.ok) throw new Error('ElevenLabs ' + r.status);
         rnAvisoVozReserva(r);
         return r.blob();
+      }).then(function (b) {
+        // o envelope da intensidade é calculado antes de tocar; se falhar, o círculo pulsa por palavra
+        return rnEnvelope(b).then(function (env) { try { b.__env = env; } catch (e) {} return b; });
       });
       pedidos[i].then(function () {
         var p = buscar(i + 2);
@@ -3515,8 +3603,10 @@ rnSpeak = function rnSpeak(text, onEnd, pronto) {
       tocou = true;
       return new Promise(function (ok) {
         var url = URL.createObjectURL(b);
+        RN_NIVEL.env = b.__env || null;
         RN_PLAYER.onended = function () {
           URL.revokeObjectURL(url);
+          RN_NIVEL.env = null;
           ok();
         };
         RN_PLAYER.onerror = function () {
@@ -3540,6 +3630,7 @@ rnSpeak = function rnSpeak(text, onEnd, pronto) {
   });
 };
 window.rnPrepararFala = rnPrepararFala;
+Object.assign(window, { rnSilencioPara: rnSilencioPara, rnNivelOuvir: rnNivelOuvir, rnNivelPulso: rnNivelPulso, RN_NIVEL: RN_NIVEL, rnEnvelope: rnEnvelope });
 var RN_SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 var RN_IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
 var RN_BARGE = !!RN_SR && !RN_IS_MOBILE && /Chrome|Edg\//.test(navigator.userAgent);
@@ -9795,7 +9886,7 @@ function RenataVoiceMode(_ref16) {
         if (R.rec === r) try {
           r.stop();
         } catch (x) {}
-      }, RN_SILENCIO_MS);
+      }, rnSilencioPara(fin + ' ' + inter));
     };
     r.onerror = function (e) {
       if (R.rec !== r) return;
@@ -9854,7 +9945,8 @@ function RenataVoiceMode(_ref16) {
     var buf = new Float32Array(1024);
     var spoke = false,
       last = Date.now(),
-      floor = 0.008;
+      floor = 0.008,
+      primeiro = 0;
     var t0 = Date.now();
     var _tick = function tick() {
       if (R.rec !== rec) return;
@@ -9869,9 +9961,12 @@ function RenataVoiceMode(_ref16) {
       if (rms > Math.max(0.02, floor * 2.5)) {
         spoke = true;
         last = Date.now();
+        if (!primeiro) primeiro = last;
       }
       var now = Date.now();
-      if (spoke && now - last > RN_SILENCIO_MS || now - t0 > 45000 || !spoke && now - t0 > 12000) {
+      // sem o texto (a transcrição vem depois), a pista é a duração: fala curta (até 2,5 s) responde mais rápido
+      var espera = spoke && last - primeiro < 2500 ? Math.max(RN_SILENCIO_CURTO_MS, 900) : RN_SILENCIO_MS;
+      if (spoke && now - last > espera || now - t0 > 45000 || !spoke && now - t0 > 12000) {
         try {
           rec.stop();
         } catch (e) {}
