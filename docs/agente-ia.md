@@ -149,3 +149,10 @@ nenhum vínculo cadastrado vale para todos os profissionais ativos. Avaliação 
 Orgânico (conversa espontânea), Indicação (mensagem recebida com indicação/indicou/recomendou), Tráfego pago › TikTok Ads / Google Ads / Instagram Ads /
 Facebook Ads / Outros anúncios (pela URL e `utm_source` do anúncio de clique no WhatsApp, `conversas.origem_anuncio`) e Não informado (cadastro manual).
 O canal WhatsApp ficou inativo. Origem escolhida pela equipe nunca é trocada pelo sistema (`origem_eh_automatica`).
+
+## Nome da atendente virtual (2026-10-17, confirmado)
+
+A clínica escolhe em Configurações › Clínica como a IA do WhatsApp se apresenta (padrão Renata). RPC `definir_atendente_virtual(clinica, nome)` grava em
+`agente_ia.nome` e atualiza `apresentacao` e `saudacao`; `atendente_virtual(clinica)` devolve nome, apresentação e saudação. `agente_ia_regras(clinica, 'whatsapp')`
+passa a instrução "Seu nome é X" para o WF01; no canal `assistente` o nome é sempre Renata. O WF01 não precisou mudar: o nome entra pelas regras.
+

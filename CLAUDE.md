@@ -119,6 +119,11 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   ano, nível de evidência); sem fonte segura, escreve "prática clínica usual, sem diretriz específica" em vez de inventar. Só nesses blocos a IA vai além da transcrição;
   termina com "Estas sugestões são apoio à decisão. A avaliação e a decisão final são do profissional responsável." Resposta até 2.000 tokens (`MAX_RESPOSTA` em
   `openai.ts`, função `renata` v21). É dado de saúde indo para a OpenAI (achado A3): decisão do fundador.
+- Nome da atendente virtual (2026-10-17): Configurações › Clínica › "Atendimento pela IA (WhatsApp)" › "Nome da atendente virtual" (padrão Renata). RPCs
+  `atendente_virtual(clinica)` (leitura, membros) e `definir_atendente_virtual(clinica, nome)` (gestão da clínica; só letras, até 40; vazio volta a Renata; troca o nome
+  também na apresentação e na saudação de `agente_ia`, criando a linha se não existir). Migration `20261017190000`. `agente_ia_regras` usa o nome escolhido só no canal
+  WhatsApp; no canal assistente (Renata dentro do sistema) o nome é sempre Renata. O resto da aba Agente de IA continua só do administrador master.
+- ChatGPT (OpenAI) é o motor nos três pontos (confirmado 2026-10-17): relatório da consulta e Renata do sistema pela função `renata`; IA do WhatsApp pelo n8n WF01 (chave no n8n).
 - Renata sem pausa entre as frases (2026-10-17): `rnPrepararFala(texto)` (`1b7a2c45`) pede o áudio de todas as partes (duas por vez) sem tocar; `rnSpeak(texto, fim, pronto)`
   aceita esse preparo. `rnFalaCedo` prepara o resto da resposta assim que o texto completo chega, enquanto a primeira frase ainda toca, então a fala segue sem esperar o servidor.
 - Renata (2026-10-16): silêncio de 1,5 s (`RN_SILENCIO_MS`, superado acima), correção de ditado (`rnCorrigirDitado`, vocabulário da clínica, 3 alternativas do
