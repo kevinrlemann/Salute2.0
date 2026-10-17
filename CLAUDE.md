@@ -138,6 +138,18 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   e vem antes dos desenhos; ordem (pedido do fundador): face feminina, face masculina, lábios, corpo, dentes, sempre lateral esquerda, frontal, lateral direita.
   Os desenhos Facial, Corporal e Glúteo saíram de `SYS_MODELS` (ficou só Dental); mapas antigos com fundo `face`/`corpo`/`gluteo` continuam abrindo (`FaceArt`)
   (origem do site, ou `https://saluteia.site/modelos/` fora dele, como no artifact). Estrutura das fichas de avaliação do mercado em `docs/referencias-avaliacoes.md`.
+- Mapeamento e marcação para qualquer nicho (2026-10-17, pedido do fundador): fluxo "tocar e escrever". Ferramentas "Tocar", "Desenhar", "Linha", "Borracha",
+  "Mover". Tocar na imagem cria a marca e abre na hora a janela "Marca N" com a caixa de anotação em foco (Enter fecha, Shift+Enter quebra linha); "Produto ou tipo
+  (opcional)" fica abaixo (produtos do estoque, quantidade, unidade, cor). Soltar um desenho ou linha abre a anotação do desenho. Chip padrão "Anotação"
+  (`COMENTARIO`, chave gravada continua 'Só comentário'; rótulo por `rotuloMarca`); o produto escolhido pela pessoa segue como preferência (`prodPref`). Painéis
+  "Marcas e anotações" e "Desenhos e anotações"; a anotação curta aparece ao lado da marca no desenho. No toque, `onTouchEnd` do SVG cancela o clique emulado para a
+  caixa não perder o foco. Mapas antigos abrem iguais.
+- Relatório da consulta em PDF (2026-10-17, pedido do fundador): ao salvar em Prontuário › Transcrição e relatório, além de `consultas_relatorios`, o sistema gera no
+  navegador um PDF (`pdfTexto`/`consultaPdf` em `d47643ae`, sem biblioteca externa: Helvetica WinAnsi, quebra de linha, várias páginas) com clínica (nome, CNPJ/CPF,
+  contato, endereço via `consultaDadosClinica`), paciente, data/hora, duração, profissional (nome, especialidade, registro), quem registrou, forma de registro, o
+  relatório completo e a transcrição bruta. O PDF vai para Documentação Clínica (`documentos_paciente`, `origem = 'relatorio_consulta'`, migration `20261017210000`)
+  e aparece em Registros como "Relatório da consulta (PDF)" (`salvarDocRegistro`, que também atende a imagem do mapa). O histórico recebe só a linha curta
+  "Relatório da consulta gerado por áudio" + "Relatório completo em PDF salvo em Documentação Clínica. Profissional: X." (sem o texto inteiro).
 - Renata como consultora de gestão (2026-10-17, pedido do fundador): `RENATA_BENCH` (`1b7a2c45`) entra nas regras com faixas de referência do mercado brasileiro
   (faltas, ocupação, funil, ticket, faturamento por profissional, custos, inadimplência, retenção, aquisição, reputação) para clínicas médicas, estéticas, odontológicas
   e fisioterapêuticas; regras 7, 22 e 23 mandam responder como chat de consultoria (faixa, lógica, cálculo com os dados da clínica pelas ferramentas, ações), sempre
