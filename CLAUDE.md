@@ -147,8 +147,9 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   `renata_faturamento` em `painel_mes` e `painel_periodo` (migration `20261017120000`): receitas (`contas_receber.valor_liquido`, recebidas ou a receber)
   ligadas a consultas com `agendamentos.origem = 'renata_ia'` não canceladas, pela data da consulta; agendamento feito pela equipe fica de fora.
   Ligação receita → consulta: `contas_receber.agendamento_id` (ou via `procedimentos_realizados.agendamento_id`); o gatilho `tg_contas_receber_liga_agendamento`
-  (migration `20261017130000`) preenche `agendamento_id` ao inserir uma receita sem consulta quando o paciente tem UMA consulta não cancelada no dia do lançamento
-  (receitas antigas preenchidas uma vez). Com duas consultas no dia não adivinha.
+  (migrations `20261017130000` e `20261017140000`) preenche `agendamento_id` ao inserir uma receita sem consulta: a consulta não cancelada do paciente
+  mais próxima do lançamento, numa janela de 30 dias antes até 7 dias depois (mesmo dia primeiro; empate de distância não adivinha). Receitas antigas
+  preenchidas uma vez. Assim parcelas e pagamentos lançados dias depois da consulta da IA continuam contando no cartão.
 - CRM (decisão do fundador, 2026-10-17): mover o lead para Convertido = a pessoa compareceu. Gatilho `tg_leads_convertido_compareceu`
   (`lead_convertido_compareceu`, migration `20261017110000`): consultas já passadas do lead (ou do paciente ligado) em agendado/confirmado/aguardando/
   em atendimento viram "Atendido" (conta como atendimento no Painel); futuras, canceladas e faltas não mudam. Vale para tela, IA e importações; grava em `auditoria`.
