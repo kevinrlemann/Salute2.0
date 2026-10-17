@@ -131,8 +131,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   (gestão) e `agenda_profissionais_visiveis(clinica)`. Front: `c001` carrega `agendas_acesso` junto com os profissionais; `c003` `agendaVisivelLocal` filtra `PROS`
   (listas da Agenda); `PROF0` continua completo (financeiro, cadastros). Cadastro do profissional (`ProfissionaisCad`, `d47643ae`): "Quem pode ver esta agenda" com
   chips da equipe (gestão marcada "sempre vê"); `ProfSvc.salvar` grava a liberação depois do profissional (`ed.agendaUsuarios`, id novo em `ed.novoDbId`).
-- Modelos de mapeamento com imagem (2026-10-17): `front/modelos/` (rosto-feminino.jpg, rosto-masculino.jpg, labios.jpg; extraídos dos PDFs de planejamento facial
-  do fundador, compostos sobre `#F4F7FC`), copiados pelo `tools/site.py` para `front/site/modelos/`; `SYS_MODELS_IMG` em `d47643ae` aponta para `MODELOS_BASE`
+- Modelos de mapeamento com imagem (2026-10-17): `front/modelos/` (rosto-feminino.jpg, rosto-masculino.jpg, labios.jpg, gluteo-lateral-direita.jpg,
+  gluteo-lateral-esquerda.jpg; imagens enviadas pelo fundador, compostas sobre `#F4F7FC`, JPEG até 1400 px), copiados pelo `tools/site.py` para `front/site/modelos/`; `SYS_MODELS_IMG` em `d47643ae` aponta para `MODELOS_BASE`
   (origem do site, ou `https://saluteia.site/modelos/` fora dele, como no artifact). Estrutura das fichas de avaliação do mercado em `docs/referencias-avaliacoes.md`.
 - Renata como consultora de gestão (2026-10-17, pedido do fundador): `RENATA_BENCH` (`1b7a2c45`) entra nas regras com faixas de referência do mercado brasileiro
   (faltas, ocupação, funil, ticket, faturamento por profissional, custos, inadimplência, retenção, aquisição, reputação) para clínicas médicas, estéticas, odontológicas
