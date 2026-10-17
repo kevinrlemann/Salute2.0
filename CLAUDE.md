@@ -135,6 +135,8 @@ aberta quebra o React ("Should have a queue"); para testar o ramo conectado, for
   gluteo-lateral-esquerda.jpg, gluteo-posterior.jpg, tronco-feminino-lateral.jpg, mandibula-lateral-vasos-direita/esquerda.jpg, perfil-feminino-direita/esquerda.jpg,
   perfil-masculino-direita.jpg, dentes-permanentes.jpg, dentes-deciduos.jpg;
   imagens enviadas pelo fundador, compostas sobre `#F4F7FC`, JPEG até 1600 px), copiados pelo `tools/site.py` para `front/site/modelos/`; `SYS_MODELS_IMG` em `d47643ae` aponta para `MODELOS_BASE`
+  e vem antes dos desenhos; ordem (pedido do fundador): face feminina, face masculina, lábios, corpo, dentes, sempre lateral esquerda, frontal, lateral direita.
+  Os desenhos Facial, Corporal e Glúteo saíram de `SYS_MODELS` (ficou só Dental); mapas antigos com fundo `face`/`corpo`/`gluteo` continuam abrindo (`FaceArt`)
   (origem do site, ou `https://saluteia.site/modelos/` fora dele, como no artifact). Estrutura das fichas de avaliação do mercado em `docs/referencias-avaliacoes.md`.
 - Renata como consultora de gestão (2026-10-17, pedido do fundador): `RENATA_BENCH` (`1b7a2c45`) entra nas regras com faixas de referência do mercado brasileiro
   (faltas, ocupação, funil, ticket, faturamento por profissional, custos, inadimplência, retenção, aquisição, reputação) para clínicas médicas, estéticas, odontológicas
